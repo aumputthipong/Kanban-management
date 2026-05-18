@@ -18,6 +18,7 @@ import (
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/migrate"
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/observability"
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/service"
+	"github.com/aumputthipong/mini-erp-kanban/backend/internal/token"
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/websocket"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
@@ -79,8 +80,17 @@ func loadConfig() config {
 		slog.Error("DB_URL is required but not set")
 		os.Exit(1)
 	}
-	if os.Getenv("JWT_SECRET") == "" {
+	jwtSecret := os.Getenv("JWT_SECRET")
+	if jwtSecret == "" {
 		slog.Error("JWT_SECRET is required but not set")
+		os.Exit(1)
+	}
+	if len(jwtSecret) < token.MinSecretBytes {
+		slog.Error("JWT_SECRET is too short",
+			"got_bytes", len(jwtSecret),
+			"min_bytes", token.MinSecretBytes,
+			"hint", "generate with: openssl rand -base64 32",
+		)
 		os.Exit(1)
 	}
 	if cfg.Port == "" {

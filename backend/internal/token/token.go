@@ -54,6 +54,12 @@ func parseDurationEnv(key string, def time.Duration) time.Duration {
 	return d
 }
 
+// MinSecretBytes is the floor enforced on JWT_SECRET. HS256 keys shorter than
+// the hash size (32 bytes) are brute-forceable offline once any token is
+// captured — RFC 7518 §3.2 says the key SHOULD be the same size as the
+// output of the HMAC function (SHA-256 → 32 bytes).
+const MinSecretBytes = 32
+
 // Claims is the JWT body for an authenticated user. UserID is the canonical
 // reference; Email is included for ergonomics in logs and is not authoritative
 // (a user can change their email; the UserID does not).
@@ -76,6 +82,9 @@ func secret() []byte {
 		s := os.Getenv("JWT_SECRET")
 		if s == "" {
 			log.Fatal("JWT_SECRET is required")
+		}
+		if len(s) < MinSecretBytes {
+			log.Fatalf("JWT_SECRET must be at least %d bytes (got %d) — generate one with: openssl rand -base64 32", MinSecretBytes, len(s))
 		}
 		jwtSecret = []byte(s)
 	})

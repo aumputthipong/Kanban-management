@@ -21,8 +21,15 @@ erDiagram
     cards ||--o{ card_subtasks : "has"
     cards ||--o{ card_tags : "tagged"
     cards ||--o{ time_logs : "tracked"
+    cards ||--o| planning_items : "promoted from"
 
     tags ||--o{ card_tags : "applied"
+
+    boards ||--o{ planning_sessions : "has"
+    planning_sessions ||--o{ planning_items : "captures"
+    planning_items ||--o{ planning_item_comments : "thread"
+    users ||--o{ planning_item_comments : "authored"
+    users ||--o| planning_items : "claimed by"
 
     users {
         uuid id PK
@@ -115,6 +122,43 @@ erDiagram
         decimal cost_incurred
         timestamptz logged_at
     }
+
+    planning_sessions {
+        uuid id PK
+        uuid board_id FK
+        varchar title
+        text label "nullable"
+        timestamptz meeting_at "nullable"
+        uuid created_by FK "nullable"
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    planning_items {
+        uuid id PK
+        uuid session_id FK
+        varchar type "REQ | DEC | Q"
+        text title
+        text description "nullable"
+        varchar status "live | selected | dropped | promoted"
+        uuid promoted_to_card_id FK "nullable"
+        double position
+        text acceptance_criteria "nullable"
+        text implementation_note "nullable"
+        uuid claimed_by_user_id FK "nullable"
+        timestamptz claimed_at "nullable"
+        timestamptz created_at
+    }
+
+    planning_item_comments {
+        uuid id PK
+        uuid item_id FK
+        uuid author_id FK
+        text body
+        timestamptz created_at
+        timestamptz updated_at
+        timestamptz deleted_at "soft delete"
+    }
 ```
 
 > Render: GitHub renders Mermaid natively. To export a PNG, paste this block into <https://mermaid.live>.
@@ -154,6 +198,22 @@ erDiagram
 - Reserved for the costing/time-tracking feature. Currently no UI writes to this table.
 - `cost_incurred` is denormalized at log time so historic logs are unaffected by later `hourly_rate` changes.
 
+### `planning_sessions`
+- One row per meeting / planning session. Scoped per board (`ON DELETE CASCADE`) — deleting a board removes its sessions.
+- `meeting_at` is nullable: ad-hoc capture sessions don't need a calendar slot.
+- `label` is a free-text tag for cross-session grouping ("with @client", "sprint-12"). Treated as nullable but stored as TEXT so the PATCH-empty-string convention works.
+
+### `planning_items`
+- The atomic unit of the planning section. Type (REQ / DEC / Q) and status (live / selected / dropped / promoted) drive the lifecycle.
+- `promoted_to_card_id` is the link back to the Kanban side. Set when `PromoteItem` runs (creates a card in the same tx). Indexed via partial index `idx_planning_items_promoted_card WHERE promoted_to_card_id IS NOT NULL` so the reverse lookup ("which planning row produced this card?") stays cheap.
+- `acceptance_criteria` and `implementation_note` are free-text fields surfaced via the row's expand panel. On promote, both are copied onto the resulting `cards` row.
+- `claimed_by_user_id` + `claimed_at` are the soft "I'm looking at this" claim. FK is `ON DELETE SET NULL` — a deleted user auto-releases their claims. Claim acquisition is atomic via `WHERE claimed_by_user_id IS NULL` in the UPDATE — no service-side lock needed.
+
+### `planning_item_comments`
+- Per-item conversation thread. `ON DELETE CASCADE` from `planning_items` — orphan comments aren't a thing.
+- Soft delete via `deleted_at`. The list endpoint returns deleted rows too (with `body` redacted at the handler), so the UI can render tombstones without the thread shifting around.
+- Partial index `(item_id, created_at) WHERE deleted_at IS NULL` keeps the common case (chronological list of live comments) cheap.
+
 ## Migrations
 
 Versioned files in `backend/database/migrations/`:
@@ -166,10 +226,15 @@ Versioned files in `backend/database/migrations/`:
 000005_add_activities.{up,down}.sql
 000006_add_refresh_tokens.{up,down}.sql
 000007_legacy_start_date_cleanup.{up,down}.sql    # see "When a number conflicts"
-000008_add_planning.{up,down}.sql
+000008_add_planning.{up,down}.sql                  # planning_sessions + planning_items
+000009_perf_indexes.{up,down}.sql                  # query plan tuning
+000010_add_promoted_card_index.{up,down}.sql       # partial index for card→planning backlink (B-F1)
+000011_add_acceptance_criteria_and_implementation_note.{up,down}.sql  # B-F3
+000012_add_planning_item_comments.{up,down}.sql    # B-F5 — soft-delete table + partial index
+000013_add_planning_item_claim.{up,down}.sql       # B-F6 — claimed_by + claimed_at
 ```
 
-**Current applied version:** 8 — next migration claims `000009`.
+**Current applied version:** 13 — next migration claims `000014`.
 
 ### Naming + file shape
 

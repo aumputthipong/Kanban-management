@@ -18,6 +18,8 @@ export interface OwnershipColumn {
   id: string;
   title: string;
   position: number;
+  /** Column colour key (from the board's column settings); null = Default. */
+  color: string | null;
 }
 
 export interface MemberOwnership {
@@ -49,7 +51,7 @@ export function useBoardOwnership(): BoardOwnership {
     const activeColumns: OwnershipColumn[] = columns
       .filter((c) => c.category !== "DONE")
       .sort((a, b) => a.position - b.position)
-      .map((c) => ({ id: c.id, title: c.title, position: c.position }));
+      .map((c) => ({ id: c.id, title: c.title, position: c.position, color: c.color ?? null }));
 
     const byUser = new Map<string, MemberOwnership>();
     // Seed every board member so idle people still appear (totalHeld = 0).

@@ -32,8 +32,9 @@ export function TeamTabContent({ boardId, onSelectCard }: TeamTabContentProps) {
         </p>
       </div>
 
-      {/* Ownership (left) + activity (right) */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1.25fr_1fr] gap-5">
+      {/* Ownership is the primary focus (wider, white card); activity is a
+          subdued secondary rail. items-start so the rail doesn't stretch. */}
+      <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-5 items-start">
         <TeamOwnershipList onSelectCard={onSelectCard} />
         <TeamActivityPanel
           activities={activities}

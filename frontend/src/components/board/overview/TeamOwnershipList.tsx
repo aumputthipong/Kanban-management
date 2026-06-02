@@ -8,6 +8,10 @@ import { MemberOwnershipRow } from "./MemberOwnershipRow";
 
 // Neutral dot for a column with no explicit colour set (Default).
 const DOT_FALLBACK = "#cbd5e1";
+// Beyond this many status columns the per-column number cells are dropped and
+// the mini bar (+ hover/expand) carries the breakdown — keeps the table from
+// overflowing as boards add columns.
+const MAX_NUMERIC_COLUMNS = 5;
 
 interface TeamOwnershipListProps {
   onSelectCard: (card: Card) => void;
@@ -15,6 +19,7 @@ interface TeamOwnershipListProps {
 
 export function TeamOwnershipList({ onSelectCard }: TeamOwnershipListProps) {
   const { columns, members } = useBoardOwnership();
+  const showColumns = columns.length <= MAX_NUMERIC_COLUMNS;
 
   return (
     <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
@@ -39,20 +44,21 @@ export function TeamOwnershipList({ onSelectCard }: TeamOwnershipListProps) {
                   <th className="px-4 py-2 text-left text-[10.5px] font-bold uppercase tracking-wide text-slate-400">
                     สมาชิก
                   </th>
-                  {columns.map((col) => (
-                    <th
-                      key={col.id}
-                      className="whitespace-nowrap px-2 py-2 text-[10.5px] font-bold uppercase tracking-wide text-slate-400"
-                    >
-                      <span className="inline-flex items-center gap-1.5">
-                        <span
-                          className="h-[7px] w-[7px] rounded-sm"
-                          style={{ backgroundColor: getColumnColorHex(col.color) ?? DOT_FALLBACK }}
-                        />
-                        {col.title}
-                      </span>
-                    </th>
-                  ))}
+                  {showColumns &&
+                    columns.map((col) => (
+                      <th
+                        key={col.id}
+                        className="whitespace-nowrap px-2 py-2 text-[10.5px] font-bold uppercase tracking-wide text-slate-400"
+                      >
+                        <span className="inline-flex items-center gap-1.5">
+                          <span
+                            className="h-[7px] w-[7px] rounded-sm"
+                            style={{ backgroundColor: getColumnColorHex(col.color) ?? DOT_FALLBACK }}
+                          />
+                          {col.title}
+                        </span>
+                      </th>
+                    ))}
                   <th className="px-4 py-2 text-right text-[10.5px] font-bold uppercase tracking-wide text-slate-400">
                     รวม
                   </th>
@@ -64,6 +70,7 @@ export function TeamOwnershipList({ onSelectCard }: TeamOwnershipListProps) {
                     key={member.userId}
                     member={member}
                     columns={columns}
+                    showColumns={showColumns}
                     onSelectCard={onSelectCard}
                   />
                 ))}

@@ -59,7 +59,7 @@ export function TeamActivityPanel({
       filter === "all"
         ? grouped
         : grouped.filter((a) => activityCategory(a.event_type) === filter);
-    return filtered.slice(0, 14);
+    return filtered.slice(0, 8);
   }, [activities, filter]);
 
   // Split the (already newest-first) list into consecutive same-day runs so we
@@ -76,10 +76,12 @@ export function TeamActivityPanel({
   }, [visible]);
 
   return (
-    <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-4">
+    // Secondary surface: recedes (slate wash, no shadow) against the white
+    // ownership card so the eye lands on ownership first.
+    <div className="bg-slate-50/60 border border-slate-200 rounded-xl p-4">
       <div className="flex items-center gap-2 mb-3">
-        <ActivityIcon size={15} className="text-slate-400" />
-        <h3 className="text-sm font-bold text-slate-600 uppercase tracking-wide">
+        <ActivityIcon size={14} className="text-slate-400" />
+        <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
           ความเคลื่อนไหว
         </h3>
       </div>
@@ -114,7 +116,7 @@ export function TeamActivityPanel({
           {filter === "all" ? "No activity yet." : "ไม่มีความเคลื่อนไหวในหมวดนี้"}
         </p>
       ) : (
-        <div>
+        <div className="max-h-[420px] overflow-y-auto pr-1">
           {dayRuns.map((run) => (
             <div key={run.key}>
               <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mt-4 mb-2 first:mt-0">

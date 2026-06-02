@@ -12,16 +12,36 @@ interface TeamOwnershipListProps {
 export function TeamOwnershipList({ onSelectCard }: TeamOwnershipListProps) {
   const { columns, members } = useBoardOwnership();
 
+  const totalHeld = members.reduce((sum, m) => sum + m.totalHeld, 0);
+  const withWork = members.filter((m) => m.totalHeld > 0).length;
+  const idle = members.length - withWork;
+
   return (
     <div className="rounded-xl border border-slate-200 bg-white shadow-sm p-4">
-      <div className="flex items-center justify-between mb-3">
-        <span className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-          <Users size={14} className="text-slate-400" />
-          ใครถืออะไรอยู่
-        </span>
-        <span className="text-[11px] font-semibold text-slate-400">
-          {members.length} คน
-        </span>
+      <div className="mb-3">
+        <div className="flex items-center justify-between">
+          <span className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <Users size={14} className="text-slate-400" />
+            ใครถืออะไรอยู่
+          </span>
+          <span className="text-[11px] font-semibold text-slate-400">
+            {members.length} คน
+          </span>
+        </div>
+        {/* answer-first headline — the gist without reading the table */}
+        <p className="mt-1.5 text-sm text-slate-500">
+          {totalHeld === 0 ? (
+            "ยังไม่มีใครถืองานในบอร์ดนี้"
+          ) : (
+            <>
+              ถือรวม <b className="font-bold text-slate-900">{totalHeld}</b> งาน
+              <span className="text-slate-300"> · </span>
+              <b className="font-bold text-slate-900">{withWork}</b> คนกำลังถืองาน
+              <span className="text-slate-300"> · </span>
+              <b className="font-bold text-slate-900">{idle}</b> คนว่าง
+            </>
+          )}
+        </p>
       </div>
 
       {members.length === 0 ? (

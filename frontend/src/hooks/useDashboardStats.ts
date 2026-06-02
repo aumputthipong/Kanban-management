@@ -45,7 +45,6 @@ export function useDashboardStats() {
         tomorrowCards: [],
         thisWeekCards: [],
         insights: ["No tasks in this project yet. Create a task to see insights."],
-        workload: [],
         columnStats: columns.map((col) => ({ id: col.id, title: col.title, category: col.category, count: 0 })),
       };
     }
@@ -76,19 +75,10 @@ export function useDashboardStats() {
       columnMeta[col.id] = { title: col.title, category: col.category, position: col.position };
     });
 
-    const assigneeCount: Record<
-      string,
-      {
-        name: string;
-        active: number;
-        done: number;
-        count: number;
-        // Summed estimated_hours of this person's *active* (not-done) cards.
-        // Feeds the Team capacity dashboard's hours-vs-cap workload bar.
-        activeHours: number;
-        byColumn: Record<string, { title: string; category: "TODO" | "DONE"; position: number; count: number }>;
-      }
-    > = {};
+    // Per-assignee count of *active* (not-done) cards. Only feeds the
+    // "Bottleneck detected" insight below — the per-member ownership view
+    // derives its own counts from the store (see useBoardOwnership).
+    const assigneeCount: Record<string, { name: string; active: number }> = {};
 
     allCards.forEach((card) => {
       const meta = columnMeta[card.column_id];
@@ -99,31 +89,11 @@ export function useDashboardStats() {
         totalHours += card.estimated_hours;
       }
 
-      if (card.assignee_id && card.assignee_name) {
+      if (card.assignee_id && card.assignee_name && !isDone) {
         if (!assigneeCount[card.assignee_id]) {
-          assigneeCount[card.assignee_id] = {
-            name: card.assignee_name,
-            active: 0,
-            done: 0,
-            count: 0,
-            activeHours: 0,
-            byColumn: {},
-          };
+          assigneeCount[card.assignee_id] = { name: card.assignee_name, active: 0 };
         }
-        const entry = assigneeCount[card.assignee_id];
-        entry.count++;
-        if (isDone) entry.done++;
-        else {
-          entry.active++;
-          entry.activeHours += card.estimated_hours ?? 0;
-        }
-
-        if (meta) {
-          if (!entry.byColumn[card.column_id]) {
-            entry.byColumn[card.column_id] = { ...meta, count: 0 };
-          }
-          entry.byColumn[card.column_id].count++;
-        }
+        assigneeCount[card.assignee_id].active++;
       }
 
       // ตรวจสอบ Due Date
@@ -204,16 +174,6 @@ export function useDashboardStats() {
       tomorrowCards,
       thisWeekCards,
       insights,
-      workload: Object.values(assigneeCount)
-        .map((u) => ({
-          name: u.name,
-          count: u.count,
-          active: u.active,
-          done: u.done,
-          activeHours: u.activeHours,
-          byColumn: Object.values(u.byColumn).sort((a, b) => a.position - b.position),
-        }))
-        .sort((a, b) => b.active - a.active || b.count - a.count),
       columnStats,
     };
   }, [columns]);

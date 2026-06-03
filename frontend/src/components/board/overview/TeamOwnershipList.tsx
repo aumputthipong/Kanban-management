@@ -8,9 +8,10 @@ import { MemberOwnershipRow } from "./MemberOwnershipRow";
 
 // Neutral dot for a column with no explicit colour set (Default).
 const DOT_FALLBACK = "#cbd5e1";
-// Beyond this many status columns the per-column number cells are dropped and
-// the mini bar (+ hover/expand) carries the breakdown — keeps the table from
-// overflowing as boards add columns.
+// "Goldilocks band" — show per-column detail only when it's actually useful:
+//  - numeric cells: 2..MAX columns (1 column duplicates the total; >MAX overflows)
+//  - mini bar: >=2 columns (a single segment conveys nothing)
+//  - 0 / 1 column: just the roster + total.
 const MAX_NUMERIC_COLUMNS = 5;
 
 interface TeamOwnershipListProps {
@@ -19,7 +20,9 @@ interface TeamOwnershipListProps {
 
 export function TeamOwnershipList({ onSelectCard }: TeamOwnershipListProps) {
   const { columns, members } = useBoardOwnership();
-  const showColumns = columns.length <= MAX_NUMERIC_COLUMNS;
+  const colCount = columns.length;
+  const numericMode = colCount >= 2 && colCount <= MAX_NUMERIC_COLUMNS;
+  const showBar = colCount >= 2;
 
   return (
     <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
@@ -37,6 +40,11 @@ export function TeamOwnershipList({ onSelectCard }: TeamOwnershipListProps) {
         </p>
       ) : (
         <>
+          {colCount === 0 && (
+            <p className="border-b border-slate-100 bg-slate-50/70 px-4 py-2 text-[11px] text-slate-400">
+              บอร์ดนี้ยังไม่มีคอลัมน์ระหว่างทาง — ทุกคนจึงยังไม่ถืองาน
+            </p>
+          )}
           <div className="overflow-x-auto">
             <table className="w-full border-collapse">
               <thead>
@@ -44,7 +52,7 @@ export function TeamOwnershipList({ onSelectCard }: TeamOwnershipListProps) {
                   <th className="px-4 py-2 text-left text-[10.5px] font-bold uppercase tracking-wide text-slate-400">
                     สมาชิก
                   </th>
-                  {showColumns &&
+                  {numericMode &&
                     columns.map((col) => (
                       <th
                         key={col.id}
@@ -70,7 +78,8 @@ export function TeamOwnershipList({ onSelectCard }: TeamOwnershipListProps) {
                     key={member.userId}
                     member={member}
                     columns={columns}
-                    showColumns={showColumns}
+                    numericMode={numericMode}
+                    showBar={showBar}
                     onSelectCard={onSelectCard}
                   />
                 ))}
@@ -82,20 +91,22 @@ export function TeamOwnershipList({ onSelectCard }: TeamOwnershipListProps) {
             <span className="text-[11px] text-slate-400">
               นับเฉพาะงานที่ยังไม่เสร็จและมีผู้รับผิดชอบ
             </span>
-            <span className="ml-auto flex flex-wrap items-center gap-3">
-              {columns.map((col) => (
-                <span
-                  key={col.id}
-                  className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-slate-500"
-                >
+            {showBar && (
+              <span className="ml-auto flex flex-wrap items-center gap-3">
+                {columns.map((col) => (
                   <span
-                    className="h-2.5 w-2.5 rounded-sm"
-                    style={{ backgroundColor: getColumnColorHex(col.color) ?? DOT_FALLBACK }}
-                  />
-                  {col.title}
-                </span>
-              ))}
-            </span>
+                    key={col.id}
+                    className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-slate-500"
+                  >
+                    <span
+                      className="h-2.5 w-2.5 rounded-sm"
+                      style={{ backgroundColor: getColumnColorHex(col.color) ?? DOT_FALLBACK }}
+                    />
+                    {col.title}
+                  </span>
+                ))}
+              </span>
+            )}
           </div>
         </>
       )}

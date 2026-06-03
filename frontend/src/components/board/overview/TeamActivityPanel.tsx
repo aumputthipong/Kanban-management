@@ -1,20 +1,17 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Activity as ActivityIcon } from "lucide-react";
+import { Activity as ActivityIcon, ArrowUpRight, Plus, Trash2, Pencil } from "lucide-react";
 import type { Activity } from "@/types/activity";
 import { dateKey } from "@/utils/date_helper";
 import { ActivityFeedSkeleton } from "./ActivityFeedSkeleton";
 import {
   type ActivityCategory,
   activityCategory,
-  avatarColor,
   describeActivity,
-  eventBadge,
-  formatAbsoluteTime,
   groupCardUpdates,
-  initials,
   relativeTime,
+  formatAbsoluteTime,
 } from "./activityFormat";
 
 const FILTERS: { key: ActivityCategory; label: string }[] = [
@@ -24,7 +21,30 @@ const FILTERS: { key: ActivityCategory; label: string }[] = [
   { key: "edited", label: "แก้ไข" },
 ];
 
-// "วันนี้ · จันทร์" / "เมื่อวาน · ..." / "N วันก่อน · ..." — Thai day-group header.
+// Timeline node styling, keyed off a coarse event kind. The colour encodes the
+// kind of change; the actor stays in the text, not the node.
+type NodeKind = "move" | "create" | "delete" | "edit";
+const NODE: Record<NodeKind, { wrap: string; Icon: typeof Plus }> = {
+  move: { wrap: "bg-indigo-50 text-blue-700", Icon: ArrowUpRight },
+  create: { wrap: "bg-emerald-50 text-emerald-600", Icon: Plus },
+  delete: { wrap: "bg-rose-50 text-rose-600", Icon: Trash2 },
+  edit: { wrap: "bg-slate-100 text-slate-500", Icon: Pencil },
+};
+
+function nodeKind(eventType: string): NodeKind {
+  if (
+    eventType === "card.moved" ||
+    eventType.endsWith("promoted") ||
+    eventType === "planning.item_claimed" ||
+    eventType === "planning.item_released" ||
+    eventType === "planning.claim_auto_released_on_promote"
+  )
+    return "move";
+  if (eventType.endsWith(".created")) return "create";
+  if (eventType.endsWith(".deleted")) return "delete";
+  return "edit";
+}
+
 function dayHeader(iso: string): string {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -52,7 +72,6 @@ export function TeamActivityPanel({
 }) {
   const [filter, setFilter] = useState<ActivityCategory>("all");
 
-  // Group rapid edits, apply the chip filter, then cap the feed length.
   const visible = useMemo(() => {
     const grouped = groupCardUpdates(activities);
     const filtered =
@@ -62,8 +81,6 @@ export function TeamActivityPanel({
     return filtered.slice(0, 8);
   }, [activities, filter]);
 
-  // Split the (already newest-first) list into consecutive same-day runs so we
-  // can drop a day header before each run without re-sorting.
   const dayRuns = useMemo(() => {
     const runs: { key: string; header: string; items: Activity[] }[] = [];
     for (const a of visible) {
@@ -76,18 +93,15 @@ export function TeamActivityPanel({
   }, [visible]);
 
   return (
-    // Secondary surface: recedes (slate wash, no shadow) against the white
-    // ownership card so the eye lands on ownership first.
-    <div className="bg-slate-50/60 border border-slate-200 rounded-xl p-4">
-      <div className="flex items-center gap-2 mb-3">
-        <ActivityIcon size={14} className="text-slate-400" />
-        <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
-          ความเคลื่อนไหว
-        </h3>
+    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="flex items-center gap-2.5 border-b border-slate-100 px-4 py-3.5">
+        <span className="flex h-7 w-7 items-center justify-center rounded-md bg-indigo-50 text-blue-800">
+          <ActivityIcon size={16} />
+        </span>
+        <h2 className="text-sm font-bold tracking-tight text-slate-900">ความเคลื่อนไหว</h2>
       </div>
 
-      {/* Filter chips */}
-      <div className="flex flex-wrap gap-2 mb-3">
+      <div className="flex flex-wrap gap-2 border-b border-slate-100 px-4 py-3">
         {FILTERS.map((f) => {
           const on = filter === f.key;
           return (
@@ -95,10 +109,10 @@ export function TeamActivityPanel({
               key={f.key}
               type="button"
               onClick={() => setFilter(f.key)}
-              className={`h-7 px-3 rounded-full text-xs font-semibold border transition-colors ${
+              className={`h-7 rounded-full border px-3 text-xs font-semibold transition-colors ${
                 on
-                  ? "bg-blue-50 border-blue-200 text-blue-700"
-                  : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+                  ? "border-indigo-200 bg-indigo-50 text-blue-800"
+                  : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
               }`}
             >
               {f.label}
@@ -107,34 +121,38 @@ export function TeamActivityPanel({
         })}
       </div>
 
-      {loading && activities.length === 0 ? (
-        <ActivityFeedSkeleton />
-      ) : error ? (
-        <p className="text-sm text-rose-500">Failed to load activity.</p>
-      ) : visible.length === 0 ? (
-        <p className="text-sm text-slate-400">
-          {filter === "all" ? "No activity yet." : "ไม่มีความเคลื่อนไหวในหมวดนี้"}
-        </p>
-      ) : (
-        <div className="max-h-[420px] overflow-y-auto pr-1">
-          {dayRuns.map((run) => (
+      <div className="max-h-[460px] overflow-y-auto px-4 pb-4 pt-1">
+        {loading && activities.length === 0 ? (
+          <ActivityFeedSkeleton />
+        ) : error ? (
+          <p className="py-3 text-sm text-rose-500">Failed to load activity.</p>
+        ) : visible.length === 0 ? (
+          <p className="py-3 text-sm text-slate-400">
+            {filter === "all" ? "No activity yet." : "ไม่มีความเคลื่อนไหวในหมวดนี้"}
+          </p>
+        ) : (
+          dayRuns.map((run) => (
             <div key={run.key}>
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mt-4 mb-2 first:mt-0">
-                {run.header}
-              </p>
-              <ul className="divide-y divide-slate-100">
-                {run.items.map((event) => (
+              <div className="flex items-center gap-2.5 pb-2 pt-4 first:pt-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                  {run.header}
+                </span>
+                <span className="h-px flex-1 bg-slate-100" />
+              </div>
+              <ol className="relative">
+                {run.items.map((event, i) => (
                   <ActivityItem
                     key={event.id}
                     event={event}
                     columnTitleById={columnTitleById}
+                    isLast={i === run.items.length - 1}
                   />
                 ))}
-              </ul>
+              </ol>
             </div>
-          ))}
-        </div>
-      )}
+          ))
+        )}
+      </div>
     </div>
   );
 }
@@ -142,53 +160,44 @@ export function TeamActivityPanel({
 function ActivityItem({
   event,
   columnTitleById,
+  isLast,
 }: {
   event: Activity;
   columnTitleById: Map<string, string>;
+  isLast: boolean;
 }) {
   const actorName = event.actor_name ?? "Someone";
   const { action, target, dest } = describeActivity(event, columnTitleById);
-  const payload = (event.payload ?? {}) as Record<string, unknown>;
-  const { Icon: BadgeIcon, bg: badgeBg } = eventBadge(event.event_type, payload);
+  const { wrap, Icon } = NODE[nodeKind(event.event_type)];
+
   return (
-    <li className="flex items-start gap-3 py-3 first:pt-1 last:pb-1">
-      <div className="relative shrink-0 mt-0.5">
-        <div
-          className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold ${avatarColor(actorName)}`}
-        >
-          {initials(actorName)}
-        </div>
-        <div
-          className={`absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full ${badgeBg} ring-2 ring-white flex items-center justify-center`}
-        >
-          <BadgeIcon size={8} strokeWidth={3} className="text-white" />
-        </div>
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-xs leading-snug">
-          <span className="font-semibold text-slate-800">{actorName}</span>{" "}
-          <span className="text-slate-500">{action}</span>
+    <li className="relative flex gap-3 pb-3 last:pb-0">
+      {!isLast && (
+        <span aria-hidden className="absolute left-[13.5px] top-7 bottom-0 w-px bg-slate-100" />
+      )}
+      <span className={`relative z-10 flex h-7 w-7 shrink-0 items-center justify-center rounded-md ${wrap}`}>
+        <Icon size={14} strokeWidth={2.2} />
+      </span>
+      <div className="min-w-0 flex-1 pt-0.5">
+        <p className="text-[13px] leading-snug text-slate-500">
+          <span className="font-bold text-slate-900">{actorName}</span>{" "}
+          <span className="font-medium">{action}</span>
           {target && (
             <>
               {" "}
-              <span className="font-semibold text-slate-800">&ldquo;{target}&rdquo;</span>
+              <span className="inline-flex items-center rounded bg-slate-100 px-1.5 py-0.5 text-[12.5px] font-semibold text-slate-800">
+                {target}
+              </span>
             </>
           )}
           {dest && (
             <>
-              {event.event_type === "card.moved" ? (
-                <span className="text-slate-500"> to </span>
-              ) : (
-                <span className="text-slate-400"> · </span>
-              )}
-              <span className="text-indigo-600 font-medium">{dest}</span>
+              <span className="text-slate-400"> · </span>
+              <span className="font-medium text-blue-700">{dest}</span>
             </>
           )}
         </p>
-        <p
-          className="text-[10px] text-slate-400 mt-0.5"
-          title={formatAbsoluteTime(event.created_at)}
-        >
+        <p className="mt-0.5 text-[11px] font-semibold text-slate-400" title={formatAbsoluteTime(event.created_at)}>
           {relativeTime(event.created_at)}
         </p>
       </div>

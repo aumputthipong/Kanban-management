@@ -5,6 +5,8 @@
 package observability
 
 import (
+	"bufio"
+	"net"
 	"net/http"
 	"strconv"
 	"time"
@@ -106,4 +108,18 @@ func (s *statusRecorder) WriteHeader(code int) {
 		s.wroteHeader = true
 	}
 	s.ResponseWriter.WriteHeader(code)
+}
+
+// Unwrap lets http.ResponseController (and other wrappers) reach the
+// underlying writer — needed so optional interfaces like http.Hijacker and
+// http.Flusher aren't lost behind this recorder.
+func (s *statusRecorder) Unwrap() http.ResponseWriter {
+	return s.ResponseWriter
+}
+
+// Hijack delegates to the underlying writer so WebSocket upgrades work through
+// this middleware. Without it, gorilla's upgrade fails (the recorder hides the
+// connection's Hijacker), 500-ing the /ws handshake.
+func (s *statusRecorder) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	return http.NewResponseController(s.ResponseWriter).Hijack()
 }

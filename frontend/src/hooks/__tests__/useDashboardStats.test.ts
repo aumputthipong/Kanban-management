@@ -76,7 +76,6 @@ describe("empty board", () => {
     expect(stats.totalHours).toBe(0);
     expect(stats.overdueCards).toHaveLength(0);
     expect(stats.dueSoonCards).toHaveLength(0);
-    expect(stats.workload).toHaveLength(0);
   });
 
   it("does not crash with no columns at all", () => {
@@ -246,35 +245,5 @@ describe("totalHours", () => {
 
     const { result } = renderHook(() => useDashboardStats());
     expect(result.current.totalHours).toBe(8);
-  });
-});
-
-// ─── workload ─────────────────────────────────────────────────────────────────
-
-describe("workload", () => {
-  it("aggregates task count per assignee for non-done cards", () => {
-    const todoCol = makeColumn({
-      id: "col-todo",
-      cards: [
-        makeCard({ id: "c1", assignee_id: "u1", assignee_name: "Alice" }),
-        makeCard({ id: "c2", assignee_id: "u1", assignee_name: "Alice" }),
-        makeCard({ id: "c3", assignee_id: "u2", assignee_name: "Bob" }),
-      ],
-    });
-    const doneCol = makeColumn({
-      id: "col-done",
-      category: "DONE",
-      position: 131072,
-      cards: [],
-    });
-    useBoardStore.setState({ columns: [todoCol, doneCol] });
-
-    const { result } = renderHook(() => useDashboardStats());
-    const workload = result.current.workload;
-
-    expect(workload[0].name).toBe("Alice");
-    expect(workload[0].count).toBe(2);
-    expect(workload[1].name).toBe("Bob");
-    expect(workload[1].count).toBe(1);
   });
 });

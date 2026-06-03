@@ -18,13 +18,14 @@ const EMPTY_BAR =
 interface MemberOwnershipRowProps {
   member: MemberOwnership;
   columns: OwnershipColumn[];
-  /** When false (too many columns), per-column number cells are hidden — the
-   *  bar + total carry the load and the bar widens. */
-  showColumns: boolean;
+  /** Per-column number cells (only in the 2..MAX "sweet spot"). */
+  numericMode: boolean;
+  /** Mini distribution bar (>=2 columns; a single segment conveys nothing). */
+  showBar: boolean;
   onSelectCard: (card: Card) => void;
 }
 
-export function MemberOwnershipRow({ member, columns, showColumns, onSelectCard }: MemberOwnershipRowProps) {
+export function MemberOwnershipRow({ member, columns, numericMode, showBar, onSelectCard }: MemberOwnershipRowProps) {
   const idle = member.totalHeld === 0;
   const [expanded, setExpanded] = useState(false);
   const currentUserId = useBoardStore((s) => s.currentUserId);
@@ -69,37 +70,38 @@ export function MemberOwnershipRow({ member, columns, showColumns, onSelectCard 
                   </span>
                 )}
               </div>
-              {idle ? (
-                <div
-                  className={`mt-1.5 h-1.5 rounded-full ${showColumns ? "max-w-[240px]" : "max-w-[460px]"}`}
-                  style={{ backgroundImage: EMPTY_BAR }}
-                />
-              ) : (
-                <div
-                  className={`mt-1.5 flex h-1.5 overflow-hidden rounded-full bg-slate-100 ${showColumns ? "max-w-[240px]" : "max-w-[460px]"}`}
-                >
-                  {columns.map((col) => {
-                    const count = member.countByColumn[col.id] ?? 0;
-                    if (count === 0) return null;
-                    return (
-                      <span
-                        key={col.id}
-                        title={`${col.title} · ${count}`}
-                        style={{
-                          width: `${(count / member.totalHeld) * 100}%`,
-                          backgroundColor: getColumnColorHex(col.color) ?? BAR_FALLBACK,
-                        }}
-                      />
-                    );
-                  })}
-                </div>
-              )}
+              {showBar &&
+                (idle ? (
+                  <div
+                    className={`mt-1.5 h-1.5 rounded-full ${numericMode ? "max-w-[240px]" : "max-w-[460px]"}`}
+                    style={{ backgroundImage: EMPTY_BAR }}
+                  />
+                ) : (
+                  <div
+                    className={`mt-1.5 flex h-1.5 overflow-hidden rounded-full bg-slate-100 ${numericMode ? "max-w-[240px]" : "max-w-[460px]"}`}
+                  >
+                    {columns.map((col) => {
+                      const count = member.countByColumn[col.id] ?? 0;
+                      if (count === 0) return null;
+                      return (
+                        <span
+                          key={col.id}
+                          title={`${col.title} · ${count}`}
+                          style={{
+                            width: `${(count / member.totalHeld) * 100}%`,
+                            backgroundColor: getColumnColorHex(col.color) ?? BAR_FALLBACK,
+                          }}
+                        />
+                      );
+                    })}
+                  </div>
+                ))}
             </div>
           </div>
         </td>
 
-        {/* per-column counts — hidden when there are too many columns */}
-        {showColumns &&
+        {/* per-column counts — only in the 2..MAX sweet spot */}
+        {numericMode &&
           columns.map((col) => {
             const count = member.countByColumn[col.id] ?? 0;
             return (
@@ -133,7 +135,7 @@ export function MemberOwnershipRow({ member, columns, showColumns, onSelectCard 
 
       {expanded && !idle && (
         <tr className="border-t border-slate-100 bg-slate-50/50">
-          <td colSpan={showColumns ? columns.length + 2 : 2} className="px-2 py-1.5 pl-8">
+          <td colSpan={numericMode ? columns.length + 2 : 2} className="px-2 py-1.5 pl-8">
             <div className="flex flex-col">
               {member.cards.map((card) => (
                 <HeldCardRow

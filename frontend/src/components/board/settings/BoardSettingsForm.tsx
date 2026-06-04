@@ -1,12 +1,19 @@
 // components/board/settings/BoardSettingsForm.tsx
 "use client";
 
+import { useEffect, useRef, useState } from "react";
+import { Check } from "lucide-react";
+
 import { Board } from "@/types/board";
 import { useBoardSettings } from "@/hooks/useBoardSettings";
-import { EditableField } from "./DangerZone";
-import { DangerZone } from "./EditableField";
 import { useCanManageBoard, useCanDeleteBoard } from "@/hooks/useBoardRole";
 
+import { SettingsRail, RAIL_ITEMS } from "./SettingsRail";
+import { GeneralSection } from "./GeneralSection";
+import { AccessSection } from "./AccessSection";
+import { WorkflowSection } from "./WorkflowSection";
+import { NotificationsSection } from "./NotificationsSection";
+import { DangerSection } from "./DangerSection";
 
 interface BoardSettingsFormProps {
   boardId: string;
@@ -18,24 +25,90 @@ export function BoardSettingsForm({ boardId, board }: BoardSettingsFormProps) {
   const canManage = useCanManageBoard();
   const canDelete = useCanDeleteBoard();
 
+  const [active, setActive] = useState("sec-general");
+  const [savedVisible, setSavedVisible] = useState(false);
+  const savedTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+  // Owner-only sections appear in the rail only when relevant.
+  const railItems = RAIL_ITEMS.filter((i) => i.id !== "sec-danger" || canDelete);
+
+  // Scroll-spy: highlight the rail entry of the topmost visible section. The
+  // observer fires in a callback, so this is safe under React 19's effect rules.
+  useEffect(() => {
+    const sections = RAIL_ITEMS.filter((i) => i.id !== "sec-danger" || canDelete)
+      .map((i) => document.getElementById(i.id))
+      .filter((el): el is HTMLElement => el !== null);
+
+    const visible = new Set<string>();
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          if (e.isIntersecting) visible.add(e.target.id);
+          else visible.delete(e.target.id);
+        }
+        const topmost = sections.find((s) => visible.has(s.id));
+        if (topmost) setActive(topmost.id);
+      },
+      { rootMargin: "-10% 0px -70% 0px", threshold: 0 }
+    );
+    sections.forEach((s) => observer.observe(s));
+    return () => observer.disconnect();
+  }, [canDelete]);
+
+  useEffect(() => () => clearTimeout(savedTimer.current), []);
+
+  const showSaved = () => {
+    setSavedVisible(true);
+    clearTimeout(savedTimer.current);
+    savedTimer.current = setTimeout(() => setSavedVisible(false), 2200);
+  };
+
+  const jump = (id: string) =>
+    document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+
   return (
-    <div className="max-w-4xl mx-auto space-y-6 pb-10">
-        <h2 className="text-lg font-bold text-slate-800 mb-2 border-b border-slate-100 pb-4">
-          General Settings
-        </h2>
+    <div className="max-w-[1080px] mx-auto py-8">
+      {/* page header */}
+      <div className="flex items-start justify-between gap-5 mb-6">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">ตั้งค่าบอร์ด</h1>
+          <p className="text-sm text-slate-500 mt-1.5 max-w-[560px] leading-relaxed">
+            จัดการข้อมูล การเข้าถึง และเวิร์กโฟลว์ของบอร์ด <b>{board.title}</b> —
+            การเปลี่ยนแปลงมีผลกับสมาชิกทุกคน
+          </p>
+        </div>
+        <div
+          className={`inline-flex items-center gap-1.5 h-8 px-3 rounded-full text-[12.5px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 shrink-0 transition-opacity ${
+            savedVisible ? "opacity-100" : "opacity-0"
+          }`}
+        >
+          <Check size={15} />
+          บันทึกแล้ว
+        </div>
+      </div>
 
-        <EditableField
-          title="Board Name"
-          description="This is the display name of your board visible to all members."
-          initialValue={board?.title}
-          fieldKey="title"
-          onSave={updateField}
-          readOnly={!canManage}
-        />
+      <div className="grid grid-cols-1 lg:grid-cols-[218px_1fr] gap-7 items-start">
+        <div className="hidden lg:block">
+          <SettingsRail active={active} items={railItems} onJump={jump} />
+        </div>
 
-      {canDelete && (
-        <DangerZone onDelete={deleteBoard} isDeleting={isDeleting} />
-      )}
+        <div className="flex flex-col gap-6 min-w-0">
+          <GeneralSection
+            initialTitle={board.title}
+            canManage={canManage}
+            onSaveTitle={(title) => updateField("title", title)}
+            onSaved={showSaved}
+          />
+          <AccessSection boardId={boardId} members={board.members ?? []} canManage={canManage} />
+          <WorkflowSection canManage={canManage} />
+          <NotificationsSection />
+          {canDelete && <DangerSection onArchive={deleteBoard} isArchiving={isDeleting} />}
+
+          <p className="text-[12.5px] text-slate-400 text-center pt-2">
+            การตั้งค่าทั้งหมดมีผลกับบอร์ด {board.title} เท่านั้น
+          </p>
+        </div>
+      </div>
     </div>
   );
 }

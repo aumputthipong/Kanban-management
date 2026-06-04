@@ -1,6 +1,7 @@
 "use client";
 
 import { use } from "react";
+import { usePathname } from "next/navigation";
 import { useBoardData } from "@/hooks/useBoardData";
 import { BoardHeader } from "@/components/board/task-board/BoardHeader";
 import { BoardBackground } from "@/components/board/task-board/BoardBackground";
@@ -15,6 +16,11 @@ interface BoardLayoutProps {
 export default function BoardLayout({ children, params }: BoardLayoutProps) {
   const { boardId } = use(params);
   const { isLoading, error } = useBoardData(boardId);
+  const pathname = usePathname();
+
+  // Settings uses a flat surface like its design; the graph-paper grid belongs
+  // to the kanban canvas, not here.
+  const isSettings = pathname.includes("/settings");
 
   if (isLoading) {
     return <BoardSkeleton />;
@@ -47,8 +53,8 @@ export default function BoardLayout({ children, params }: BoardLayoutProps) {
 
   return (
     <BoardWebSocketProvider boardId={boardId}>
-      <div className="relative h-full flex flex-col bg-[#fafafa]">
-        <BoardBackground />
+      <div className={`relative h-full flex flex-col ${isSettings ? "bg-[#F8FAFC]" : "bg-[#fafafa]"}`}>
+        {!isSettings && <BoardBackground />}
 
         <div className="relative z-10 flex flex-col h-full min-h-0">
           <BoardHeader title="Project Board" />

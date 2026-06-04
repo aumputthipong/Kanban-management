@@ -15,24 +15,17 @@ export const metadata: Metadata = { title: "Board Settings" };
 export default async function BoardSettingsPage({ params }: PageProps) {
   const { boardId } = await params;
 
+  // GET /boards/:id returns the column list, not the board row — the board's
+  // title + member summary only come back from the list endpoint, so we fetch
+  // that and pick the matching board.
   let board: Board | undefined;
   try {
-    board = await apiFetch<Board>(`/boards/${boardId}`, { cache: "no-store" });
+    const boards = await apiFetch<Board[]>(`/boards`, { cache: "no-store" });
+    board = boards.find((b) => b.id === boardId);
   } catch {
     notFound();
   }
+  if (!board) notFound();
 
-  return (
-    <div className="max-w-3xl mx-auto px-6 py-10 ">
-      <div className="bg-white p-6 md:p-8 rounded-2xl border border-slate-200 shadow-sm">
-        <div className="mb-8 pb-6 border-b border-slate-200">
-          <h1 className="text-2xl font-bold text-slate-900">Board Settings</h1>
-          <p className="text-sm text-slate-500 mt-1">
-            Manage settings and preferences for this board.
-          </p>
-        </div>
-        <BoardSettingsForm boardId={boardId} board={board} />
-      </div>
-    </div>
-  );
+  return <BoardSettingsForm boardId={boardId} board={board} />;
 }

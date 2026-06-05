@@ -1125,6 +1125,15 @@ const docTemplate = `{
         "github_com_aumputthipong_mini-erp-kanban_backend_internal_dto.StashedBoardDTO": {
             "type": "object",
             "properties": {
+                "color": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "icon": {
+                    "type": "string"
+                },
                 "id": {
                     "type": "string"
                 },

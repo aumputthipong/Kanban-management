@@ -189,6 +189,12 @@ definitions:
     type: object
   github_com_aumputthipong_mini-erp-kanban_backend_internal_dto.StashedBoardDTO:
     properties:
+      color:
+        type: string
+      description:
+        type: string
+      icon:
+        type: string
       id:
         type: string
       stashed_at:

@@ -235,7 +235,9 @@ WHERE b.deleted_at IS NULL
 ORDER BY bm.joined_at ASC;
 
 -- name: GetStashedBoardsForOwner :many
-SELECT b.id, b.title, b.deleted_at
+-- Appearance (description/color/icon) is returned so the คลังบอร์ด rows render
+-- the same glyph + description as the project-list cards.
+SELECT b.id, b.title, b.description, b.color, b.icon, b.deleted_at
 FROM boards b
 JOIN board_members bm ON bm.board_id = b.id AND bm.user_id = $1 AND bm.role = 'owner'
 WHERE b.deleted_at IS NOT NULL

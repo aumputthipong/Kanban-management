@@ -15,9 +15,12 @@ func ToStashedBoardDTO(b db.GetStashedBoardsForOwnerRow) dto.StashedBoardDTO {
 		stashedAt = b.DeletedAt.Time
 	}
 	return dto.StashedBoardDTO{
-		ID:        b.ID,
-		Title:     b.Title,
-		StashedAt: stashedAt,
+		ID:          b.ID,
+		Title:       b.Title,
+		Description: b.Description,
+		Color:       b.Color,
+		Icon:        b.Icon,
+		StashedAt:   stashedAt,
 	}
 }
 

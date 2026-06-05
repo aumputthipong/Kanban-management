@@ -7,6 +7,9 @@ import { apiClient } from "@/lib/apiClient";
 export interface StashedBoard {
   id: string;
   title: string;
+  description: string;
+  color: string;
+  icon: string;
   stashed_at: string;
 }
 

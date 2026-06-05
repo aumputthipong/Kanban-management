@@ -82,8 +82,13 @@ type UpdateMemberRoleRequest struct {
 
 // StashedBoardDTO is one row in the stash (คลังบอร์ด). stashed_at is the
 // time the board was stashed — backed by the generic boards.deleted_at column.
+// Appearance fields mirror the project-list cards so the row renders the same
+// glyph + description.
 type StashedBoardDTO struct {
-	ID        string    `json:"id"`
-	Title     string    `json:"title"`
-	StashedAt time.Time `json:"stashed_at"`
+	ID          string    `json:"id"`
+	Title       string    `json:"title"`
+	Description string    `json:"description"`
+	Color       string    `json:"color"`
+	Icon        string    `json:"icon"`
+	StashedAt   time.Time `json:"stashed_at"`
 }

@@ -1384,7 +1384,7 @@ func (q *Queries) GetRefreshTokenByHash(ctx context.Context, tokenHash string) (
 }
 
 const getStashedBoardsForOwner = `-- name: GetStashedBoardsForOwner :many
-SELECT b.id, b.title, b.deleted_at
+SELECT b.id, b.title, b.description, b.color, b.icon, b.deleted_at
 FROM boards b
 JOIN board_members bm ON bm.board_id = b.id AND bm.user_id = $1 AND bm.role = 'owner'
 WHERE b.deleted_at IS NOT NULL
@@ -1392,11 +1392,16 @@ ORDER BY b.deleted_at DESC
 `
 
 type GetStashedBoardsForOwnerRow struct {
-	ID        string
-	Title     string
-	DeletedAt pgtype.Timestamptz
+	ID          string
+	Title       string
+	Description string
+	Color       string
+	Icon        string
+	DeletedAt   pgtype.Timestamptz
 }
 
+// Appearance (description/color/icon) is returned so the คลังบอร์ด rows render
+// the same glyph + description as the project-list cards.
 func (q *Queries) GetStashedBoardsForOwner(ctx context.Context, userID string) ([]GetStashedBoardsForOwnerRow, error) {
 	rows, err := q.db.Query(ctx, getStashedBoardsForOwner, userID)
 	if err != nil {
@@ -1406,7 +1411,14 @@ func (q *Queries) GetStashedBoardsForOwner(ctx context.Context, userID string) (
 	var items []GetStashedBoardsForOwnerRow
 	for rows.Next() {
 		var i GetStashedBoardsForOwnerRow
-		if err := rows.Scan(&i.ID, &i.Title, &i.DeletedAt); err != nil {
+		if err := rows.Scan(
+			&i.ID,
+			&i.Title,
+			&i.Description,
+			&i.Color,
+			&i.Icon,
+			&i.DeletedAt,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

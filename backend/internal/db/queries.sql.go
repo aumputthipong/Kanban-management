@@ -518,6 +518,9 @@ const getActiveBoardsWithStats = `-- name: GetActiveBoardsWithStats :many
 SELECT
     b.id,
     b.title,
+    b.description,
+    b.color,
+    b.icon,
     b.created_at,
     b.updated_at,
     me.last_accessed_at,
@@ -528,13 +531,16 @@ JOIN board_members me ON me.board_id = b.id AND me.user_id = $1
 LEFT JOIN columns col ON col.board_id = b.id
 LEFT JOIN cards   c   ON c.column_id  = col.id
 WHERE b.deleted_at IS NULL
-GROUP BY b.id, b.title, b.created_at, b.updated_at, me.last_accessed_at
+GROUP BY b.id, b.title, b.description, b.color, b.icon, b.created_at, b.updated_at, me.last_accessed_at
 ORDER BY COALESCE(me.last_accessed_at, b.created_at) DESC
 `
 
 type GetActiveBoardsWithStatsRow struct {
 	ID             string
 	Title          string
+	Description    string
+	Color          string
+	Icon           string
 	CreatedAt      pgtype.Timestamptz
 	UpdatedAt      pgtype.Timestamptz
 	LastAccessedAt *time.Time
@@ -560,6 +566,9 @@ func (q *Queries) GetActiveBoardsWithStats(ctx context.Context, userID string) (
 		if err := rows.Scan(
 			&i.ID,
 			&i.Title,
+			&i.Description,
+			&i.Color,
+			&i.Icon,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.LastAccessedAt,
@@ -674,7 +683,7 @@ func (q *Queries) GetAllUsers(ctx context.Context) ([]GetAllUsersRow, error) {
 }
 
 const getBoardByID = `-- name: GetBoardByID :one
-SELECT id, title, budget, created_at, updated_at, deleted_at FROM boards 
+SELECT id, title, budget, description, color, icon, created_at, updated_at, deleted_at FROM boards 
 WHERE id = $1 LIMIT 1
 `
 
@@ -685,6 +694,9 @@ func (q *Queries) GetBoardByID(ctx context.Context, id string) (Board, error) {
 		&i.ID,
 		&i.Title,
 		&i.Budget,
+		&i.Description,
+		&i.Color,
+		&i.Icon,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
@@ -1178,7 +1190,7 @@ type GetMyTasksRow struct {
 
 // Cards in the user's "work inbox": assigned to them, plus (when
 // include_unassigned=true) unassigned cards on boards they're a member of.
-// Done cards and trashed boards are excluded.
+// Done cards and stashed boards are excluded.
 //
 // Returns a derived `status`: cards in the first TODO column of their board
 // are "todo"; cards in any later TODO column are "in_progress".
@@ -1371,6 +1383,40 @@ func (q *Queries) GetRefreshTokenByHash(ctx context.Context, tokenHash string) (
 	return i, err
 }
 
+const getStashedBoardsForOwner = `-- name: GetStashedBoardsForOwner :many
+SELECT b.id, b.title, b.deleted_at
+FROM boards b
+JOIN board_members bm ON bm.board_id = b.id AND bm.user_id = $1 AND bm.role = 'owner'
+WHERE b.deleted_at IS NOT NULL
+ORDER BY b.deleted_at DESC
+`
+
+type GetStashedBoardsForOwnerRow struct {
+	ID        string
+	Title     string
+	DeletedAt pgtype.Timestamptz
+}
+
+func (q *Queries) GetStashedBoardsForOwner(ctx context.Context, userID string) ([]GetStashedBoardsForOwnerRow, error) {
+	rows, err := q.db.Query(ctx, getStashedBoardsForOwner, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetStashedBoardsForOwnerRow
+	for rows.Next() {
+		var i GetStashedBoardsForOwnerRow
+		if err := rows.Scan(&i.ID, &i.Title, &i.DeletedAt); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getSubtask = `-- name: GetSubtask :one
 SELECT id, card_id, title, is_done, position, created_at, updated_at FROM card_subtasks WHERE id = $1 LIMIT 1
 `
@@ -1522,40 +1568,6 @@ func (q *Queries) GetTagsByCardIDs(ctx context.Context, dollar_1 []string) ([]Ge
 			&i.Color,
 			&i.CreatedAt,
 		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const getTrashedBoardsForOwner = `-- name: GetTrashedBoardsForOwner :many
-SELECT b.id, b.title, b.deleted_at
-FROM boards b
-JOIN board_members bm ON bm.board_id = b.id AND bm.user_id = $1 AND bm.role = 'owner'
-WHERE b.deleted_at IS NOT NULL
-ORDER BY b.deleted_at DESC
-`
-
-type GetTrashedBoardsForOwnerRow struct {
-	ID        string
-	Title     string
-	DeletedAt pgtype.Timestamptz
-}
-
-func (q *Queries) GetTrashedBoardsForOwner(ctx context.Context, userID string) ([]GetTrashedBoardsForOwnerRow, error) {
-	rows, err := q.db.Query(ctx, getTrashedBoardsForOwner, userID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []GetTrashedBoardsForOwnerRow
-	for rows.Next() {
-		var i GetTrashedBoardsForOwnerRow
-		if err := rows.Scan(&i.ID, &i.Title, &i.DeletedAt); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -2080,17 +2092,6 @@ func (q *Queries) LockPlanningItemForUpdate(ctx context.Context, id string) (Pla
 	return i, err
 }
 
-const moveBoardToTrash = `-- name: MoveBoardToTrash :exec
-UPDATE boards 
-SET deleted_at = CURRENT_TIMESTAMP 
-WHERE id = $1
-`
-
-func (q *Queries) MoveBoardToTrash(ctx context.Context, id string) error {
-	_, err := q.db.Exec(ctx, moveBoardToTrash, id)
-	return err
-}
-
 const releasePlanningItemAsOwner = `-- name: ReleasePlanningItemAsOwner :execrows
 UPDATE planning_items
 SET claimed_by_user_id = NULL,
@@ -2161,14 +2162,14 @@ func (q *Queries) RenameColumn(ctx context.Context, arg RenameColumnParams) erro
 	return err
 }
 
-const restoreBoardFromTrash = `-- name: RestoreBoardFromTrash :exec
-UPDATE boards 
-SET deleted_at = NULL 
+const restoreStashedBoard = `-- name: RestoreStashedBoard :exec
+UPDATE boards
+SET deleted_at = NULL
 WHERE id = $1
 `
 
-func (q *Queries) RestoreBoardFromTrash(ctx context.Context, id string) error {
-	_, err := q.db.Exec(ctx, restoreBoardFromTrash, id)
+func (q *Queries) RestoreStashedBoard(ctx context.Context, id string) error {
+	_, err := q.db.Exec(ctx, restoreStashedBoard, id)
 	return err
 }
 
@@ -2233,6 +2234,19 @@ func (q *Queries) SoftDeletePlanningItemComment(ctx context.Context, id string) 
 	return err
 }
 
+const stashBoard = `-- name: StashBoard :exec
+UPDATE boards
+SET deleted_at = CURRENT_TIMESTAMP
+WHERE id = $1
+`
+
+// "Stash" = recoverable soft-delete. Reuses the generic deleted_at column;
+// a non-null deleted_at means the board is in the stash (คลังบอร์ด).
+func (q *Queries) StashBoard(ctx context.Context, id string) error {
+	_, err := q.db.Exec(ctx, stashBoard, id)
+	return err
+}
+
 const touchBoardMemberIfStale = `-- name: TouchBoardMemberIfStale :exec
 UPDATE board_members
 SET last_accessed_at = now()
@@ -2256,27 +2270,45 @@ func (q *Queries) TouchBoardMemberIfStale(ctx context.Context, arg TouchBoardMem
 }
 
 const updateBoard = `-- name: UpdateBoard :one
-UPDATE boards 
-SET title = $2, 
+UPDATE boards
+SET title = $2,
     budget = $3,
+    description = $4,
+    color = $5,
+    icon = $6,
     updated_at = CURRENT_TIMESTAMP
 WHERE id = $1
-RETURNING id, title, budget, created_at, updated_at, deleted_at
+RETURNING id, title, budget, description, color, icon, created_at, updated_at, deleted_at
 `
 
 type UpdateBoardParams struct {
-	ID     string
-	Title  string
-	Budget pgtype.Numeric
+	ID          string
+	Title       string
+	Budget      pgtype.Numeric
+	Description string
+	Color       string
+	Icon        string
 }
 
+// The service reads the existing row first and passes through unchanged
+// values, so every column is set unconditionally here (PUT-like in spirit).
 func (q *Queries) UpdateBoard(ctx context.Context, arg UpdateBoardParams) (Board, error) {
-	row := q.db.QueryRow(ctx, updateBoard, arg.ID, arg.Title, arg.Budget)
+	row := q.db.QueryRow(ctx, updateBoard,
+		arg.ID,
+		arg.Title,
+		arg.Budget,
+		arg.Description,
+		arg.Color,
+		arg.Icon,
+	)
 	var i Board
 	err := row.Scan(
 		&i.ID,
 		&i.Title,
 		&i.Budget,
+		&i.Description,
+		&i.Color,
+		&i.Icon,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,

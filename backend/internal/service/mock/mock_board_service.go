@@ -18,25 +18,25 @@ import (
 //	    },
 //	}
 type MockBoardService struct {
-	GetAllBoardsFn       func(ctx context.Context, userID string) ([]service.BoardSummaryData, error)
-	GetBoardWithCardsFn  func(ctx context.Context, boardID string) ([]service.ColumnData, error)
-	CreateBoardFn        func(ctx context.Context, title string, ownerID string) (string, error)
-	UpdateBoardFn        func(ctx context.Context, id string, title *string, budget *float64) (db.Board, error)
-	MoveBoardToTrashFn   func(ctx context.Context, boardID string) error
-	GetTrashedBoardsFn   func(ctx context.Context, userID string) ([]db.GetTrashedBoardsForOwnerRow, error)
-	HardDeleteBoardFn    func(ctx context.Context, id string) error
-	RestoreBoardFn       func(ctx context.Context, id string) error
-	GetBoardMemberRoleFn      func(ctx context.Context, boardID, userID string) (string, error)
-	TouchBoardMemberAccessFn  func(ctx context.Context, boardID, userID string) error
-	GetBoardIDByColumnFn func(ctx context.Context, columnID string) (string, error)
-	GetBoardIDByCardFn   func(ctx context.Context, cardID string) (string, error)
-	GetMyWorkFn          func(ctx context.Context, opts service.MyWorkOptions) (service.MyWorkResult, error)
-	CompleteMyTaskFn     func(ctx context.Context, cardID, userID string) (service.CompleteMyTaskResult, error)
+	GetAllBoardsFn           func(ctx context.Context, userID string) ([]service.BoardSummaryData, error)
+	GetBoardWithCardsFn      func(ctx context.Context, boardID string) ([]service.ColumnData, error)
+	CreateBoardFn            func(ctx context.Context, title string, ownerID string) (string, error)
+	UpdateBoardFn            func(ctx context.Context, id string, title *string, budget *float64, description, color, icon *string) (db.Board, error)
+	StashBoardFn             func(ctx context.Context, boardID string) error
+	GetStashedBoardsFn       func(ctx context.Context, userID string) ([]db.GetStashedBoardsForOwnerRow, error)
+	HardDeleteBoardFn        func(ctx context.Context, id string) error
+	RestoreBoardFn           func(ctx context.Context, id string) error
+	GetBoardMemberRoleFn     func(ctx context.Context, boardID, userID string) (string, error)
+	TouchBoardMemberAccessFn func(ctx context.Context, boardID, userID string) error
+	GetBoardIDByColumnFn     func(ctx context.Context, columnID string) (string, error)
+	GetBoardIDByCardFn       func(ctx context.Context, cardID string) (string, error)
+	GetMyWorkFn              func(ctx context.Context, opts service.MyWorkOptions) (service.MyWorkResult, error)
+	CompleteMyTaskFn         func(ctx context.Context, cardID, userID string) (service.CompleteMyTaskResult, error)
 
-	GetBoardMembersFn  func(ctx context.Context, boardID string) ([]db.GetBoardMembersRow, error)
-	AddBoardMemberFn   func(ctx context.Context, boardID, userID, role string) error
+	GetBoardMembersFn   func(ctx context.Context, boardID string) ([]db.GetBoardMembersRow, error)
+	AddBoardMemberFn    func(ctx context.Context, boardID, userID, role string) error
 	RemoveBoardMemberFn func(ctx context.Context, boardID, userID string) error
-	UpdateMemberRoleFn func(ctx context.Context, boardID, userID string, role string) error
+	UpdateMemberRoleFn  func(ctx context.Context, boardID, userID string, role string) error
 
 	GetCardFn    func(ctx context.Context, cardID string) (db.Card, error)
 	CreateCardFn func(ctx context.Context, arg db.CreateCardParams) (db.CreateCardRow, error)
@@ -57,16 +57,16 @@ func (m *MockBoardService) CreateBoard(ctx context.Context, title string, ownerI
 	return m.CreateBoardFn(ctx, title, ownerID)
 }
 
-func (m *MockBoardService) UpdateBoard(ctx context.Context, id string, title *string, budget *float64) (db.Board, error) {
-	return m.UpdateBoardFn(ctx, id, title, budget)
+func (m *MockBoardService) UpdateBoard(ctx context.Context, id string, title *string, budget *float64, description, color, icon *string) (db.Board, error) {
+	return m.UpdateBoardFn(ctx, id, title, budget, description, color, icon)
 }
 
-func (m *MockBoardService) MoveBoardToTrash(ctx context.Context, boardID string) error {
-	return m.MoveBoardToTrashFn(ctx, boardID)
+func (m *MockBoardService) StashBoard(ctx context.Context, boardID string) error {
+	return m.StashBoardFn(ctx, boardID)
 }
 
-func (m *MockBoardService) GetTrashedBoards(ctx context.Context, userID string) ([]db.GetTrashedBoardsForOwnerRow, error) {
-	return m.GetTrashedBoardsFn(ctx, userID)
+func (m *MockBoardService) GetStashedBoards(ctx context.Context, userID string) ([]db.GetStashedBoardsForOwnerRow, error) {
+	return m.GetStashedBoardsFn(ctx, userID)
 }
 
 func (m *MockBoardService) GetBoardMemberRole(ctx context.Context, boardID, userID string) (string, error) {

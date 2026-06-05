@@ -1,17 +1,14 @@
-// app/(project)/layout.tsx
+// app/(app)/stash/layout.tsx — wraps the คลังบอร์ด page with the app Sidebar.
 import { Sidebar } from "@/components/layout/Sidebar";
-import { apiFetch } from "@/lib/api";
 import { apiClient } from "@/lib/apiClient";
-import { API_URL } from "@/lib/constants";
 import { Board } from "@/types/board";
 import { cookies } from "next/headers";
-
 
 export async function getBoards(): Promise<Board[]> {
   try {
     // ใน Server Component ควรสกัด Cookie ส่งไปเองด้วยเสมอเพื่อยืนยันตัวตน
     const cookieStore = await cookies();
-    
+
     return await apiClient<Board[]>("/boards", {
       next: { revalidate: 60 },
       headers: {
@@ -24,7 +21,11 @@ export async function getBoards(): Promise<Board[]> {
   }
 }
 
-export default async function ProjectLayout({ children }: { children: React.ReactNode }) {
+export default async function StashLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const boards = await getBoards();
 
   return (

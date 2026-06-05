@@ -42,7 +42,7 @@ export function CreateBoardButton() {
     e.preventDefault();
     const trimmedTitle = title.trim();
     if (!trimmedTitle) {
-      setError("Please enter a project name");
+      setError("กรุณาใส่ชื่อโปรเจกต์");
       return;
     }
 
@@ -56,7 +56,7 @@ export function CreateBoardButton() {
       handleClose();
       router.push(`/board/${newBoard.id}/tasks`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create project");
+      setError(err instanceof Error ? err.message : "สร้างโปรเจกต์ไม่สำเร็จ");
     } finally {
       setIsCreating(false);
     }
@@ -69,7 +69,7 @@ export function CreateBoardButton() {
         className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white px-4 py-2 rounded-lg font-medium transition-all shadow-sm text-sm"
       >
         <Plus size={16} />
-        New Project
+        โปรเจกต์ใหม่
       </button>
 
       {isOpen &&
@@ -94,7 +94,7 @@ export function CreateBoardButton() {
                       <FolderPlus size={16} className="text-blue-600" />
                     </div>
                     <h2 className="text-sm font-bold text-slate-800">
-                      Create New Project
+                      สร้างโปรเจกต์ใหม่
                     </h2>
                   </div>
                   <button
@@ -113,7 +113,7 @@ export function CreateBoardButton() {
                       htmlFor="project-name"
                       className="text-xs font-semibold text-slate-500 uppercase tracking-wide"
                     >
-                      Project Name
+                      ชื่อโปรเจกต์
                     </label>
                     <input
                       ref={inputRef}
@@ -125,7 +125,7 @@ export function CreateBoardButton() {
                         if (error) setError(null);
                       }}
                       disabled={isCreating}
-                      placeholder="enter your project name"
+                      placeholder="ใส่ชื่อโปรเจกต์ของคุณ"
                       className={`text-sm border rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 transition disabled:opacity-50 disabled:bg-slate-50 ${
                         error
                           ? "border-red-300 focus:ring-red-100 focus:border-red-400"
@@ -145,7 +145,7 @@ export function CreateBoardButton() {
                       disabled={isCreating}
                       className="px-4 py-2 text-sm rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-40"
                     >
-                      Cancel
+                      ยกเลิก
                     </button>
                     <button
                       type="submit"
@@ -155,10 +155,10 @@ export function CreateBoardButton() {
                       {isCreating ? (
                         <>
                           <Loader2 size={14} className="animate-spin" />
-                          Creating...
+                          กำลังสร้าง...
                         </>
                       ) : (
-                        "Create Project"
+                        "สร้างโปรเจกต์"
                       )}
                     </button>
                   </div>

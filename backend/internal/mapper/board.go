@@ -9,22 +9,22 @@ import (
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/service"
 )
 
-func ToTrashedBoardDTO(b db.GetTrashedBoardsForOwnerRow) dto.TrashedBoardDTO {
-	var deletedAt time.Time
+func ToStashedBoardDTO(b db.GetStashedBoardsForOwnerRow) dto.StashedBoardDTO {
+	var stashedAt time.Time
 	if b.DeletedAt.Valid {
-		deletedAt = b.DeletedAt.Time
+		stashedAt = b.DeletedAt.Time
 	}
-	return dto.TrashedBoardDTO{
+	return dto.StashedBoardDTO{
 		ID:        b.ID,
 		Title:     b.Title,
-		DeletedAt: deletedAt,
+		StashedAt: stashedAt,
 	}
 }
 
-func ToTrashedBoardDTOs(boards []db.GetTrashedBoardsForOwnerRow) []dto.TrashedBoardDTO {
-	result := make([]dto.TrashedBoardDTO, len(boards))
+func ToStashedBoardDTOs(boards []db.GetStashedBoardsForOwnerRow) []dto.StashedBoardDTO {
+	result := make([]dto.StashedBoardDTO, len(boards))
 	for i, b := range boards {
-		result[i] = ToTrashedBoardDTO(b)
+		result[i] = ToStashedBoardDTO(b)
 	}
 	return result
 }
@@ -58,7 +58,6 @@ func ToSubtaskResponses(subtasks []db.CardSubtask) []dto.SubtaskResponse {
 	return result
 }
 
-
 // timePtrToString serializes *time.Time as "YYYY-MM-DD".
 // DB schema stores due_date as DATE (no time component), so date-only format is correct.
 // Input that includes time-of-day (RFC3339) is accepted by util.PtrStringToTimePtr
@@ -80,50 +79,50 @@ func timePtrToRFC3339(t *time.Time) *string {
 }
 
 func ToCardResponse(card service.CardData) dto.CardResponse {
-    tags := make([]dto.TagResponse, len(card.Tags))
-    for i, t := range card.Tags {
-        tags[i] = dto.TagResponse{ID: t.ID, BoardID: t.BoardID, Name: t.Name, Color: t.Color}
-    }
-    return dto.CardResponse{
-        ID:                card.ID,
-        ColumnID:          card.ColumnID,
-        Title:             card.Title,
-        Description:       card.Description,
-        Position:          card.Position,
-        DueDate:           timePtrToString(card.DueDate),
-        EstimatedHours:    card.EstimatedHours,
-        AssigneeID:        card.AssigneeID,
-        AssigneeName:      card.AssigneeName,
-        Priority:          card.Priority,
-        IsDone:            card.IsDone,
-        CompletedAt:       timePtrToRFC3339(card.CompletedAt),
-        CreatedAt:         timePtrToRFC3339(card.CreatedAt),
-        CreatedBy:         card.CreatedBy,
-        TotalSubtasks:     card.TotalSubtasks,
-        CompletedSubtasks: card.CompletedSubtasks,
-        Tags:              tags,
-    }
+	tags := make([]dto.TagResponse, len(card.Tags))
+	for i, t := range card.Tags {
+		tags[i] = dto.TagResponse{ID: t.ID, BoardID: t.BoardID, Name: t.Name, Color: t.Color}
+	}
+	return dto.CardResponse{
+		ID:                card.ID,
+		ColumnID:          card.ColumnID,
+		Title:             card.Title,
+		Description:       card.Description,
+		Position:          card.Position,
+		DueDate:           timePtrToString(card.DueDate),
+		EstimatedHours:    card.EstimatedHours,
+		AssigneeID:        card.AssigneeID,
+		AssigneeName:      card.AssigneeName,
+		Priority:          card.Priority,
+		IsDone:            card.IsDone,
+		CompletedAt:       timePtrToRFC3339(card.CompletedAt),
+		CreatedAt:         timePtrToRFC3339(card.CreatedAt),
+		CreatedBy:         card.CreatedBy,
+		TotalSubtasks:     card.TotalSubtasks,
+		CompletedSubtasks: card.CompletedSubtasks,
+		Tags:              tags,
+	}
 }
 
 func ToColumnResponse(col service.ColumnData) dto.ColumnResponse {
-    cards := make([]dto.CardResponse, 0, len(col.Cards))
-    for _, card := range col.Cards {
-        cards = append(cards, ToCardResponse(card))
-    }
-    return dto.ColumnResponse{
-        ID:       col.ID,
-        Title:    col.Title,
-        Position: col.Position,
-        Category: col.Category,
-        Color:    col.Color,
-        Cards:    cards,
-    }
+	cards := make([]dto.CardResponse, 0, len(col.Cards))
+	for _, card := range col.Cards {
+		cards = append(cards, ToCardResponse(card))
+	}
+	return dto.ColumnResponse{
+		ID:       col.ID,
+		Title:    col.Title,
+		Position: col.Position,
+		Category: col.Category,
+		Color:    col.Color,
+		Cards:    cards,
+	}
 }
 
 func ToColumnResponses(columns []service.ColumnData) []dto.ColumnResponse {
-    result := make([]dto.ColumnResponse, 0, len(columns))
-    for _, col := range columns {
-        result = append(result, ToColumnResponse(col))
-    }
-    return result
+	result := make([]dto.ColumnResponse, 0, len(columns))
+	for _, col := range columns {
+		result = append(result, ToColumnResponse(col))
+	}
+	return result
 }

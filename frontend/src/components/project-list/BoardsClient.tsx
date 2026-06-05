@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { LayoutGrid, List, Search } from "lucide-react";
+import { LayoutGrid, List, Search, Zap, LayoutTemplate } from "lucide-react";
 import type { Board } from "@/types/board";
 import { ProjectCard } from "./ProjectCard";
 
@@ -14,12 +14,12 @@ type SortOption =
   | "most_tasks";
 
 const SORT_LABELS: Record<SortOption, string> = {
-  recent: "Recently Opened",
-  newest: "Newest",
-  oldest: "Oldest",
-  name_asc: "Name A→Z",
-  name_desc: "Name Z→A",
-  most_tasks: "Most Tasks",
+  recent: "เคลื่อนไหวล่าสุด",
+  newest: "ใหม่สุด",
+  oldest: "เก่าสุด",
+  name_asc: "ชื่อ A→Z",
+  name_desc: "ชื่อ Z→A",
+  most_tasks: "งานมากสุด",
 };
 
 function sortBoards(boards: Board[], sortBy: SortOption): Board[] {
@@ -51,6 +51,29 @@ interface BoardsClientProps {
   boards: Board[];
 }
 
+function GroupLabel({
+  icon,
+  label,
+  count,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  count: number;
+}) {
+  return (
+    <div className="flex items-center gap-2.5 mt-2 mb-3.5">
+      <span className="inline-flex items-center gap-1.5 text-[12px] font-bold tracking-wider uppercase text-slate-400">
+        {icon}
+        {label}
+      </span>
+      <span className="inline-flex items-center justify-center min-w-[20px] h-[19px] px-1.5 rounded-full bg-slate-100 text-[11.5px] font-bold text-slate-500">
+        {count}
+      </span>
+      <span className="flex-1 h-px bg-slate-200" />
+    </div>
+  );
+}
+
 export function BoardsClient({ boards }: BoardsClientProps) {
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<SortOption>("recent");
@@ -67,6 +90,26 @@ export function BoardsClient({ boards }: BoardsClientProps) {
     return sortBoards(matching, sortBy);
   }, [boards, search, sortBy]);
 
+  // "Started" vs "not started" mirrors the design's two groups. A board with
+  // zero cards renders in the muted "ยังไม่เริ่ม" group.
+  const started = filtered.filter((b) => b.total_cards > 0);
+  const notStarted = filtered.filter((b) => b.total_cards === 0);
+
+  const renderBoards = (list: Board[]) =>
+    viewMode === "grid" ? (
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">
+        {list.map((board) => (
+          <ProjectCard key={board.id} board={board} viewMode="grid" now={now} />
+        ))}
+      </div>
+    ) : (
+      <div className="flex flex-col gap-2.5">
+        {list.map((board) => (
+          <ProjectCard key={board.id} board={board} viewMode="list" now={now} />
+        ))}
+      </div>
+    );
+
   return (
     <div>
       {/* Toolbar */}
@@ -76,7 +119,7 @@ export function BoardsClient({ boards }: BoardsClientProps) {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
           <input
             type="text"
-            placeholder="Search projects..."
+            placeholder="ค้นหาโปรเจกต์..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-9 pr-4 py-2 text-sm rounded-lg border border-slate-200 bg-white text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-transparent"
@@ -105,7 +148,7 @@ export function BoardsClient({ boards }: BoardsClientProps) {
                 ? "bg-blue-50 text-blue-600"
                 : "text-slate-400 hover:text-slate-600"
             }`}
-            title="Grid view"
+            title="มุมมองตาราง"
           >
             <LayoutGrid className="h-4 w-4" />
           </button>
@@ -116,7 +159,7 @@ export function BoardsClient({ boards }: BoardsClientProps) {
                 ? "bg-blue-50 text-blue-600"
                 : "text-slate-400 hover:text-slate-600"
             }`}
-            title="List view"
+            title="มุมมองรายการ"
           >
             <List className="h-4 w-4" />
           </button>
@@ -126,23 +169,31 @@ export function BoardsClient({ boards }: BoardsClientProps) {
       {/* Empty state */}
       {filtered.length === 0 && (
         <div className="text-center py-16 text-slate-400">
-          <p className="text-sm">No projects found</p>
+          <p className="text-sm">ไม่พบโปรเจกต์</p>
         </div>
       )}
 
-      {/* Cards */}
-      {viewMode === "grid" ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">
-          {filtered.map((board) => (
-            <ProjectCard key={board.id} board={board} viewMode="grid" now={now} />
-          ))}
-        </div>
-      ) : (
-        <div className="flex flex-col gap-2">
-          {filtered.map((board) => (
-            <ProjectCard key={board.id} board={board} viewMode="list" now={now} />
-          ))}
-        </div>
+      {/* Grouped sections — headers hidden when a group is empty */}
+      {started.length > 0 && (
+        <section className="mb-7">
+          <GroupLabel
+            icon={<Zap size={14} />}
+            label="กำลังทำงานอยู่"
+            count={started.length}
+          />
+          {renderBoards(started)}
+        </section>
+      )}
+
+      {notStarted.length > 0 && (
+        <section>
+          <GroupLabel
+            icon={<LayoutTemplate size={14} />}
+            label="ยังไม่เริ่ม"
+            count={notStarted.length}
+          />
+          {renderBoards(notStarted)}
+        </section>
       )}
     </div>
   );

@@ -45,6 +45,12 @@ export interface Board {
   id: string;
   title: string;
   budget?: number;
+  /** Short board description shown on project-list cards. "" = none. */
+  description?: string;
+  /** Accent colour (hex) for the board glyph / card bar / sidebar dot. */
+  color?: string;
+  /** Glyph key — one of lib/boardAppearance BOARD_ICON keys. */
+  icon?: string;
   created_at: string;
   updated_at: string;
   /** When the current user last opened this board's kanban view. Null for

@@ -22,12 +22,15 @@ type Activity struct {
 }
 
 type Board struct {
-	ID        string
-	Title     string
-	Budget    pgtype.Numeric
-	CreatedAt pgtype.Timestamptz
-	UpdatedAt pgtype.Timestamptz
-	DeletedAt pgtype.Timestamptz
+	ID          string
+	Title       string
+	Budget      pgtype.Numeric
+	Description string
+	Color       string
+	Icon        string
+	CreatedAt   pgtype.Timestamptz
+	UpdatedAt   pgtype.Timestamptz
+	DeletedAt   pgtype.Timestamptz
 }
 
 type BoardMember struct {

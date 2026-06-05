@@ -1,7 +1,7 @@
 // components/board/settings/SettingsRail.tsx
 "use client";
 
-import { Clock, Lock, Columns3, Bell, AlertTriangle } from "lucide-react";
+import { Clock, AlertTriangle } from "lucide-react";
 
 export interface RailEntry {
   id: string;
@@ -12,9 +12,6 @@ export interface RailEntry {
 
 export const RAIL_ITEMS: RailEntry[] = [
   { id: "sec-general", label: "ทั่วไป", icon: <Clock size={18} /> },
-  { id: "sec-access", label: "การเข้าถึง", icon: <Lock size={18} /> },
-  { id: "sec-workflow", label: "เวิร์กโฟลว์", icon: <Columns3 size={18} /> },
-  { id: "sec-notify", label: "การแจ้งเตือน", icon: <Bell size={18} /> },
   { id: "sec-danger", label: "พื้นที่อันตราย", icon: <AlertTriangle size={18} />, danger: true },
 ];
 

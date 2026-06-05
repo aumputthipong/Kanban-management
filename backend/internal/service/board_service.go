@@ -68,6 +68,9 @@ type CardData struct {
 type BoardSummaryData struct {
 	ID             string
 	Title          string
+	Description    string
+	Color          string
+	Icon           string
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
 	LastAccessedAt *time.Time
@@ -170,6 +173,9 @@ func (s *BoardService) GetAllBoards(ctx context.Context, userID string) ([]Board
 		result = append(result, BoardSummaryData{
 			ID:             b.ID,
 			Title:          b.Title,
+			Description:    b.Description,
+			Color:          b.Color,
+			Icon:           b.Icon,
 			CreatedAt:      b.CreatedAt.Time,
 			UpdatedAt:      b.UpdatedAt.Time,
 			LastAccessedAt: b.LastAccessedAt,
@@ -185,12 +191,12 @@ func (s *BoardService) GetColumnsByBoardID(ctx context.Context, boardID string) 
 	return s.queries.GetColumnsByBoardID(ctx, boardID)
 }
 
-func (s *BoardService) MoveBoardToTrash(ctx context.Context, boardID string) error {
-	return s.queries.MoveBoardToTrash(ctx, boardID)
+func (s *BoardService) StashBoard(ctx context.Context, boardID string) error {
+	return s.queries.StashBoard(ctx, boardID)
 }
 
-func (s *BoardService) GetTrashedBoards(ctx context.Context, userID string) ([]db.GetTrashedBoardsForOwnerRow, error) {
-	return s.queries.GetTrashedBoardsForOwner(ctx, userID)
+func (s *BoardService) GetStashedBoards(ctx context.Context, userID string) ([]db.GetStashedBoardsForOwnerRow, error) {
+	return s.queries.GetStashedBoardsForOwner(ctx, userID)
 }
 
 func (s *BoardService) GetBoardMemberRole(ctx context.Context, boardID, userID string) (string, error) {
@@ -418,10 +424,14 @@ func (s *BoardService) HardDeleteBoard(ctx context.Context, id string) error {
 }
 
 func (s *BoardService) RestoreBoard(ctx context.Context, id string) error {
-	return s.queries.RestoreBoardFromTrash(ctx, id)
+	return s.queries.RestoreStashedBoard(ctx, id)
 }
 
-func (s *BoardService) UpdateBoard(ctx context.Context, id string, title *string, budget *float64) (db.Board, error) {
+// UpdateBoard read-modify-writes one board. Any nil pointer leaves the
+// existing value untouched (omit/null = no change); a non-nil pointer
+// overwrites — including Description "" which is a valid clear since the
+// column is NOT NULL DEFAULT ”.
+func (s *BoardService) UpdateBoard(ctx context.Context, id string, title *string, budget *float64, description, color, icon *string) (db.Board, error) {
 	existingBoard, err := s.queries.GetBoardByID(ctx, id)
 	if err != nil {
 		return db.Board{}, err
@@ -429,6 +439,9 @@ func (s *BoardService) UpdateBoard(ctx context.Context, id string, title *string
 
 	newTitle := existingBoard.Title
 	newBudget := existingBoard.Budget
+	newDescription := existingBoard.Description
+	newColor := existingBoard.Color
+	newIcon := existingBoard.Icon
 
 	if title != nil {
 		newTitle = *title
@@ -436,11 +449,23 @@ func (s *BoardService) UpdateBoard(ctx context.Context, id string, title *string
 	if budget != nil {
 		newBudget = util.PtrFloatToPgNumeric(budget)
 	}
+	if description != nil {
+		newDescription = *description
+	}
+	if color != nil {
+		newColor = *color
+	}
+	if icon != nil {
+		newIcon = *icon
+	}
 
 	return s.queries.UpdateBoard(ctx, db.UpdateBoardParams{
-		ID:     id,
-		Title:  newTitle,
-		Budget: newBudget,
+		ID:          id,
+		Title:       newTitle,
+		Budget:      newBudget,
+		Description: newDescription,
+		Color:       newColor,
+		Icon:        newIcon,
 	})
 }
 
@@ -466,7 +491,7 @@ func (s *BoardService) GetBoardWithCards(ctx context.Context, boardID string) ([
 		columnIDs[i] = col.ID
 	}
 
-	// 2. ดึงข้อมูล Cards 
+	// 2. ดึงข้อมูล Cards
 	// (ถึงบรรทัดนี้ การันตีได้แล้วว่า columnIDs มีค่าอย่างน้อย 1 ตัวแน่นอน)
 	cards, err := s.queries.GetCardsByColumnIDs(ctx, columnIDs)
 	if err != nil {
@@ -522,7 +547,7 @@ func (s *BoardService) GetBoardWithCards(ctx context.Context, boardID string) ([
 	result := make([]ColumnData, 0, len(columns))
 	for _, col := range columns {
 		// 🌟 Best Practice: เช็คค่า nil ของ map
-		// ถ้า Column นั้นไม่มี Card เลย map จะคืนค่า nil 
+		// ถ้า Column นั้นไม่มี Card เลย map จะคืนค่า nil
 		// เราควรแปลงเป็น Slice ว่าง []CardData{} แทนที่ Frontend จะได้รับเป็น null
 		colCards := cardsByColumn[col.ID]
 		if colCards == nil {

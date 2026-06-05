@@ -35,10 +35,10 @@ func withUserID(r *http.Request, userID string) *http.Request {
 	return r.WithContext(context.WithValue(r.Context(), middleware.UserIDKey, userID))
 }
 
-const validBoardID  = "452ae618-9e69-49f5-88a9-47728a5f17ac"
-const validUserID   = "550e8400-e29b-41d4-a716-446655440000"
+const validBoardID = "452ae618-9e69-49f5-88a9-47728a5f17ac"
+const validUserID = "550e8400-e29b-41d4-a716-446655440000"
 const validColumnID = "7f3b9a2e-1c4d-4e8f-a6b0-2d5e8f1a3c7b"
-const validCardID   = "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+const validCardID = "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
 
 // ────────────────────────────────────────────────
 // GetAllBoards
@@ -266,13 +266,13 @@ func TestCreateBoard_InvalidJSON(t *testing.T) {
 }
 
 // ────────────────────────────────────────────────
-// MoveToTrash
+// StashBoard
 // ────────────────────────────────────────────────
 
-func TestMoveToTrash_Success(t *testing.T) {
+func TestStashBoard_Success(t *testing.T) {
 	called := false
 	svc := &mock.MockBoardService{
-		MoveBoardToTrashFn: func(ctx context.Context, boardID string) error {
+		StashBoardFn: func(ctx context.Context, boardID string) error {
 			assert.Equal(t, validBoardID, boardID)
 			called = true
 			return nil
@@ -283,15 +283,15 @@ func TestMoveToTrash_Success(t *testing.T) {
 	req = chiCtx(req, "boardID", validBoardID)
 	w := httptest.NewRecorder()
 
-	httputil.MakeHandler(h.MoveToTrash)(w, req)
+	httputil.MakeHandler(h.StashBoard)(w, req)
 
 	assert.Equal(t, http.StatusNoContent, w.Code)
 	assert.True(t, called)
 }
 
-func TestMoveToTrash_ServiceError(t *testing.T) {
+func TestStashBoard_ServiceError(t *testing.T) {
 	svc := &mock.MockBoardService{
-		MoveBoardToTrashFn: func(ctx context.Context, boardID string) error {
+		StashBoardFn: func(ctx context.Context, boardID string) error {
 			return errors.New("board not found")
 		},
 	}
@@ -300,7 +300,7 @@ func TestMoveToTrash_ServiceError(t *testing.T) {
 	req = chiCtx(req, "boardID", validBoardID)
 	w := httptest.NewRecorder()
 
-	httputil.MakeHandler(h.MoveToTrash)(w, req)
+	httputil.MakeHandler(h.StashBoard)(w, req)
 
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
 }
@@ -400,7 +400,7 @@ func TestGetAllUsers_Success(t *testing.T) {
 
 func TestUpdateBoard_Success(t *testing.T) {
 	svc := &mock.MockBoardService{
-		UpdateBoardFn: func(ctx context.Context, id string, title *string, budget *float64) (db.Board, error) {
+		UpdateBoardFn: func(ctx context.Context, id string, title *string, budget *float64, description, color, icon *string) (db.Board, error) {
 			assert.Equal(t, validBoardID, id)
 			return db.Board{ID: validBoardID, Title: "New Title"}, nil
 		},
@@ -416,7 +416,7 @@ func TestUpdateBoard_Success(t *testing.T) {
 	assert.Equal(t, http.StatusOK, w.Code)
 	var res map[string]interface{}
 	require.NoError(t, json.NewDecoder(w.Body).Decode(&res))
-	assert.Equal(t, validBoardID, res["ID"])
+	assert.Equal(t, validBoardID, res["id"])
 }
 
 func TestUpdateBoard_InvalidBoardID(t *testing.T) {
@@ -447,7 +447,7 @@ func TestUpdateBoard_InvalidJSON(t *testing.T) {
 
 func TestUpdateBoard_ServiceError(t *testing.T) {
 	svc := &mock.MockBoardService{
-		UpdateBoardFn: func(ctx context.Context, id string, title *string, budget *float64) (db.Board, error) {
+		UpdateBoardFn: func(ctx context.Context, id string, title *string, budget *float64, description, color, icon *string) (db.Board, error) {
 			return db.Board{}, errors.New("db error")
 		},
 	}
@@ -463,22 +463,22 @@ func TestUpdateBoard_ServiceError(t *testing.T) {
 }
 
 // ────────────────────────────────────────────────
-// GetTrash
+// GetStashedBoards
 // ────────────────────────────────────────────────
 
-func TestGetTrash_Success(t *testing.T) {
+func TestGetStashedBoards_Success(t *testing.T) {
 	svc := &mock.MockBoardService{
-		GetTrashedBoardsFn: func(ctx context.Context, userID string) ([]db.GetTrashedBoardsForOwnerRow, error) {
-			return []db.GetTrashedBoardsForOwnerRow{
+		GetStashedBoardsFn: func(ctx context.Context, userID string) ([]db.GetStashedBoardsForOwnerRow, error) {
+			return []db.GetStashedBoardsForOwnerRow{
 				{ID: "b-1", Title: "Old Board"},
 			}, nil
 		},
 	}
 	h := NewBoardHandler(svc, nil, nil)
-	req := withUserID(httptest.NewRequest(http.MethodGet, "/trash", nil), validUserID)
+	req := withUserID(httptest.NewRequest(http.MethodGet, "/stash", nil), validUserID)
 	w := httptest.NewRecorder()
 
-	httputil.MakeHandler(h.GetTrash)(w, req)
+	httputil.MakeHandler(h.GetStashedBoards)(w, req)
 
 	assert.Equal(t, http.StatusOK, w.Code)
 	var res []map[string]interface{}
@@ -487,17 +487,17 @@ func TestGetTrash_Success(t *testing.T) {
 	assert.Equal(t, "b-1", res[0]["id"])
 }
 
-func TestGetTrash_ServiceError(t *testing.T) {
+func TestGetStashedBoards_ServiceError(t *testing.T) {
 	svc := &mock.MockBoardService{
-		GetTrashedBoardsFn: func(ctx context.Context, userID string) ([]db.GetTrashedBoardsForOwnerRow, error) {
+		GetStashedBoardsFn: func(ctx context.Context, userID string) ([]db.GetStashedBoardsForOwnerRow, error) {
 			return nil, errors.New("db error")
 		},
 	}
 	h := NewBoardHandler(svc, nil, nil)
-	req := withUserID(httptest.NewRequest(http.MethodGet, "/trash", nil), validUserID)
+	req := withUserID(httptest.NewRequest(http.MethodGet, "/stash", nil), validUserID)
 	w := httptest.NewRecorder()
 
-	httputil.MakeHandler(h.GetTrash)(w, req)
+	httputil.MakeHandler(h.GetStashedBoards)(w, req)
 
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
 }

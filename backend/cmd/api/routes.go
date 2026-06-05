@@ -123,7 +123,7 @@ func setupRoutes(d routerDeps) http.Handler {
 					Patch("/", httputil.MakeHandler(d.boardHandler.UpdateBoard))
 
 				r.With(middleware.RequireBoardRole(core.RoleOwner)).
-					Delete("/", httputil.MakeHandler(d.boardHandler.MoveToTrash))
+					Delete("/", httputil.MakeHandler(d.boardHandler.StashBoard))
 
 				r.Route("/members", func(r chi.Router) {
 					r.Get("/", httputil.MakeHandler(d.boardHandler.GetBoardMembers))
@@ -194,8 +194,8 @@ func setupRoutes(d routerDeps) http.Handler {
 			})
 		})
 
-		r.Route("/api/trash", func(r chi.Router) {
-			r.Get("/", httputil.MakeHandler(d.boardHandler.GetTrash))
+		r.Route("/api/stash", func(r chi.Router) {
+			r.Get("/", httputil.MakeHandler(d.boardHandler.GetStashedBoards))
 
 			r.Route("/{boardID}", func(r chi.Router) {
 				r.Use(requireBoardMember)
@@ -235,10 +235,10 @@ func healthHandler(pool *pgxpool.Pool, version string, startedAt time.Time) http
 	// every 100ms doesn't hammer the pool. Single goroutine writes; mutex
 	// keeps readers consistent.
 	var (
-		mu        sync.Mutex
-		cachedOK  bool
-		cachedAt  time.Time
-		cacheTTL  = time.Second
+		mu       sync.Mutex
+		cachedOK bool
+		cachedAt time.Time
+		cacheTTL = time.Second
 	)
 	probe := func(ctx context.Context) bool {
 		mu.Lock()

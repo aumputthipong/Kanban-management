@@ -2,12 +2,12 @@
 "use client";
 
 import { useState } from "react";
-import { AlertTriangle, Archive, Repeat2, Trash2, Loader2 } from "lucide-react";
+import { AlertTriangle, Archive, Loader2 } from "lucide-react";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
-import { SectionCard, MockBadge } from "./SettingsParts";
+import { SectionCard } from "./SettingsParts";
 
 interface DangerSectionProps {
-  /** Real, recoverable removal — DELETE /boards/:id (soft delete → Trash). */
+  /** Real, recoverable removal — DELETE /boards/:id (soft delete → คลังบอร์ด/stash). */
   onArchive: () => void;
   isArchiving: boolean;
 }
@@ -35,9 +35,9 @@ function DangerRow({
 }
 
 /**
- * "เก็บเข้าคลัง" maps to the real move-to-trash (recoverable from Trash), so it's
- * the one wired action. Transfer-ownership and permanent delete have no backend
- * — they're mockups and disabled, each flagged with a MockBadge.
+ * "เก็บเข้าคลัง" maps to the real stash (recoverable from คลังบอร์ด). It's the
+ * only board-level destructive action we expose — transfer-ownership and
+ * permanent delete were dropped as out of scope for now.
  */
 export function DangerSection({ onArchive, isArchiving }: DangerSectionProps) {
   const [confirmArchive, setConfirmArchive] = useState(false);
@@ -49,12 +49,12 @@ export function DangerSection({ onArchive, isArchiving }: DangerSectionProps) {
         danger
         icon={<AlertTriangle size={15} />}
         title="พื้นที่อันตราย"
-        description="การกระทำต่อไปนี้ส่งผลถาวรกับทั้งบอร์ด โปรดดำเนินการอย่างระมัดระวัง"
+        description="การกระทำต่อไปนี้ส่งผลกับทั้งบอร์ด โปรดดำเนินการอย่างระมัดระวัง"
       >
-        {/* Archive — REAL (move to trash, recoverable) */}
+        {/* Stash — REAL (recoverable soft-delete → คลังบอร์ด) */}
         <DangerRow
           title="เก็บบอร์ดเข้าคลัง"
-          help="ซ่อนบอร์ดจากรายการที่ใช้งาน — กู้คืนได้ทุกเมื่อจากถังขยะ ข้อมูลทั้งหมดยังอยู่ครบ"
+          help="ซ่อนบอร์ดจากรายการที่ใช้งาน — กู้คืนได้ทุกเมื่อจากคลังบอร์ด ข้อมูลทั้งหมดยังอยู่ครบ"
         >
           <button
             type="button"
@@ -66,49 +66,12 @@ export function DangerSection({ onArchive, isArchiving }: DangerSectionProps) {
             เก็บเข้าคลัง
           </button>
         </DangerRow>
-
-        {/* Transfer ownership — MOCKUP */}
-        <DangerRow
-          title={<>โอนความเป็นเจ้าของ <MockBadge /></>}
-          help="ส่งต่อสิทธิ์ Owner ให้สมาชิกคนอื่น — คุณจะกลายเป็น Manager หลังโอนสำเร็จ"
-        >
-          <button
-            type="button"
-            disabled
-            title="ยังไม่ได้ implement"
-            className="inline-flex items-center gap-2 h-10 px-4 rounded-lg border border-red-200 text-[13.5px] font-bold text-red-600 opacity-50 cursor-not-allowed"
-          >
-            <Repeat2 size={16} />
-            โอนความเป็นเจ้าของ
-          </button>
-        </DangerRow>
-
-        {/* Permanent delete — MOCKUP */}
-        <DangerRow
-          title={<>ลบบอร์ดนี้ถาวร <MockBadge /></>}
-          help={
-            <>
-              ลบบอร์ดและข้อมูลทั้งหมดอย่างถาวร รวมถึงการ์ด ความคิดเห็น และไฟล์แนบ —{" "}
-              <b>ไม่สามารถกู้คืนได้</b>
-            </>
-          }
-        >
-          <button
-            type="button"
-            disabled
-            title="ยังไม่ได้ implement"
-            className="inline-flex items-center gap-2 h-10 px-4 rounded-lg bg-red-600 text-white text-[13.5px] font-bold opacity-50 cursor-not-allowed"
-          >
-            <Trash2 size={16} />
-            ลบบอร์ด
-          </button>
-        </DangerRow>
       </SectionCard>
 
       <ConfirmDialog
         open={confirmArchive}
         title="เก็บบอร์ดนี้เข้าคลัง?"
-        description="บอร์ดจะถูกย้ายไปถังขยะและซ่อนจากรายการที่ใช้งาน — คุณกู้คืนได้ทุกเมื่อ"
+        description="บอร์ดจะถูกเก็บเข้าคลังและซ่อนจากรายการที่ใช้งาน — คุณกู้คืนได้ทุกเมื่อ"
         confirmLabel="เก็บเข้าคลัง"
         cancelLabel="ยกเลิก"
         destructive

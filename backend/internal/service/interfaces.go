@@ -22,9 +22,9 @@ type BoardServicer interface {
 	GetAllBoards(ctx context.Context, userID string) ([]BoardSummaryData, error)
 	GetBoardWithCards(ctx context.Context, boardID string) ([]ColumnData, error)
 	CreateBoard(ctx context.Context, title string, ownerID string) (string, error)
-	UpdateBoard(ctx context.Context, id string, title *string, budget *float64) (db.Board, error)
-	MoveBoardToTrash(ctx context.Context, boardID string) error
-	GetTrashedBoards(ctx context.Context, userID string) ([]db.GetTrashedBoardsForOwnerRow, error)
+	UpdateBoard(ctx context.Context, id string, title *string, budget *float64, description, color, icon *string) (db.Board, error)
+	StashBoard(ctx context.Context, boardID string) error
+	GetStashedBoards(ctx context.Context, userID string) ([]db.GetStashedBoardsForOwnerRow, error)
 	HardDeleteBoard(ctx context.Context, id string) error
 	RestoreBoard(ctx context.Context, id string) error
 	GetBoardMemberRole(ctx context.Context, boardID, userID string) (string, error)

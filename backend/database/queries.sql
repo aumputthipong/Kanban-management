@@ -15,7 +15,7 @@ WHERE c.id = $1;
 -- name: GetMyTasks :many
 -- Cards in the user's "work inbox": assigned to them, plus (when
 -- include_unassigned=true) unassigned cards on boards they're a member of.
--- Done cards and trashed boards are excluded.
+-- Done cards and stashed boards are excluded.
 --
 -- Returns a derived `status`: cards in the first TODO column of their board
 -- are "todo"; cards in any later TODO column are "in_progress".
@@ -181,9 +181,11 @@ WHERE id = $5;
 DELETE FROM cards WHERE id = $1;
 
 
--- name: MoveBoardToTrash :exec
-UPDATE boards 
-SET deleted_at = CURRENT_TIMESTAMP 
+-- name: StashBoard :exec
+-- "Stash" = recoverable soft-delete. Reuses the generic deleted_at column;
+-- a non-null deleted_at means the board is in the stash (คลังบอร์ด).
+UPDATE boards
+SET deleted_at = CURRENT_TIMESTAMP
 WHERE id = $1;
 
 -- name: GetAllActiveBoards :many
@@ -202,6 +204,9 @@ ORDER BY created_at DESC;
 SELECT
     b.id,
     b.title,
+    b.description,
+    b.color,
+    b.icon,
     b.created_at,
     b.updated_at,
     me.last_accessed_at,
@@ -212,7 +217,7 @@ JOIN board_members me ON me.board_id = b.id AND me.user_id = $1
 LEFT JOIN columns col ON col.board_id = b.id
 LEFT JOIN cards   c   ON c.column_id  = col.id
 WHERE b.deleted_at IS NULL
-GROUP BY b.id, b.title, b.created_at, b.updated_at, me.last_accessed_at
+GROUP BY b.id, b.title, b.description, b.color, b.icon, b.created_at, b.updated_at, me.last_accessed_at
 ORDER BY COALESCE(me.last_accessed_at, b.created_at) DESC;
 
 -- name: GetMembersForActiveBoards :many
@@ -229,8 +234,10 @@ WHERE b.deleted_at IS NULL
   )
 ORDER BY bm.joined_at ASC;
 
--- name: GetTrashedBoardsForOwner :many
-SELECT b.id, b.title, b.deleted_at
+-- name: GetStashedBoardsForOwner :many
+-- Appearance (description/color/icon) is returned so the คลังบอร์ด rows render
+-- the same glyph + description as the project-list cards.
+SELECT b.id, b.title, b.description, b.color, b.icon, b.deleted_at
 FROM boards b
 JOIN board_members bm ON bm.board_id = b.id AND bm.user_id = $1 AND bm.role = 'owner'
 WHERE b.deleted_at IS NOT NULL
@@ -241,16 +248,21 @@ ORDER BY b.deleted_at DESC;
 DELETE FROM boards 
 WHERE id = $1;
 
--- name: RestoreBoardFromTrash :exec
-UPDATE boards 
-SET deleted_at = NULL 
+-- name: RestoreStashedBoard :exec
+UPDATE boards
+SET deleted_at = NULL
 WHERE id = $1;
 
 
 -- name: UpdateBoard :one
-UPDATE boards 
-SET title = $2, 
+-- The service reads the existing row first and passes through unchanged
+-- values, so every column is set unconditionally here (PUT-like in spirit).
+UPDATE boards
+SET title = $2,
     budget = $3,
+    description = $4,
+    color = $5,
+    icon = $6,
     updated_at = CURRENT_TIMESTAMP
 WHERE id = $1
 RETURNING *;

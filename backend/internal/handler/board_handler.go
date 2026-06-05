@@ -11,6 +11,7 @@ import (
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/mapper"
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/middleware"
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/service"
+	"github.com/aumputthipong/mini-erp-kanban/backend/internal/util"
 	"github.com/google/uuid"
 )
 
@@ -61,6 +62,9 @@ func (h *BoardHandler) GetAllBoards(w http.ResponseWriter, r *http.Request) erro
 		result = append(result, dto.BoardSummaryResponse{
 			ID:             b.ID,
 			Title:          b.Title,
+			Description:    b.Description,
+			Color:          b.Color,
+			Icon:           b.Icon,
 			CreatedAt:      b.CreatedAt,
 			UpdatedAt:      b.UpdatedAt,
 			LastAccessedAt: b.LastAccessedAt,
@@ -116,6 +120,7 @@ func (h *BoardHandler) GetBoardData(w http.ResponseWriter, r *http.Request) erro
 	httputil.RespondJSON(w, http.StatusOK, mapper.ToColumnResponses(columns))
 	return nil
 }
+
 // CreateBoard creates a new board owned by the caller.
 //
 // @Summary  Create board
@@ -175,69 +180,77 @@ func (h *BoardHandler) UpdateBoard(w http.ResponseWriter, r *http.Request) error
 		return err
 	}
 
-	updatedBoard, err := h.boardService.UpdateBoard(r.Context(), boardID, req.Title, req.Budget)
+	updatedBoard, err := h.boardService.UpdateBoard(r.Context(), boardID, req.Title, req.Budget, req.Description, req.Color, req.Icon)
 	if err != nil {
 		return httputil.NewAPIError(http.StatusInternalServerError, "Failed to update board", err)
 	}
 
-	httputil.RespondJSON(w, http.StatusOK, updatedBoard)
+	httputil.RespondJSON(w, http.StatusOK, dto.BoardResponse{
+		ID:          updatedBoard.ID,
+		Title:       updatedBoard.Title,
+		Description: updatedBoard.Description,
+		Color:       updatedBoard.Color,
+		Icon:        updatedBoard.Icon,
+		Budget:      util.PgNumericToFloat64Ptr(updatedBoard.Budget),
+	})
 	return nil
 }
 
-// MoveToTrash soft-deletes a board (sets deleted_at). Owner only.
+// StashBoard stashes a board (recoverable soft-delete; sets deleted_at).
+// Owner only.
 //
-// @Summary  Move board to trash
+// @Summary  Stash board
 // @Tags     boards
 // @Security CookieAuth
 // @Param    boardID path string true "Board UUID"
 // @Success  204
 // @Failure  403 {object} httputil.ErrorResponse "not the owner"
 // @Router   /api/boards/{boardID} [delete]
-func (h *BoardHandler) MoveToTrash(w http.ResponseWriter, r *http.Request) error {
+func (h *BoardHandler) StashBoard(w http.ResponseWriter, r *http.Request) error {
 	boardID, err := httputil.GetUUIDParam(r, "boardID")
 	if err != nil {
 		return httputil.NewAPIError(http.StatusBadRequest, "Invalid board ID format", err)
 	}
 
-	if err := h.boardService.MoveBoardToTrash(r.Context(), boardID); err != nil {
-		return httputil.NewAPIError(http.StatusInternalServerError, "Failed to move board to trash", err)
+	if err := h.boardService.StashBoard(r.Context(), boardID); err != nil {
+		return httputil.NewAPIError(http.StatusInternalServerError, "Failed to stash board", err)
 	}
 
 	w.WriteHeader(http.StatusNoContent)
 	return nil
 }
 
-// GetTrash lists soft-deleted boards owned by the caller.
+// GetStashedBoards lists stashed boards owned by the caller (คลังบอร์ด).
 //
-// @Summary  List trashed boards
-// @Tags     trash
+// @Summary  List stashed boards
+// @Tags     stash
 // @Produce  json
 // @Security CookieAuth
-// @Success  200 {array} dto.TrashedBoardDTO
-// @Router   /api/trash [get]
-func (h *BoardHandler) GetTrash(w http.ResponseWriter, r *http.Request) error {
+// @Success  200 {array} dto.StashedBoardDTO
+// @Router   /api/stash [get]
+func (h *BoardHandler) GetStashedBoards(w http.ResponseWriter, r *http.Request) error {
 	userID, ok := r.Context().Value(middleware.UserIDKey).(string)
 	if !ok || userID == "" {
 		return httputil.NewAPIError(http.StatusUnauthorized, "Unauthorized", nil)
 	}
-	boards, err := h.boardService.GetTrashedBoards(r.Context(), userID)
+	boards, err := h.boardService.GetStashedBoards(r.Context(), userID)
 	if err != nil {
-		return httputil.NewAPIError(http.StatusInternalServerError, "Failed to get trash", err)
+		return httputil.NewAPIError(http.StatusInternalServerError, "Failed to get stashed boards", err)
 	}
 
-	httputil.RespondJSON(w, http.StatusOK, mapper.ToTrashedBoardDTOs(boards))
+	httputil.RespondJSON(w, http.StatusOK, mapper.ToStashedBoardDTOs(boards))
 	return nil
 }
 
-// HardDelete permanently removes a trashed board. Owner only.
+// HardDelete permanently removes an stashed board. Owner only.
 //
-// @Summary  Permanently delete trashed board
-// @Tags     trash
+// @Summary  Permanently delete stashed board
+// @Tags     stash
 // @Security CookieAuth
 // @Param    boardID path string true "Board UUID"
 // @Success  204
 // @Failure  403 {object} httputil.ErrorResponse
-// @Router   /api/trash/{boardID} [delete]
+// @Router   /api/stash/{boardID} [delete]
 func (h *BoardHandler) HardDelete(w http.ResponseWriter, r *http.Request) error {
 	boardID, err := httputil.GetUUIDParam(r, "boardID")
 	if err != nil {
@@ -252,14 +265,14 @@ func (h *BoardHandler) HardDelete(w http.ResponseWriter, r *http.Request) error 
 	return nil
 }
 
-// RestoreBoard restores a soft-deleted board. Owner only.
+// RestoreBoard restores an stashed board. Owner only.
 //
-// @Summary  Restore trashed board
-// @Tags     trash
+// @Summary  Restore stashed board
+// @Tags     stash
 // @Security CookieAuth
 // @Param    boardID path string true "Board UUID"
 // @Success  204
-// @Router   /api/trash/{boardID}/restore [patch]
+// @Router   /api/stash/{boardID}/restore [patch]
 func (h *BoardHandler) RestoreBoard(w http.ResponseWriter, r *http.Request) error {
 	boardID, err := httputil.GetUUIDParam(r, "boardID")
 	if err != nil {
@@ -273,4 +286,3 @@ func (h *BoardHandler) RestoreBoard(w http.ResponseWriter, r *http.Request) erro
 	w.WriteHeader(http.StatusNoContent)
 	return nil
 }
-

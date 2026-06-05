@@ -10,9 +10,6 @@ import { useCanManageBoard, useCanDeleteBoard } from "@/hooks/useBoardRole";
 
 import { SettingsRail, RAIL_ITEMS } from "./SettingsRail";
 import { GeneralSection } from "./GeneralSection";
-import { AccessSection } from "./AccessSection";
-import { WorkflowSection } from "./WorkflowSection";
-import { NotificationsSection } from "./NotificationsSection";
 import { DangerSection } from "./DangerSection";
 
 interface BoardSettingsFormProps {
@@ -73,7 +70,7 @@ export function BoardSettingsForm({ boardId, board }: BoardSettingsFormProps) {
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900">ตั้งค่าบอร์ด</h1>
           <p className="text-sm text-slate-500 mt-1.5 max-w-[560px] leading-relaxed">
-            จัดการข้อมูล การเข้าถึง และเวิร์กโฟลว์ของบอร์ด <b>{board.title}</b> —
+            จัดการชื่อ คำอธิบาย และรูปลักษณ์ของบอร์ด <b>{board.title}</b> —
             การเปลี่ยนแปลงมีผลกับสมาชิกทุกคน
           </p>
         </div>
@@ -95,13 +92,13 @@ export function BoardSettingsForm({ boardId, board }: BoardSettingsFormProps) {
         <div className="flex flex-col gap-6 min-w-0">
           <GeneralSection
             initialTitle={board.title}
+            initialDescription={board.description ?? ""}
+            initialColor={board.color ?? ""}
+            initialIcon={board.icon ?? ""}
             canManage={canManage}
-            onSaveTitle={(title) => updateField("title", title)}
+            onSaveField={(field, value) => updateField(field, value)}
             onSaved={showSaved}
           />
-          <AccessSection boardId={boardId} members={board.members ?? []} canManage={canManage} />
-          <WorkflowSection canManage={canManage} />
-          <NotificationsSection />
           {canDelete && <DangerSection onArchive={deleteBoard} isArchiving={isDeleting} />}
 
           <p className="text-[12.5px] text-slate-400 text-center pt-2">

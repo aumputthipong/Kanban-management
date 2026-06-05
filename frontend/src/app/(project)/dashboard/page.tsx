@@ -16,24 +16,24 @@ export default async function DashboardPage() {
       now - new Date(b.last_accessed_at ?? b.updated_at).getTime() <
       SEVEN_DAYS_MS,
   ).length;
-  const inactiveCount = boards.length - activeCount;
+  const startedCount = boards.filter((b) => b.total_cards > 0).length;
 
   return (
     <main className="h-full overflow-y-auto p-10 bg-slate-50">
       <div className="max-w-5xl mx-auto">
-        <div className="flex justify-between items-start mb-6">
+        <div className="flex justify-between items-start mb-6 gap-4">
           <div>
-            <h1 className="text-4xl font-extrabold text-slate-800 tracking-tight">
-              My Projects
+            <h1 className="text-3xl font-extrabold text-slate-800 tracking-tight">
+              โปรเจกต์ของฉัน
             </h1>
             <p className="text-sm text-slate-500 mt-2">
-              {boards.length} {boards.length === 1 ? "project" : "projects"}
+              <b className="text-slate-700 font-bold">{boards.length}</b> โปรเจกต์
               <span className="mx-1.5 text-slate-300">·</span>
               <span className="text-emerald-700 font-semibold">
-                {activeCount} active
+                {activeCount} เคลื่อนไหวล่าสุด
               </span>
               <span className="mx-1.5 text-slate-300">·</span>
-              <span className="text-slate-500">{inactiveCount} inactive</span>
+              <span className="text-slate-500">{startedCount} กำลังทำงาน</span>
             </p>
           </div>
           <CreateBoardButton />

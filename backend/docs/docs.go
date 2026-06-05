@@ -144,6 +144,28 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/auth/refresh": {
+            "post": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Refresh session",
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_aumputthipong_mini-erp-kanban_backend_internal_httputil.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/auth/register": {
             "post": {
                 "consumes": [
@@ -323,7 +345,7 @@ const docTemplate = `{
                 "tags": [
                     "boards"
                 ],
-                "summary": "Move board to trash",
+                "summary": "Stash board",
                 "parameters": [
                     {
                         "type": "string",
@@ -545,6 +567,84 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/me/settings": {
+            "get": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "me"
+                ],
+                "summary": "My workspace settings",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_aumputthipong_mini-erp-kanban_backend_internal_dto.UserSettingsResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_aumputthipong_mini-erp-kanban_backend_internal_httputil.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "me"
+                ],
+                "summary": "Update my workspace settings",
+                "parameters": [
+                    {
+                        "description": "fields to change",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_aumputthipong_mini-erp-kanban_backend_internal_dto.UpdateUserSettingsRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_aumputthipong_mini-erp-kanban_backend_internal_dto.UserSettingsResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_aumputthipong_mini-erp-kanban_backend_internal_httputil.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_aumputthipong_mini-erp-kanban_backend_internal_httputil.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/my-tasks": {
             "get": {
                 "security": [
@@ -558,15 +658,26 @@ const docTemplate = `{
                 "tags": [
                     "my-tasks"
                 ],
-                "summary": "My tasks (cross-board)",
+                "summary": "My work (cross-board)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "all|overdue|today|this_week|no_date",
+                        "name": "filter",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "include unassigned cards on my boards",
+                        "name": "include_unassigned",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/github_com_aumputthipong_mini-erp-kanban_backend_internal_dto.MyTaskResponse"
-                            }
+                            "$ref": "#/definitions/github_com_aumputthipong_mini-erp-kanban_backend_internal_dto.MyWorkResponse"
                         }
                     },
                     "401": {
@@ -617,7 +728,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/trash": {
+        "/api/stash": {
             "get": {
                 "security": [
                     {
@@ -628,23 +739,23 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "trash"
+                    "stash"
                 ],
-                "summary": "List trashed boards",
+                "summary": "List stashed boards",
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/github_com_aumputthipong_mini-erp-kanban_backend_internal_dto.TrashedBoardDTO"
+                                "$ref": "#/definitions/github_com_aumputthipong_mini-erp-kanban_backend_internal_dto.StashedBoardDTO"
                             }
                         }
                     }
                 }
             }
         },
-        "/api/trash/{boardID}": {
+        "/api/stash/{boardID}": {
             "delete": {
                 "security": [
                     {
@@ -652,9 +763,9 @@ const docTemplate = `{
                     }
                 ],
                 "tags": [
-                    "trash"
+                    "stash"
                 ],
-                "summary": "Permanently delete trashed board",
+                "summary": "Permanently delete stashed board",
                 "parameters": [
                     {
                         "type": "string",
@@ -677,7 +788,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/trash/{boardID}/restore": {
+        "/api/stash/{boardID}/restore": {
             "patch": {
                 "security": [
                     {
@@ -685,9 +796,9 @@ const docTemplate = `{
                     }
                 ],
                 "tags": [
-                    "trash"
+                    "stash"
                 ],
-                "summary": "Restore trashed board",
+                "summary": "Restore stashed board",
                 "parameters": [
                     {
                         "type": "string",
@@ -755,10 +866,25 @@ const docTemplate = `{
         "github_com_aumputthipong_mini-erp-kanban_backend_internal_dto.BoardSummaryResponse": {
             "type": "object",
             "properties": {
+                "color": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
                 "done_cards": {
                     "type": "integer"
                 },
+                "icon": {
+                    "type": "string"
+                },
                 "id": {
+                    "type": "string"
+                },
+                "last_accessed_at": {
                     "type": "string"
                 },
                 "members": {
@@ -781,6 +907,9 @@ const docTemplate = `{
         "github_com_aumputthipong_mini-erp-kanban_backend_internal_dto.CardResponse": {
             "type": "object",
             "properties": {
+                "acceptance_criteria": {
+                    "type": "string"
+                },
                 "assignee_id": {
                     "type": "string"
                 },
@@ -812,6 +941,9 @@ const docTemplate = `{
                     "type": "number"
                 },
                 "id": {
+                    "type": "string"
+                },
+                "implementation_note": {
                     "type": "string"
                 },
                 "is_done": {
@@ -936,6 +1068,9 @@ const docTemplate = `{
                 "estimated_hours": {
                     "type": "number"
                 },
+                "group": {
+                    "type": "string"
+                },
                 "id": {
                     "type": "string"
                 },
@@ -943,6 +1078,66 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "status": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_aumputthipong_mini-erp-kanban_backend_internal_dto.MyWorkCounts": {
+            "type": "object",
+            "properties": {
+                "later": {
+                    "type": "integer"
+                },
+                "no_date": {
+                    "type": "integer"
+                },
+                "overdue": {
+                    "type": "integer"
+                },
+                "this_week": {
+                    "type": "integer"
+                },
+                "today": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "github_com_aumputthipong_mini-erp-kanban_backend_internal_dto.MyWorkResponse": {
+            "type": "object",
+            "properties": {
+                "cards": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/github_com_aumputthipong_mini-erp-kanban_backend_internal_dto.MyTaskResponse"
+                    }
+                },
+                "counts": {
+                    "$ref": "#/definitions/github_com_aumputthipong_mini-erp-kanban_backend_internal_dto.MyWorkCounts"
+                }
+            }
+        },
+        "github_com_aumputthipong_mini-erp-kanban_backend_internal_dto.StashedBoardDTO": {
+            "type": "object",
+            "properties": {
+                "color": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "icon": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "stashed_at": {
                     "type": "string"
                 },
                 "title": {
@@ -967,26 +1162,30 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_aumputthipong_mini-erp-kanban_backend_internal_dto.TrashedBoardDTO": {
-            "type": "object",
-            "properties": {
-                "deleted_at": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "title": {
-                    "type": "string"
-                }
-            }
-        },
         "github_com_aumputthipong_mini-erp-kanban_backend_internal_dto.UpdateBoardRequest": {
             "type": "object",
             "properties": {
                 "budget": {
                     "type": "number",
                     "minimum": 0
+                },
+                "color": {
+                    "type": "string"
+                },
+                "description": {
+                    "description": "Appearance. Description \"\" is a valid clear (column is NOT NULL DEFAULT '');\ncolor must be a hex string; icon is one of the known glyph keys mirrored\non the client (lib/boardAppearance). omit/null = no change (COALESCE-style\nread-modify-write in the service).",
+                    "type": "string",
+                    "maxLength": 160
+                },
+                "icon": {
+                    "type": "string",
+                    "enum": [
+                        "board",
+                        "rocket",
+                        "target",
+                        "bolt",
+                        "bug"
+                    ]
                 },
                 "title": {
                     "type": "string",
@@ -998,6 +1197,10 @@ const docTemplate = `{
         "github_com_aumputthipong_mini-erp-kanban_backend_internal_dto.UpdateCardRequest": {
             "type": "object",
             "properties": {
+                "acceptance_criteria": {
+                    "type": "string",
+                    "maxLength": 10000
+                },
                 "assignee_id": {
                     "type": "string"
                 },
@@ -1012,6 +1215,10 @@ const docTemplate = `{
                     "type": "number",
                     "maximum": 10000,
                     "minimum": 0
+                },
+                "implementation_note": {
+                    "type": "string",
+                    "maxLength": 10000
                 },
                 "priority": {
                     "type": "string",
@@ -1031,6 +1238,41 @@ const docTemplate = `{
                     "type": "string",
                     "maxLength": 200,
                     "minLength": 1
+                }
+            }
+        },
+        "github_com_aumputthipong_mini-erp-kanban_backend_internal_dto.UpdateUserSettingsRequest": {
+            "type": "object",
+            "properties": {
+                "default_landing": {
+                    "type": "string",
+                    "enum": [
+                        "today",
+                        "my_work",
+                        "all_boards"
+                    ]
+                },
+                "show_all_cards": {
+                    "type": "boolean"
+                },
+                "timezone": {
+                    "type": "string",
+                    "maxLength": 50,
+                    "minLength": 1
+                }
+            }
+        },
+        "github_com_aumputthipong_mini-erp-kanban_backend_internal_dto.UserSettingsResponse": {
+            "type": "object",
+            "properties": {
+                "default_landing": {
+                    "type": "string"
+                },
+                "show_all_cards": {
+                    "type": "boolean"
+                },
+                "timezone": {
+                    "type": "string"
                 }
             }
         },

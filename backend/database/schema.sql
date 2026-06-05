@@ -16,6 +16,12 @@ CREATE TABLE boards (
     title VARCHAR(255) NOT NULL,
     budget DECIMAL(15, 2) NOT NULL DEFAULT 0.00,
     -- งบประมาณรวมของโปรเจกต์ (ส่วนของ ERP Finance)
+    description TEXT NOT NULL DEFAULT '',
+    -- คำอธิบายสั้น ๆ ของบอร์ด แสดงบนการ์ดในหน้ารายการโปรเจกต์
+    color VARCHAR(20) NOT NULL DEFAULT '#1E40AF',
+    -- สีประจำบอร์ด (hex) ใช้เป็น accent บน glyph / แถบการ์ด / sidebar
+    icon VARCHAR(20) NOT NULL DEFAULT 'board',
+    -- คีย์ไอคอนประจำบอร์ด (board/rocket/target/bolt/bug)
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP WITH TIME ZONE DEFAULT NULL

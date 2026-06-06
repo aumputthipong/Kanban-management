@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"context"
 	"errors"
 	"net/http"
 
@@ -9,6 +10,11 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
 )
+
+// roleResolver returns the caller's role on the {boardID} board, or
+// pgx.ErrNoRows when the board is out of scope for this gate (not a member, or
+// the board is in the wrong state — active vs stashed).
+type roleResolver func(ctx context.Context, boardID, userID string) (string, error)
 
 type boardContextKey string
 
@@ -28,6 +34,21 @@ const BoardRoleKey boardContextKey = "boardRole"
 // RequireBoardRole middleware can do the privilege check without another
 // database round-trip.
 func RequireBoardMember(svc service.BoardServicer) func(http.Handler) http.Handler {
+	return boardMembershipGate(svc.GetBoardMemberRole)
+}
+
+// RequireStashedBoardMember is the mirror of RequireBoardMember for the
+// /api/stash routes: it matches only when the board is stashed, so restore /
+// permanent-delete operate on stashed boards. RequireBoardMember 404s for
+// stashed boards, keeping their normal routes unreachable.
+func RequireStashedBoardMember(svc service.BoardServicer) func(http.Handler) http.Handler {
+	return boardMembershipGate(svc.GetStashedBoardMemberRole)
+}
+
+// boardMembershipGate is the shared body of the board-access middlewares. The
+// resolver decides which boards are in scope (active vs stashed); a pgx.ErrNoRows
+// from it becomes a 404 (anti-enumeration), not a 403.
+func boardMembershipGate(resolve roleResolver) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			userID, ok := r.Context().Value(UserIDKey).(string)
@@ -42,7 +63,7 @@ func RequireBoardMember(svc service.BoardServicer) func(http.Handler) http.Handl
 				return
 			}
 
-			role, err := svc.GetBoardMemberRole(r.Context(), boardID, userID)
+			role, err := resolve(r.Context(), boardID, userID)
 			if err != nil {
 				if errors.Is(err, pgx.ErrNoRows) {
 					httputil.RespondError(w, http.StatusNotFound, "Not found")

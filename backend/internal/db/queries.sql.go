@@ -773,8 +773,10 @@ func (q *Queries) GetBoardIDByPlanningSession(ctx context.Context, id string) (s
 }
 
 const getBoardMemberRole = `-- name: GetBoardMemberRole :one
-SELECT role FROM board_members
-WHERE board_id = $1 AND user_id = $2
+SELECT bm.role
+FROM board_members bm
+JOIN boards b ON b.id = bm.board_id
+WHERE bm.board_id = $1 AND bm.user_id = $2 AND b.deleted_at IS NULL
 `
 
 type GetBoardMemberRoleParams struct {
@@ -782,6 +784,9 @@ type GetBoardMemberRoleParams struct {
 	UserID  string
 }
 
+// Active boards only: a stashed board (deleted_at set) reports no membership so
+// the board-access gate 404s — stashed boards are unreachable via normal routes
+// (reads and mutations alike), consistent with anti-enumeration.
 func (q *Queries) GetBoardMemberRole(ctx context.Context, arg GetBoardMemberRoleParams) (string, error) {
 	row := q.db.QueryRow(ctx, getBoardMemberRole, arg.BoardID, arg.UserID)
 	var role string
@@ -1381,6 +1386,28 @@ func (q *Queries) GetRefreshTokenByHash(ctx context.Context, tokenHash string) (
 		&i.CreatedAt,
 	)
 	return i, err
+}
+
+const getStashedBoardMemberRole = `-- name: GetStashedBoardMemberRole :one
+SELECT bm.role
+FROM board_members bm
+JOIN boards b ON b.id = bm.board_id
+WHERE bm.board_id = $1 AND bm.user_id = $2 AND b.deleted_at IS NOT NULL
+`
+
+type GetStashedBoardMemberRoleParams struct {
+	BoardID string
+	UserID  string
+}
+
+// The mirror of GetBoardMemberRole for the /api/stash routes: only matches when
+// the board IS stashed, so restore / permanent-delete operate on stashed boards
+// while normal board routes keep 404ing for them.
+func (q *Queries) GetStashedBoardMemberRole(ctx context.Context, arg GetStashedBoardMemberRoleParams) (string, error) {
+	row := q.db.QueryRow(ctx, getStashedBoardMemberRole, arg.BoardID, arg.UserID)
+	var role string
+	err := row.Scan(&role)
+	return role, err
 }
 
 const getStashedBoardsForOwner = `-- name: GetStashedBoardsForOwner :many

@@ -206,6 +206,16 @@ func (s *BoardService) GetBoardMemberRole(ctx context.Context, boardID, userID s
 	})
 }
 
+// GetStashedBoardMemberRole resolves the caller's role only when the board is
+// stashed — used by the /api/stash gate so restore / permanent-delete work on
+// stashed boards while GetBoardMemberRole keeps 404ing for them everywhere else.
+func (s *BoardService) GetStashedBoardMemberRole(ctx context.Context, boardID, userID string) (string, error) {
+	return s.queries.GetStashedBoardMemberRole(ctx, db.GetStashedBoardMemberRoleParams{
+		BoardID: boardID,
+		UserID:  userID,
+	})
+}
+
 // TouchBoardMemberAccess bumps the membership's last_accessed_at when the
 // previous touch is older than the 5-minute throttle window (enforced in
 // SQL). Safe to call from a goroutine: best-effort, no business semantics.

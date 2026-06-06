@@ -197,6 +197,54 @@ func TestRequireBoardMember_DBError_Returns500(t *testing.T) {
 	assert.False(t, called)
 }
 
+// TestRequireStashedBoardMember_StashedOwner_Passes confirms the stash gate
+// admits the owner of a stashed board (so restore / permanent-delete work).
+func TestRequireStashedBoardMember_StashedOwner_Passes(t *testing.T) {
+	svc := &mock.MockBoardService{
+		GetStashedBoardMemberRoleFn: func(ctx context.Context, boardID, userID string) (string, error) {
+			assert.Equal(t, testBoardID, boardID)
+			return "owner", nil
+		},
+		GetBoardMemberRoleFn: func(ctx context.Context, boardID, userID string) (string, error) {
+			t.Fatal("stash gate must use GetStashedBoardMemberRole, not the active one")
+			return "", nil
+		},
+	}
+
+	var role string
+	var called bool
+	h := RequireStashedBoardMember(svc)(captureRole(&role, &called))
+
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, buildRequest(testUserID, testBoardID))
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.True(t, called)
+	assert.Equal(t, "owner", role)
+}
+
+// TestRequireStashedBoardMember_ActiveBoard_Returns404 is the consistency
+// regression: an active (non-stashed) board has no row in the stashed gate, so
+// the stash routes 404 — the inverse of RequireBoardMember 404ing for stashed
+// boards. Together they keep each board reachable through exactly one surface.
+func TestRequireStashedBoardMember_ActiveBoard_Returns404(t *testing.T) {
+	svc := &mock.MockBoardService{
+		GetStashedBoardMemberRoleFn: func(ctx context.Context, boardID, userID string) (string, error) {
+			return "", pgx.ErrNoRows
+		},
+	}
+
+	var role string
+	var called bool
+	h := RequireStashedBoardMember(svc)(captureRole(&role, &called))
+
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, buildRequest(testUserID, testBoardID))
+
+	assert.Equal(t, http.StatusNotFound, w.Code)
+	assert.False(t, called)
+}
+
 // TestRequireBoardMember_RoleVariants checks that every role string the
 // service may return is propagated verbatim — RequireBoardRole downstream
 // depends on exact string match.

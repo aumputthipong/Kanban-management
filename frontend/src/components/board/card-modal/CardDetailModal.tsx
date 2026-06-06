@@ -1,7 +1,7 @@
 // components/kanban/card-modal/CardDetailModal.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect } from "react";
 import { createPortal } from "react-dom";
 import type { Card, Tag } from "@/types/board";
 import { useCardForm } from "../../../hooks/useCardForm";
@@ -48,18 +48,22 @@ export function CardDetailModal({
   onAddSubtask,
   canEdit,
 }: CardDetailModalProps) {
+  // Per-field auto-save: each commit fires onUpdated with the full current
+  // snapshot. The modal stays open — closing is the user's explicit action.
+  const onCommit = useCallback(
+    (next: FormState) => onUpdated(card.id, next),
+    [onUpdated, card.id],
+  );
   const {
     form,
     members,
     error,
-    isDirty,
     assigneeName,
     handleChange,
     setTags,
-    validate,
-  } = useCardForm(card, boardId, isOpen);
+    commitField,
+  } = useCardForm(card, boardId, isOpen, onCommit);
 
-  const [isSaving, setIsSaving] = useState(false);
   const { fetchSubtasks } = useBoardActions(boardId);
 
   useEffect(() => {
@@ -67,14 +71,6 @@ export function CardDetailModal({
   }, [isOpen, card?.id]);
 
   useEscapeKey(isOpen, onClose);
-
-  const handleSave = () => {
-    if (!validate()) return;
-    setIsSaving(true);
-    onUpdated(card.id, form);
-    setIsSaving(false);
-    onClose();
-  };
 
   if (!isOpen) return null;
 
@@ -99,6 +95,7 @@ export function CardDetailModal({
             boardId={boardId}
             title={form.title}
             onTitleChange={handleChange("title")}
+            onCommit={commitField}
             canEdit={canEdit}
             onClose={onClose}
           />
@@ -109,6 +106,7 @@ export function CardDetailModal({
               <CardDescriptionField
                 value={form.description}
                 onChange={handleChange("description")}
+                onCommit={commitField}
                 canEdit={canEdit}
               />
               <CardSubtaskSection
@@ -124,6 +122,7 @@ export function CardDetailModal({
                 onAcceptanceChange={handleChange("acceptance_criteria")}
                 noteValue={form.implementation_note}
                 onNoteChange={handleChange("implementation_note")}
+                onCommit={commitField}
                 canEdit={canEdit}
               />
             </div>
@@ -136,6 +135,7 @@ export function CardDetailModal({
                 boardId={boardId}
                 onChange={handleChange}
                 onTagsChange={setTags}
+                onCommit={commitField}
                 error={error}
                 canEdit={canEdit}
               />
@@ -144,10 +144,7 @@ export function CardDetailModal({
 
           <CardModalFooter
             canEdit={canEdit}
-            isDirty={isDirty}
-            isSaving={isSaving}
             cardTitle={card.title}
-            onSave={handleSave}
             onDelete={() => onDelete(card.id)}
             onClose={onClose}
           />

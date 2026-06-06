@@ -150,7 +150,6 @@ export function TaskPill({ card, boardId, inPopover = false }: TaskPillProps) {
       acceptance_criteria: form.acceptance_criteria,
       implementation_note: form.implementation_note,
     });
-    setIsDetailOpen(false);
   };
 
   const onDelete = (cardId: string) => {

@@ -21,10 +21,12 @@ interface TagSelectorProps {
   boardId: string;
   selected: Tag[];
   onChange: (tags: Tag[]) => void;
+  /** Persist the current tag set (per-field auto-save). Called after add/remove. */
+  onCommit?: () => void;
   canEdit: boolean;
 }
 
-function TagSelectorImpl({ boardId, selected, onChange, canEdit }: TagSelectorProps) {
+function TagSelectorImpl({ boardId, selected, onChange, onCommit, canEdit }: TagSelectorProps) {
   const [boardTags, setBoardTags] = useState<Tag[]>([]);
   const [loadingTags, setLoadingTags] = useState(true);
   const [loadedBoardId, setLoadedBoardId] = useState(boardId);
@@ -100,6 +102,7 @@ function TagSelectorImpl({ boardId, selected, onChange, canEdit }: TagSelectorPr
   const handleSelect = (tag: Tag) => {
     if (selected.length >= MAX_TAGS) return;
     onChange([...selected, tag]);
+    onCommit?.();
     setQuery("");
     setOpen(false);
     inputRef.current?.focus();
@@ -107,6 +110,7 @@ function TagSelectorImpl({ boardId, selected, onChange, canEdit }: TagSelectorPr
 
   const handleRemove = (tagId: string) => {
     onChange(selected.filter((t) => t.id !== tagId));
+    onCommit?.();
   };
 
   const handleCreate = async () => {

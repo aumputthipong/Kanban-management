@@ -17,11 +17,12 @@ interface CardFormFieldsProps {
   boardId: string;
   onChange: (field: keyof FormState) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => void;
   onTagsChange: (tags: TagType[]) => void;
+  onCommit: (field: keyof FormState) => void;
   error: string | null;
   canEdit: boolean;
 }
 
-export function CardFormFields({ form, members, assigneeName, boardId, onChange, onTagsChange, error, canEdit }: CardFormFieldsProps) {
+export function CardFormFields({ form, members, assigneeName, boardId, onChange, onTagsChange, onCommit, error, canEdit }: CardFormFieldsProps) {
   const [showQuickDates, setShowQuickDates] = useState(false);
   const [showQuickHours, setShowQuickHours] = useState(false);
 
@@ -36,7 +37,10 @@ export function CardFormFields({ form, members, assigneeName, boardId, onChange,
         {canEdit ? (
           <select
             value={form.assignee_id}
-            onChange={onChange("assignee_id")}
+            onChange={(e) => {
+              onChange("assignee_id")(e);
+              onCommit("assignee_id");
+            }}
             className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white"
           >
             <option value="">Unassigned</option>
@@ -90,11 +94,12 @@ export function CardFormFields({ form, members, assigneeName, boardId, onChange,
                 <button
                   key={p}
                   type="button"
-                  onClick={() =>
+                  onClick={() => {
                     onChange("priority")({
                       target: { value: p },
-                    } as React.ChangeEvent<HTMLInputElement>)
-                  }
+                    } as React.ChangeEvent<HTMLInputElement>);
+                    onCommit("priority");
+                  }}
                   className={`flex-1 inline-flex items-center justify-center gap-1.5 py-1 rounded text-xs font-medium capitalize transition-colors ${
                     active ? `bg-white shadow-sm ${text}` : "text-slate-500 hover:text-slate-700"
                   }`}
@@ -126,7 +131,10 @@ export function CardFormFields({ form, members, assigneeName, boardId, onChange,
               <input
                 type="date"
                 value={form.due_date}
-                onChange={onChange("due_date")}
+                onChange={(e) => {
+                  onChange("due_date")(e);
+                  onCommit("due_date");
+                }}
                 className="flex-1 min-w-0 text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 text-slate-600"
               />
               <button
@@ -152,11 +160,12 @@ export function CardFormFields({ form, members, assigneeName, boardId, onChange,
                     <button
                       key={choice.label}
                       type="button"
-                      onClick={() =>
+                      onClick={() => {
                         onChange("due_date")({
                           target: { value: formattedDate },
-                        } as React.ChangeEvent<HTMLInputElement>)
-                      }
+                        } as React.ChangeEvent<HTMLInputElement>);
+                        onCommit("due_date");
+                      }}
                       className={`px-2.5 py-1 text-[11px] font-semibold rounded-md transition-colors border ${
                         isActive
                           ? "bg-blue-50 border-blue-200 text-blue-700"
@@ -189,6 +198,7 @@ export function CardFormFields({ form, members, assigneeName, boardId, onChange,
                 step="0.5"
                 value={form.estimated_hours}
                 onChange={onChange("estimated_hours")}
+                onBlur={() => onCommit("estimated_hours")}
                 placeholder="0"
                 className="flex-1 min-w-0 text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
               />
@@ -208,11 +218,12 @@ export function CardFormFields({ form, members, assigneeName, boardId, onChange,
                     <button
                       key={choice.label}
                       type="button"
-                      onClick={() =>
+                      onClick={() => {
                         onChange("estimated_hours")({
                           target: { value: choice.value },
-                        } as React.ChangeEvent<HTMLInputElement>)
-                      }
+                        } as React.ChangeEvent<HTMLInputElement>);
+                        onCommit("estimated_hours");
+                      }}
                       className={`px-2.5 py-1 text-[11px] font-semibold rounded-md transition-colors border ${
                         isActive
                           ? "bg-blue-50 border-blue-200 text-blue-700"
@@ -242,6 +253,7 @@ export function CardFormFields({ form, members, assigneeName, boardId, onChange,
           boardId={boardId}
           selected={form.tags}
           onChange={onTagsChange}
+          onCommit={() => onCommit("tags")}
           canEdit={canEdit}
         />
       </div>

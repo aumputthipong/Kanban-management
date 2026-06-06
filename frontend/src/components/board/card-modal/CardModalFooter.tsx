@@ -1,25 +1,21 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 interface CardModalFooterProps {
   canEdit: boolean;
-  isDirty: boolean;
-  isSaving: boolean;
   cardTitle: string;
-  onSave: () => void;
   onDelete: () => void;
   onClose: () => void;
 }
 
+// No "Save" button — fields auto-save per-field (see useCardForm). The footer
+// only carries the destructive action (Delete, confirm-gated) and Close.
 export function CardModalFooter({
   canEdit,
-  isDirty,
-  isSaving,
   cardTitle,
-  onSave,
   onDelete,
   onClose,
 }: CardModalFooterProps) {
@@ -31,8 +27,7 @@ export function CardModalFooter({
         {canEdit ? (
           <button
             onClick={() => setConfirmOpen(true)}
-            disabled={isSaving}
-            className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg disabled:opacity-40 transition-all"
+            className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
           >
             <Trash2 size={16} />
             Delete
@@ -41,25 +36,12 @@ export function CardModalFooter({
           <div />
         )}
 
-        <div className="flex items-center gap-2">
-          <button
-            onClick={onClose}
-            disabled={isSaving}
-            className="px-4 py-2 text-sm rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-40 font-medium"
-          >
-            {canEdit ? "Cancel" : "Close"}
-          </button>
-          {canEdit && (
-            <button
-              onClick={onSave}
-              disabled={isSaving || !isDirty}
-              className="flex items-center gap-2 px-4 py-2 text-sm rounded-lg bg-blue-800 text-white font-semibold hover:bg-blue-900 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-            >
-              {isSaving && <Loader2 size={14} className="animate-spin" />}
-              Save changes
-            </button>
-          )}
-        </div>
+        <button
+          onClick={onClose}
+          className="px-4 py-2 text-sm rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors font-medium"
+        >
+          Close
+        </button>
       </div>
 
       <ConfirmDialog

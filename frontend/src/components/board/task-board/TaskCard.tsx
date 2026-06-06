@@ -179,10 +179,7 @@ export const TaskCard = memo(function TaskCard({
           boardId={boardId}
           isOpen={isDetailOpen}
           onClose={() => setIsDetailOpen(false)}
-          onUpdated={(cardId, form) => {
-            onSaveCard(cardId, form);
-            setIsDetailOpen(false);
-          }}
+          onUpdated={(cardId, form) => onSaveCard(cardId, form)}
           onDelete={(cardId) => {
             onDeleteCard(cardId);
             setIsDetailOpen(false);

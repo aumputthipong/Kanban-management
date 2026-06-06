@@ -113,10 +113,7 @@ export function BoardDashboard({ boardId }: BoardDashboardProps) {
           boardId={boardId}
           isOpen={true}
           onClose={() => setSelectedCard(null)}
-          onUpdated={(cardId, form: FormState) => {
-            handleUpdateCard(cardId, form);
-            setSelectedCard(null);
-          }}
+          onUpdated={(cardId, form: FormState) => handleUpdateCard(cardId, form)}
           onDelete={(cardId) => {
             handleDeleteCard(cardId);
             setSelectedCard(null);

@@ -56,10 +56,6 @@ export function useCardForm(
   // so a blur with no net change doesn't fire a redundant write.
   const formRef = useRef(form);
   const committedRef = useRef(form);
-  const cardRef = useRef(card);
-  cardRef.current = card;
-  const onCommitRef = useRef(onCommit);
-  onCommitRef.current = onCommit;
 
   const [members, setMembers] = useState<BoardMember[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -72,12 +68,15 @@ export function useCardForm(
     setForm(next);
   }, []);
 
+  // commitField closes over `card.title` / `onCommit` via deps rather than refs
+  // so nothing is written to a ref during render (react-hooks/refs). The refs it
+  // *reads* (formRef/committedRef) are only ever touched inside event handlers.
   const commitField = useCallback((field: keyof FormState) => {
     const cur = formRef.current;
     // Required-field guard: an empty title would 400 at the API. Revert to the
     // last good title and surface an inline error instead of saving.
     if (field === "title" && !cur.title.trim()) {
-      const reverted = { ...cur, title: cardRef.current.title };
+      const reverted = { ...cur, title: card.title };
       formRef.current = reverted;
       setForm(reverted);
       setError("Title cannot be empty.");
@@ -86,8 +85,8 @@ export function useCardForm(
     if (fieldEqual(field, cur, committedRef.current)) return;
     committedRef.current = { ...committedRef.current, [field]: cur[field] };
     setError(null);
-    onCommitRef.current?.(cur);
-  }, []);
+    onCommit?.(cur);
+  }, [card.title, onCommit]);
 
   // Fetch รายชื่อ Member ใน Board
   useEffect(() => {

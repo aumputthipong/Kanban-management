@@ -124,7 +124,7 @@ export function DashboardGrid({
 function ClearedState({ text, sub }: { text: string; sub: string }) {
   return (
     <div className="flex flex-col items-center justify-center gap-2 px-5 py-8 text-center h-full">
-      <span className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+      <span className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center">
         <Inbox size={20} />
       </span>
       <span className="text-sm font-bold text-slate-900">{text}</span>
@@ -140,7 +140,7 @@ function UpcomingClearedRow({ icon, label }: { icon: React.ReactNode; label: str
         <span className="text-slate-400">{icon}</span>
         {label}
       </span>
-      <span className="text-xs font-bold text-emerald-600 bg-emerald-50 rounded-full px-2.5 py-0.5 whitespace-nowrap">
+      <span className="text-xs font-bold text-emerald-700 bg-emerald-50 rounded-full px-2.5 py-0.5 whitespace-nowrap">
         ไม่มีคิว
       </span>
     </div>

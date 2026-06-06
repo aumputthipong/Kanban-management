@@ -25,12 +25,12 @@ export function HeroTodayPanel({
 
   return (
     <section
-      className={`bg-white border border-blue-200 rounded-xl shadow-[0_1px_2px_rgba(30,64,175,.06),0_8px_24px_rgba(30,64,175,.07)] flex flex-col min-h-0 overflow-hidden ${className}`}
+      className={`bg-white border border-blue-200 rounded-xl shadow-sm flex flex-col min-h-0 overflow-hidden ${className}`}
     >
-      <div className="flex items-center gap-2.5 px-[18px] pt-[15px] pb-3.5 border-b border-slate-200 bg-linear-to-b from-blue-50 to-transparent shrink-0">
+      <div className="flex items-center gap-2.5 px-[18px] pt-[15px] pb-3.5 border-b border-slate-200 bg-blue-50 shrink-0">
         <span
           aria-hidden
-          className="w-[26px] h-[26px] rounded-[7px] bg-blue-50 text-blue-700 flex items-center justify-center shrink-0"
+          className="w-[26px] h-[26px] rounded-lg bg-white text-blue-700 flex items-center justify-center shrink-0"
         >
           <Sun size={15} />
         </span>
@@ -38,7 +38,7 @@ export function HeroTodayPanel({
           <div className="text-[11px] font-bold uppercase tracking-wider text-blue-700/80 leading-none mb-0.5">
             โฟกัส
           </div>
-          <div className="text-[15.5px] font-extrabold tracking-tight text-slate-900">วันนี้ต้องทำ</div>
+          <div className="text-[15px] font-bold tracking-tight text-slate-900">วันนี้ต้องทำ</div>
         </div>
         {total > 0 && (
           <div className="ml-auto flex items-center gap-2.5 shrink-0">
@@ -47,7 +47,7 @@ export function HeroTodayPanel({
             </span>
             <span className="w-22 h-1.5 rounded-full bg-blue-100 overflow-hidden">
               <span
-                className="block h-full rounded-full bg-blue-600 transition-[width] duration-300"
+                className="block h-full rounded-full bg-blue-700 transition-[width] duration-300"
                 style={{ width: `${pct}%` }}
               />
             </span>

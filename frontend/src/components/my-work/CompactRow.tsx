@@ -38,9 +38,9 @@ function boardColor(id: string): string {
 function statusDot(status: MyWorkStatus): string {
   switch (status) {
     case "in_progress":
-      return "bg-blue-600";
+      return "bg-blue-700";
     case "done":
-      return "bg-emerald-600";
+      return "bg-emerald-700";
     default:
       return "bg-slate-400";
   }
@@ -67,7 +67,7 @@ function dueText(card: MyWorkCard): string {
 function dueClass(group: MyWorkGroup): string {
   switch (group) {
     case "overdue":
-      return "bg-rose-50 text-rose-700 border border-rose-200 font-semibold";
+      return "bg-red-50 text-red-700 border border-red-200 font-semibold";
     case "today":
       return "bg-blue-50 text-blue-700 border border-blue-200 font-semibold";
     case "this_week":
@@ -78,10 +78,10 @@ function dueClass(group: MyWorkGroup): string {
 }
 
 const PRI_BAR: Record<NonNullable<MyWorkCard["priority"]> | "none", string> = {
-  high: "bg-rose-500",
+  high: "bg-red-600",
   medium: "bg-amber-500",
   low: "bg-emerald-500",
-  none: "bg-slate-200",
+  none: "bg-slate-400",
 };
 
 export function CompactRow({ card, onComplete, onSnooze, slim = false, hero = false }: CompactRowProps) {
@@ -104,7 +104,7 @@ export function CompactRow({ card, onComplete, onSnooze, slim = false, hero = fa
       <button
         type="button"
         onClick={handleComplete}
-        className="w-[18px] h-[18px] shrink-0 rounded-[5px] border-[1.75px] border-slate-300 flex items-center justify-center text-transparent hover:border-blue-600 hover:bg-blue-50 hover:text-blue-600 transition-colors"
+        className="w-[18px] h-[18px] shrink-0 rounded-sm border-[1.75px] border-slate-300 flex items-center justify-center text-transparent hover:border-blue-700 hover:bg-blue-50 hover:text-blue-700 transition-colors"
         aria-label="ทำเครื่องหมายว่าเสร็จแล้ว"
       >
         <Check size={11} strokeWidth={3.2} className="opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -135,7 +135,7 @@ export function CompactRow({ card, onComplete, onSnooze, slim = false, hero = fa
           <div className="w-28 flex justify-end shrink-0">
             {card.due_date && (
               <span
-                className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-xs whitespace-nowrap ${dueClass(card.group)}`}
+                className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-sm text-xs whitespace-nowrap ${dueClass(card.group)}`}
                 title={formatThaiDate(card.due_date)}
               >
                 <Calendar size={12} />

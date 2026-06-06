@@ -4,9 +4,6 @@ import { Sun } from "lucide-react";
 
 interface MyWorkGreetingProps {
   fullName?: string | null;
-  todayCount: number;
-  overdueCount: number;
-  doneToday: number;
 }
 
 function greetingByHour(hour: number): string {
@@ -23,44 +20,22 @@ function thaiDate(now: Date): string {
   return `${weekday} · ${day} ${month} ${year}`;
 }
 
-export function MyWorkGreeting({ fullName, todayCount, overdueCount, doneToday }: MyWorkGreetingProps) {
+// The hero stat cards on the right already carry the today/week/overdue counts,
+// so the greeting stays minimal: just the date and a calm welcome line. No
+// duplicated summary, no colored emphasis — keeps the header uncluttered.
+export function MyWorkGreeting({ fullName }: MyWorkGreetingProps) {
   const now = new Date();
   const display = fullName?.split(" ")[0] ?? "คุณ";
 
   return (
     <header className="min-w-0">
-      <div className="flex items-center gap-2 text-xs font-semibold text-slate-600 mb-2">
-        <Sun size={13} className="text-amber-500" />
+      <div className="flex items-center gap-2 text-xs font-medium text-slate-500 mb-2">
+        <Sun size={13} className="text-slate-400" />
         <span className="whitespace-nowrap">{thaiDate(now)}</span>
       </div>
-      <h1 className="text-[25px] leading-[1.05] font-extrabold tracking-tight text-slate-900 mb-1">
-        {greetingByHour(now.getHours())}, <span className="text-blue-700">{display}</span>
+      <h1 className="text-[2rem] leading-tight font-bold tracking-[-0.02em] text-slate-900">
+        {greetingByHour(now.getHours())}, {display}
       </h1>
-      <p className="text-sm text-slate-600 truncate">
-        {renderSummary(todayCount, overdueCount, doneToday)}
-      </p>
     </header>
-  );
-}
-
-const overdueNote = (overdueCount: number) =>
-  overdueCount > 0 ? (
-    <>
-      {" · "}
-      <span className="font-bold text-rose-700">มี {overdueCount} งานเลยกำหนด</span> รอจัดการ
-    </>
-  ) : null;
-
-function renderSummary(todayCount: number, overdueCount: number, doneToday: number) {
-  if (todayCount === 0) {
-    if (overdueCount === 0) return "วันนี้ไม่มีงานในรายการ ใช้เวลาวางแผนหรือพักผ่อน";
-    return <>วันนี้ยังไม่มีงานที่ตั้งไว้{overdueNote(overdueCount)}</>;
-  }
-  return (
-    <>
-      โฟกัสวันนี้ <b className="font-semibold text-slate-900">{todayCount} งาน</b> · เสร็จแล้ว{" "}
-      <b className="font-semibold text-slate-900">{doneToday}</b>
-      {overdueNote(overdueCount)}
-    </>
   );
 }

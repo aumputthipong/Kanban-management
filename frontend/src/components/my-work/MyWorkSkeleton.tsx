@@ -4,7 +4,7 @@ function PanelSkeleton({ rows, className = "" }: { rows: number; className?: str
   return (
     <div className={`border border-slate-200 rounded-xl bg-white shadow-sm overflow-hidden flex flex-col ${className}`}>
       <div className="flex items-center gap-2.5 px-[18px] py-3 border-b border-slate-100">
-        <Skeleton className="h-[22px] w-[22px] rounded-md" />
+        <Skeleton className="h-[22px] w-[22px] rounded-lg" />
         <Skeleton className="h-4 w-28" />
       </div>
       <div className="flex-1">
@@ -13,9 +13,9 @@ function PanelSkeleton({ rows, className = "" }: { rows: number; className?: str
             key={i}
             className="flex items-center gap-3 h-12 pl-[18px] pr-3 border-b border-slate-100 last:border-b-0"
           >
-            <Skeleton className="h-[18px] w-[18px] rounded-[5px]" />
+            <Skeleton className="h-[18px] w-[18px] rounded-sm" />
             <Skeleton className="h-3.5 flex-1 max-w-xs" />
-            <Skeleton className="h-6 w-20 rounded-md" />
+            <Skeleton className="h-6 w-20 rounded-sm" />
           </div>
         ))}
       </div>
@@ -30,12 +30,11 @@ export function MyWorkSkeleton() {
       <div className="flex items-end justify-between gap-7">
         <div className="space-y-2">
           <Skeleton className="h-3.5 w-40" />
-          <Skeleton className="h-7 w-64" />
-          <Skeleton className="h-4 w-72" />
+          <Skeleton className="h-8 w-72" />
         </div>
         <div className="flex gap-2.5">
           {Array.from({ length: 3 }).map((_, i) => (
-            <Skeleton key={i} className="h-[62px] w-[104px] rounded-[10px]" />
+            <Skeleton key={i} className="h-[62px] w-[104px] rounded-lg" />
           ))}
         </div>
       </div>

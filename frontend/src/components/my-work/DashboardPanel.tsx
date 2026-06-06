@@ -20,7 +20,7 @@ interface DashboardPanelProps {
 }
 
 const ICON_TONE: Record<IconTone, string> = {
-  danger: "bg-rose-50 text-rose-600",
+  danger: "bg-red-50 text-red-700",
   neutral: "bg-slate-100 text-slate-600",
   tint: "bg-blue-50 text-blue-700",
 };
@@ -43,11 +43,11 @@ export function DashboardPanel({
       <div className="flex items-center gap-2.5 px-[18px] py-3 border-b border-slate-100 shrink-0">
         <span
           aria-hidden
-          className={`w-[22px] h-[22px] rounded-md flex items-center justify-center shrink-0 ${ICON_TONE[iconTone]}`}
+          className={`w-[22px] h-[22px] rounded-lg flex items-center justify-center shrink-0 ${ICON_TONE[iconTone]}`}
         >
           {icon}
         </span>
-        <span className={`text-sm font-bold tracking-tight whitespace-nowrap ${danger ? "text-rose-700" : "text-slate-900"}`}>
+        <span className={`text-sm font-bold tracking-tight whitespace-nowrap ${danger ? "text-red-700" : "text-slate-900"}`}>
           {title}
         </span>
         {count != null && (

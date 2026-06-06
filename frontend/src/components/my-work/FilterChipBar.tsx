@@ -65,7 +65,7 @@ export function FilterChipBar({ active, counts, onChange }: FilterChipBarProps) 
             onClick={() => onChange(c.key)}
             className={`inline-flex items-center gap-1.5 h-8 px-3 rounded-full border text-xs font-semibold whitespace-nowrap transition-colors ${
               isActive
-                ? "bg-blue-700 text-white border-blue-700 shadow-sm"
+                ? "bg-blue-800 text-white border-blue-800 shadow-sm"
                 : "bg-white text-slate-600 border-slate-200 hover:text-slate-900 hover:border-slate-300"
             }`}
           >

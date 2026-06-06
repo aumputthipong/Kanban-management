@@ -37,12 +37,12 @@ export function OverdueStrip({ cards, onComplete, onSnooze, className = "" }: Ov
       >
         <span
           aria-hidden
-          className="w-[22px] h-[22px] rounded-md bg-rose-50 text-rose-600 flex items-center justify-center shrink-0"
+          className="w-[22px] h-[22px] rounded-lg bg-red-50 text-red-700 flex items-center justify-center shrink-0"
         >
           <AlertTriangle size={13} />
         </span>
         <span className="text-[13.5px] font-bold text-slate-600 whitespace-nowrap">เลยกำหนด</span>
-        <span className="inline-flex items-center justify-center min-w-5 h-[19px] px-1.5 rounded-full bg-rose-600 text-white text-[11px] font-bold tabular-nums shrink-0">
+        <span className="inline-flex items-center justify-center min-w-5 h-[19px] px-1.5 rounded-full bg-red-700 text-white text-[11px] font-bold tabular-nums shrink-0">
           {cards.length}
         </span>
         <span className="flex-1 min-w-0 text-xs font-medium text-slate-400 truncate">{summary}</span>

@@ -52,7 +52,7 @@ export function SnoozeMenu({ onSnooze }: SnoozeMenuProps) {
           e.stopPropagation();
           setOpen((v) => !v);
         }}
-        className="w-6 h-6 rounded-md flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+        className="w-6 h-6 rounded-sm flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
       >
         <Clock size={13} />
       </button>
@@ -60,7 +60,7 @@ export function SnoozeMenu({ onSnooze }: SnoozeMenuProps) {
       {open && (
         <div
           role="menu"
-          className="absolute right-0 top-7 z-20 min-w-44 rounded-md border border-slate-200 bg-white shadow-md py-1 text-xs"
+          className="absolute right-0 top-7 z-20 min-w-44 rounded-lg border border-slate-200 bg-white shadow-md py-1 text-xs"
         >
           <MenuItem onClick={choose(1)} label="พรุ่งนี้" />
           <MenuItem onClick={choose(3)} label="อีก 3 วัน" />

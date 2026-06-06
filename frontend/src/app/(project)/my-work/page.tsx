@@ -214,12 +214,7 @@ function MyWorkPageInner() {
   return (
     <PageShell>
       <div className="flex items-end justify-between gap-7 flex-none dash-reveal d1">
-        <MyWorkGreeting
-          fullName={fullName}
-          todayCount={chipCounts.today}
-          overdueCount={chipCounts.overdue}
-          doneToday={doneToday}
-        />
+        <MyWorkGreeting fullName={fullName} />
         {counts && (
           <MyWorkStatCards
             overdue={counts.overdue}
@@ -235,7 +230,7 @@ function MyWorkPageInner() {
       </div>
 
       {error && (
-        <div className="flex-none px-3 py-2 rounded-md border border-rose-200 bg-rose-50 text-xs text-rose-700">
+        <div className="flex-none px-3 py-2 rounded-lg border border-red-200 bg-red-50 text-xs text-red-700">
           {error}
         </div>
       )}
@@ -294,7 +289,7 @@ function SearchInput({
         value={local}
         onChange={(e) => setLocal(e.target.value)}
         placeholder="ค้นหางาน..."
-        className="h-[35px] pl-9 pr-3 border border-slate-200 rounded-md bg-white text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:border-blue-300 focus:ring-3 focus:ring-blue-50 w-60"
+        className="h-[35px] pl-9 pr-3 border border-slate-200 rounded-sm bg-white text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:border-blue-300 focus:ring-3 focus:ring-blue-50 w-60"
       />
     </label>
   );

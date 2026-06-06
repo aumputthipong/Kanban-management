@@ -355,8 +355,22 @@ WHERE board_id = $1 AND user_id = $2
 RETURNING *;
 
 -- name: GetBoardMemberRole :one
-SELECT role FROM board_members
-WHERE board_id = $1 AND user_id = $2;
+-- Active boards only: a stashed board (deleted_at set) reports no membership so
+-- the board-access gate 404s — stashed boards are unreachable via normal routes
+-- (reads and mutations alike), consistent with anti-enumeration.
+SELECT bm.role
+FROM board_members bm
+JOIN boards b ON b.id = bm.board_id
+WHERE bm.board_id = $1 AND bm.user_id = $2 AND b.deleted_at IS NULL;
+
+-- name: GetStashedBoardMemberRole :one
+-- The mirror of GetBoardMemberRole for the /api/stash routes: only matches when
+-- the board IS stashed, so restore / permanent-delete operate on stashed boards
+-- while normal board routes keep 404ing for them.
+SELECT bm.role
+FROM board_members bm
+JOIN boards b ON b.id = bm.board_id
+WHERE bm.board_id = $1 AND bm.user_id = $2 AND b.deleted_at IS NOT NULL;
 
 -- name: TouchBoardMemberIfStale :exec
 -- Update the membership's last_accessed_at, but skip writes that happened

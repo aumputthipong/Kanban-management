@@ -198,7 +198,8 @@ func setupRoutes(d routerDeps) http.Handler {
 			r.Get("/", httputil.MakeHandler(d.boardHandler.GetStashedBoards))
 
 			r.Route("/{boardID}", func(r chi.Router) {
-				r.Use(requireBoardMember)
+				// Stashed-only gate: these operate on boards that ARE stashed.
+				r.Use(middleware.RequireStashedBoardMember(d.boardService))
 				r.Use(middleware.RequireBoardRole(core.RoleOwner))
 				r.Delete("/", httputil.MakeHandler(d.boardHandler.HardDelete))
 				r.Patch("/restore", httputil.MakeHandler(d.boardHandler.RestoreBoard))

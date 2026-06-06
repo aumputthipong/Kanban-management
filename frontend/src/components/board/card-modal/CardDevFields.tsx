@@ -11,12 +11,14 @@
 
 import { memo, useState } from "react";
 import { Check, Code2, Plus, X } from "lucide-react";
+import type { FormState } from "./CardDetailModal";
 
 interface CardDevFieldsProps {
   acceptanceValue: string;
   onAcceptanceChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
   noteValue: string;
   onNoteChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
+  onCommit: (field: keyof FormState) => void;
   canEdit: boolean;
 }
 
@@ -29,6 +31,7 @@ function CardDevFieldsImpl({
   onAcceptanceChange,
   noteValue,
   onNoteChange,
+  onCommit,
   canEdit,
 }: CardDevFieldsProps) {
   // Seed "open" from existing content so a field that already has a value stays
@@ -60,6 +63,7 @@ function CardDevFieldsImpl({
           canEdit={canEdit}
           onRemove={() => {
             onAcceptanceChange(clearEvent());
+            onCommit("acceptance_criteria");
             setOpenAC(false);
           }}
         >
@@ -69,6 +73,7 @@ function CardDevFieldsImpl({
               rows={3}
               value={acceptanceValue}
               onChange={onAcceptanceChange}
+              onBlur={() => onCommit("acceptance_criteria")}
               placeholder={`เช่น "login ด้วย email ได้" (บรรทัดละข้อ)`}
               className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 resize-y"
             />
@@ -87,6 +92,7 @@ function CardDevFieldsImpl({
           canEdit={canEdit}
           onRemove={() => {
             onNoteChange(clearEvent());
+            onCommit("implementation_note");
             setOpenNote(false);
           }}
         >
@@ -96,6 +102,7 @@ function CardDevFieldsImpl({
               rows={3}
               value={noteValue}
               onChange={onNoteChange}
+              onBlur={() => onCommit("implementation_note")}
               placeholder={`เช่น "ใช้ webhook X", "rate limit Y/min"`}
               className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 resize-y"
             />

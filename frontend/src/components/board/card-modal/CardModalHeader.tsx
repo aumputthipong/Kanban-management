@@ -5,6 +5,7 @@ import { Folder, Pencil, X } from "lucide-react";
 import { StatusDropdown } from "./StatusDropdown";
 import { useBoardStore } from "@/store/useBoardStore";
 import { useBoardActions } from "@/hooks/useBoardActions";
+import type { FormState } from "./CardDetailModal";
 
 interface CardModalHeaderProps {
   cardId: string;
@@ -12,6 +13,7 @@ interface CardModalHeaderProps {
   boardId: string;
   title: string;
   onTitleChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onCommit: (field: keyof FormState) => void;
   canEdit: boolean;
   onClose: () => void;
 }
@@ -22,6 +24,7 @@ function CardModalHeaderImpl({
   boardId,
   title,
   onTitleChange,
+  onCommit,
   canEdit,
   onClose,
 }: CardModalHeaderProps) {
@@ -40,6 +43,13 @@ function CardModalHeaderImpl({
               type="text"
               value={title}
               onChange={onTitleChange}
+              onBlur={() => onCommit("title")}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  e.currentTarget.blur();
+                }
+              }}
               placeholder="Enter card title..."
               className="w-full text-lg font-semibold tracking-tight text-slate-900 bg-transparent border border-transparent rounded-lg px-3 py-0.5 focus:outline-none focus:bg-white focus:border-blue-400 focus:ring-4 focus:ring-blue-50 hover:bg-slate-100 hover:border-slate-200 transition-colors cursor-text placeholder:text-slate-300 pr-10"
             />

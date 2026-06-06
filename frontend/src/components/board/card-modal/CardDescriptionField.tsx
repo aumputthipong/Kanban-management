@@ -1,16 +1,19 @@
 "use client";
 
 import { memo } from "react";
+import type { FormState } from "./CardDetailModal";
 
 interface CardDescriptionFieldProps {
   value: string;
   onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
+  onCommit: (field: keyof FormState) => void;
   canEdit: boolean;
 }
 
 function CardDescriptionFieldImpl({
   value,
   onChange,
+  onCommit,
   canEdit,
 }: CardDescriptionFieldProps) {
   return (
@@ -23,6 +26,7 @@ function CardDescriptionFieldImpl({
           rows={4}
           value={value}
           onChange={onChange}
+          onBlur={() => onCommit("description")}
           placeholder="เพิ่มรายละเอียดงาน…"
           className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none"
         />

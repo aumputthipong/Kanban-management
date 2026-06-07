@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { useBoardStore } from "@/store/useBoardStore";
 import { apiClient, ApiError } from "@/lib/apiClient";
-import type { Column, BoardMember } from "@/types/board";
+import type { Board, Column, BoardMember } from "@/types/board";
 
 interface MeResponse {
   user_id?: string;
@@ -24,7 +24,8 @@ interface MeResponse {
  * sensible defaults instead of failing the whole bootstrap.
  */
 export function useBoardData(boardId: string) {
-  const { setColumns, setCurrentUser, setBoardMembers, setLoading } = useBoardStore();
+  const { setColumns, setCurrentUser, setBoardMembers, setBoardMeta, setLoading } =
+    useBoardStore();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -37,10 +38,11 @@ export function useBoardData(boardId: string) {
       setLoading(true);
       setError(null);
       try {
-        const [boardRes, meRes, membersRes] = await Promise.allSettled([
+        const [boardRes, meRes, membersRes, listRes] = await Promise.allSettled([
           apiClient<Column[]>(`/boards/${boardId}`),
           apiClient<MeResponse>(`/auth/me`),
           apiClient<BoardMember[]>(`/boards/${boardId}/members`),
+          apiClient<Board[]>(`/boards`),
         ]);
 
         if (cancelled) return;
@@ -57,6 +59,15 @@ export function useBoardData(boardId: string) {
         setColumns(boardRes.value);
         if (meRes.status === "fulfilled" && meRes.value?.user_id) {
           setCurrentUser(meRes.value.user_id);
+        }
+        // GET /boards/:id is columns-only — the board's title/icon/color come
+        // from the list endpoint (same source the settings page reads). Fall
+        // back to leaving boardMeta null so the header shows its default label.
+        if (listRes.status === "fulfilled" && Array.isArray(listRes.value)) {
+          const meta = listRes.value.find((b) => b.id === boardId);
+          setBoardMeta(
+            meta ? { title: meta.title, color: meta.color, icon: meta.icon } : null,
+          );
         }
         const members =
           membersRes.status === "fulfilled" && Array.isArray(membersRes.value)
@@ -78,7 +89,7 @@ export function useBoardData(boardId: string) {
     return () => {
       cancelled = true;
     };
-  }, [boardId, setColumns, setCurrentUser, setBoardMembers, setLoading]);
+  }, [boardId, setColumns, setCurrentUser, setBoardMembers, setBoardMeta, setLoading]);
 
   return { isLoading, error };
 }

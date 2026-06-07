@@ -16,10 +16,23 @@ import { create } from "zustand";
  * `currentUserId` and `boardMembers` are set once on board load and used by
  * permission-aware UI (hiding manager-only buttons, etc.).
  */
+/**
+ * The viewed board's visual identity (title + accent colour + glyph key),
+ * hydrated once on board load so the header can show "which project am I in".
+ * Kept separate from `columns` because GET /boards/:id returns columns only —
+ * the board row's title/icon/color come from the list endpoint.
+ */
+export interface BoardMeta {
+  title: string;
+  color?: string;
+  icon?: string;
+}
+
 interface BoardState {
   columns: Column[];
   currentUserId: string;
   boardMembers: BoardMember[];
+  boardMeta: BoardMeta | null;
   isLoading: boolean;
   filterAssigneeId: string | null;
   filterPriorities: string[];
@@ -27,6 +40,8 @@ interface BoardState {
   setColumns: (columns: Column[]) => void;
   setCurrentUser: (userId: string) => void;
   setBoardMembers: (members: BoardMember[]) => void;
+  setBoardMeta: (meta: BoardMeta | null) => void;
+  patchBoardMeta: (patch: Partial<BoardMeta>) => void;
   setLoading: (v: boolean) => void;
   setFilterAssigneeId: (id: string | null) => void;
   toggleFilterPriority: (p: string) => void;
@@ -61,6 +76,7 @@ export const useBoardStore = create<BoardState>((set) => ({
   columns: [],
   currentUserId: "",
   boardMembers: [],
+  boardMeta: null,
   isLoading: false,
   filterAssigneeId: null,
   filterPriorities: [],
@@ -68,6 +84,11 @@ export const useBoardStore = create<BoardState>((set) => ({
   setColumns: (columns) => set({ columns }),
   setCurrentUser: (userId) => set({ currentUserId: userId }),
   setBoardMembers: (members) => set({ boardMembers: members }),
+  setBoardMeta: (meta) => set({ boardMeta: meta }),
+  patchBoardMeta: (patch) =>
+    set((state) =>
+      state.boardMeta ? { boardMeta: { ...state.boardMeta, ...patch } } : state,
+    ),
   setLoading: (v) => set({ isLoading: v }),
   setFilterAssigneeId: (id) => set({ filterAssigneeId: id }),
   toggleFilterPriority: (p) =>

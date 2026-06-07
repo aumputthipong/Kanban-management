@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { Check } from "lucide-react";
 
 import { Board } from "@/types/board";
+import { useBoardStore } from "@/store/useBoardStore";
 import { useBoardSettings } from "@/hooks/useBoardSettings";
 import { useCanManageBoard, useCanDeleteBoard } from "@/hooks/useBoardRole";
 
@@ -19,8 +20,22 @@ interface BoardSettingsFormProps {
 
 export function BoardSettingsForm({ boardId, board }: BoardSettingsFormProps) {
   const { updateField, deleteBoard, isDeleting } = useBoardSettings(boardId);
+  const patchBoardMeta = useBoardStore((s) => s.patchBoardMeta);
   const canManage = useCanManageBoard();
   const canDelete = useCanDeleteBoard();
+
+  // Keep the persistent BoardHeader (rendered by the board layout, which stays
+  // mounted across tabs) in sync with identity edits — title/icon/color — so
+  // the header updates live instead of waiting for a full board reload.
+  const saveField = (field: string, value: string | number) => {
+    if (
+      (field === "title" || field === "icon" || field === "color") &&
+      typeof value === "string"
+    ) {
+      patchBoardMeta({ [field]: value });
+    }
+    return updateField(field, value);
+  };
 
   const [active, setActive] = useState("sec-general");
   const [savedVisible, setSavedVisible] = useState(false);
@@ -96,7 +111,7 @@ export function BoardSettingsForm({ boardId, board }: BoardSettingsFormProps) {
             initialColor={board.color ?? ""}
             initialIcon={board.icon ?? ""}
             canManage={canManage}
-            onSaveField={(field, value) => updateField(field, value)}
+            onSaveField={(field, value) => saveField(field, value)}
             onSaved={showSaved}
           />
           {canDelete && <DangerSection onArchive={deleteBoard} isArchiving={isDeleting} />}

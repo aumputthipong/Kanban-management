@@ -141,19 +141,48 @@ func (h *BoardHandler) UpdateCard(w http.ResponseWriter, r *http.Request) error 
 		return httputil.NewAPIError(http.StatusForbidden, "You do not have permission to edit this card", nil)
 	}
 
-	var title string
+	// PATCH semantics: a nil request field means "leave unchanged". The
+	// UpdateCard SQL overwrites title/description/due_date/assignee_id/priority/
+	// estimated_hours directly (no COALESCE on those columns), so the handler
+	// must merge each omitted field from the existing row — otherwise a partial
+	// PATCH clobbers the untouched columns. This bit the My Work snooze, which
+	// sends only { due_date }: every other column was wiped and, because
+	// assignee_id went NULL, the card vanished from the user's inbox.
+	// (acceptance_criteria / implementation_note are the exception — their SQL
+	// uses COALESCE, so we still pass req.* straight through for them.)
+	title := existing.Title
 	if req.Title != nil {
 		title = *req.Title
+	}
+	description := existing.Description
+	if req.Description != nil {
+		description = req.Description
+	}
+	dueDate := existing.DueDate
+	if req.DueDate != nil {
+		dueDate = util.PtrStringToTimePtr(req.DueDate)
+	}
+	assigneeID := existing.AssigneeID
+	if req.AssigneeID != nil {
+		assigneeID = req.AssigneeID
+	}
+	priority := existing.Priority
+	if req.Priority != nil {
+		priority = req.Priority
+	}
+	estimatedHours := util.PgNumericToFloat64Ptr(existing.EstimatedHours)
+	if req.EstimatedHours != nil {
+		estimatedHours = req.EstimatedHours
 	}
 
 	card, err := h.boardService.UpdateCard(r.Context(), service.UpdateCardParams{
 		ID:                 cardIDStr,
 		Title:              title,
-		Description:        req.Description,
-		DueDate:            util.PtrStringToTimePtr(req.DueDate),
-		AssigneeID:         req.AssigneeID,
-		Priority:           req.Priority,
-		EstimatedHours:     req.EstimatedHours,
+		Description:        description,
+		DueDate:            dueDate,
+		AssigneeID:         assigneeID,
+		Priority:           priority,
+		EstimatedHours:     estimatedHours,
 		TagIDs:             req.TagIDs,
 		AcceptanceCriteria: req.AcceptanceCriteria,
 		ImplementationNote: req.ImplementationNote,

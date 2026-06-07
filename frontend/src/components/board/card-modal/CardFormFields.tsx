@@ -6,6 +6,7 @@ import { Calendar, Clock, User, Tag } from "lucide-react";
 import type { BoardMember, Tag as TagType } from "@/types/board";
 import { FormState } from "./CardDetailModal";
 import { TagSelector } from "./TagSelector";
+import { AssigneeDropdown } from "./AssigneeDropdown";
 import { formatThaiDate } from "@/utils/date_helper";
 import { QUICK_DATE_OPTIONS, QUICK_HOURS_OPTIONS } from "@/utils/quickSelect";
 import { getAvatarColor } from "@/utils/avatar";
@@ -35,21 +36,16 @@ export function CardFormFields({ form, members, assigneeName, boardId, onChange,
           <User size={10} /> Assignee
         </label>
         {canEdit ? (
-          <select
+          <AssigneeDropdown
+            members={members}
             value={form.assignee_id}
-            onChange={(e) => {
-              onChange("assignee_id")(e);
+            onSelect={(id) => {
+              onChange("assignee_id")({
+                target: { value: id },
+              } as React.ChangeEvent<HTMLSelectElement>);
               onCommit("assignee_id");
             }}
-            className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white"
-          >
-            <option value="">Unassigned</option>
-            {members.map((m) => (
-              <option key={m.user_id} value={m.user_id}>
-                {m.full_name} ({m.email})
-              </option>
-            ))}
-          </select>
+          />
         ) : (
           <div className="flex items-center gap-2 px-1">
             {assigneeName ? (

@@ -1,8 +1,10 @@
 // lib/boardAppearance.tsx
 //
 // Single source of truth for a board's visual identity (accent colour + glyph).
-// Both the settings picker (GeneralSection) and the project-list cards read
-// from here so a board looks identical everywhere it appears.
+// The settings picker (GeneralSection), the project-list cards, the board
+// Header (BoardHeader), and the workspace Sidebar all read from here so a board
+// looks identical everywhere it appears — Header is "you are here", Sidebar is
+// navigation, but both share the same glyph + accent.
 //
 // The colour palette is a fixed set of per-board *identity* colours — not
 // semantic status colours. The default accent is the design-system primary

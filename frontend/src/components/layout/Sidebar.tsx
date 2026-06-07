@@ -12,10 +12,15 @@ import {
 } from "lucide-react";
 import { useSidebarStore } from "@/store/useSidebarStore";
 import { useBelowLg } from "@/hooks/useBelowLg";
+import { boardColor, BoardGlyph } from "@/lib/boardAppearance";
 
 interface Board {
   id: string;
   title: string;
+  /** Board identity — same fields the Header reads. Optional so callers that
+   * only have id/title still type-check; BoardGlyph/boardColor fall back. */
+  icon?: string;
+  color?: string;
 }
 
 interface SidebarProps {
@@ -129,13 +134,15 @@ export function Sidebar({ boards }: SidebarProps) {
                       : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
                   }`}
                 >
+                  {/* Board identity icon — same BoardGlyph + accent the Header
+                      uses, so the sidebar mirrors "which project". Active state
+                      is the item bg highlight, not the icon (icon stays put). */}
                   <span
-                    className={`w-2 h-2 rounded-full shrink-0 ${
-                      isActive
-                        ? "bg-blue-600"
-                        : "bg-slate-300 group-hover:bg-slate-400"
-                    }`}
-                  />
+                    className="w-5 h-5 rounded flex items-center justify-center text-white shrink-0"
+                    style={{ background: boardColor(board.color) }}
+                  >
+                    <BoardGlyph icon={board.icon} size={13} />
+                  </span>
                   {!isCollapsed && (
                     <span className="truncate">{board.title}</span>
                   )}

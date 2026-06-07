@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Calendar, Clock } from "lucide-react";
+import { Clock } from "lucide-react";
 
 interface SnoozeMenuProps {
-  onSnooze: (dueDate: string) => void;
+  /** Fires with the new due date (YYYY-MM-DD) + a Thai label for the toast. */
+  onSnooze: (dueDate: string, label: string) => void;
 }
 
 function isoOffset(days: number): string {
@@ -16,6 +17,16 @@ function isoOffset(days: number): string {
     String(d.getDate()).padStart(2, "0"),
   ].join("-");
 }
+
+// Two presets only — +1 / +7 map to intuitive labels. The "+3 days" preset was
+// dropped (a magic number with no mental model) and so was the custom date
+// picker (it duplicated the card modal's due-date field and made "any day"
+// deferral a one-click habit). Reschedule here is a quick triage nudge, not a
+// full editor — pick a real date in the card if you need precision.
+const OPTIONS: { offset: number; label: string }[] = [
+  { offset: 1, label: "พรุ่งนี้" },
+  { offset: 7, label: "สัปดาห์หน้า" },
+];
 
 export function SnoozeMenu({ onSnooze }: SnoozeMenuProps) {
   const [open, setOpen] = useState(false);
@@ -34,11 +45,11 @@ export function SnoozeMenu({ onSnooze }: SnoozeMenuProps) {
     return () => document.removeEventListener("pointerdown", onDown);
   }, [open]);
 
-  const choose = (offset: number) => (e: React.MouseEvent) => {
+  const choose = (offset: number, label: string) => (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setOpen(false);
-    onSnooze(isoOffset(offset));
+    onSnooze(isoOffset(offset), label);
   };
 
   return (
@@ -62,10 +73,9 @@ export function SnoozeMenu({ onSnooze }: SnoozeMenuProps) {
           role="menu"
           className="absolute right-0 top-7 z-20 min-w-44 rounded-lg border border-slate-200 bg-white shadow-md py-1 text-xs"
         >
-          <MenuItem onClick={choose(1)} label="พรุ่งนี้" />
-          <MenuItem onClick={choose(3)} label="อีก 3 วัน" />
-          <MenuItem onClick={choose(7)} label="สัปดาห์หน้า" />
-          <DateInputItem onPick={(iso) => { setOpen(false); onSnooze(iso); }} />
+          {OPTIONS.map((o) => (
+            <MenuItem key={o.offset} onClick={choose(o.offset, o.label)} label={o.label} />
+          ))}
         </div>
       )}
     </div>
@@ -82,22 +92,5 @@ function MenuItem({ onClick, label }: { onClick: (e: React.MouseEvent) => void; 
     >
       {label}
     </button>
-  );
-}
-
-function DateInputItem({ onPick }: { onPick: (iso: string) => void }) {
-  return (
-    <label className="flex items-center gap-2 px-3 py-1.5 text-slate-700 hover:bg-slate-50 cursor-pointer border-t border-slate-100">
-      <Calendar size={12} className="text-slate-400" />
-      <span>เลือกวัน...</span>
-      <input
-        type="date"
-        className="ml-auto text-[11px] border border-slate-200 rounded px-1 py-0.5"
-        onClick={(e) => e.stopPropagation()}
-        onChange={(e) => {
-          if (e.target.value) onPick(e.target.value);
-        }}
-      />
-    </label>
   );
 }

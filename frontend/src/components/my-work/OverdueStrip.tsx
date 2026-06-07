@@ -8,7 +8,7 @@ import type { MyWorkCard } from "@/types/myWork";
 interface OverdueStripProps {
   cards: MyWorkCard[];
   onComplete: (cardId: string) => void;
-  onSnooze: (cardId: string, dueDate: string) => void;
+  onSnooze: (cardId: string, dueDate: string, label: string) => void;
   className?: string;
 }
 

@@ -10,6 +10,7 @@ import { DashboardGrid } from "@/components/my-work/DashboardGrid";
 import { MyWorkSkeleton } from "@/components/my-work/MyWorkSkeleton";
 import { apiClient } from "@/lib/apiClient";
 import { completeMyTask, fetchMyWork, snoozeCardDueDate } from "@/lib/myWorkApi";
+import { useToastStore } from "@/store/useToastStore";
 import {
   isMyWorkFilter,
   type MyWorkCounts,
@@ -170,10 +171,32 @@ function MyWorkPageInner() {
     [data, filter],
   );
 
+  const showToast = useToastStore((s) => s.show);
+
+  // Revert a snooze back to the card's previous due_date. "" restores a card
+  // that had no date (the backend treats an empty due_date as a clear). Reuses
+  // the same PATCH endpoint as the forward snooze.
+  const undoSnooze = useCallback(
+    async (cardId: string, originalDueDate: string) => {
+      try {
+        await snoozeCardDueDate(cardId, originalDueDate);
+        const refreshed = await fetchMyWork({ filter });
+        setData(refreshed);
+        setCounts(refreshed.counts);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "ย้อนกลับไม่สำเร็จ");
+      }
+    },
+    [filter],
+  );
+
   const handleSnooze = useCallback(
-    async (cardId: string, dueDate: string) => {
+    async (cardId: string, dueDate: string, label: string) => {
       if (!data) return;
       const prev = data;
+      // Capture the original date before the optimistic drop so Undo can
+      // restore it (the refetch below replaces `data`, losing the old value).
+      const original = prev.cards.find((c) => c.id === cardId)?.due_date ?? "";
       // Optimistic: drop the card; refetch repopulates it into its new bucket
       // and refreshes the counts so the hero + panels stay in sync.
       setData({ ...prev, cards: prev.cards.filter((c) => c.id !== cardId) });
@@ -182,12 +205,18 @@ function MyWorkPageInner() {
         const refreshed = await fetchMyWork({ filter });
         setData(refreshed);
         setCounts(refreshed.counts);
+        showToast({
+          message: `เลื่อนไป${label}แล้ว`,
+          actionLabel: "ย้อนกลับ",
+          onAction: () => undoSnooze(cardId, original),
+          duration: 5000,
+        });
       } catch (err) {
         setData(prev);
         setError(err instanceof Error ? err.message : "เลื่อนวันไม่สำเร็จ");
       }
     },
-    [data, filter],
+    [data, filter, showToast, undoSnooze],
   );
 
   const filteredCards = useMemo(() => {

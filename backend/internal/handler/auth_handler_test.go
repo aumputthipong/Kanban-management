@@ -19,10 +19,11 @@ import (
 
 // TestMain seeds JWT_SECRET so issueSession can sign tokens. The handler's
 // token.Generate fatals on empty secret — this would crash the test binary
-// rather than fail a single test, so we set it before any test runs.
+// rather than fail a single test, so we set it before any test runs. Must be
+// ≥32 bytes: the security hardening rejects shorter secrets at startup.
 func TestMain(m *testing.M) {
 	if os.Getenv("JWT_SECRET") == "" {
-		os.Setenv("JWT_SECRET", "test-secret-do-not-use-in-prod")
+		os.Setenv("JWT_SECRET", "test-secret-do-not-use-in-prod-0123456789")
 	}
 	os.Exit(m.Run())
 }

@@ -43,8 +43,10 @@ func setupRoutes(d routerDeps) http.Handler {
 
 	// Global middleware. SentryRecoverer captures the panic before chi's
 	// stdlib Recoverer turns it into a 500 — both run, in this order.
+	// RequestLogger replaces chi's default Logger so OAuth callback query
+	// strings (`code`, `state`) are redacted before they reach any log sink.
 	r.Use(chiMiddleware.RequestID)
-	r.Use(chiMiddleware.Logger)
+	r.Use(middleware.RequestLogger)
 	r.Use(observability.SentryRecoverer())
 	r.Use(chiMiddleware.Recoverer)
 	r.Use(middleware.SecurityHeaders(d.production))
@@ -62,8 +64,12 @@ func setupRoutes(d routerDeps) http.Handler {
 	r.Handle("/metrics", observability.MetricsHandler())
 
 	// API docs (Swagger UI). Spec is regenerated via `swag init` — see Makefile.
-	// In production, gate behind an admin flag or remove if not desired.
-	r.Get("/docs/*", httpSwagger.Handler(httpSwagger.URL("/docs/doc.json")))
+	// Disabled in production: a public API map gives attackers a free roadmap of
+	// endpoints, parameter names, and auth flows. Set ENV != "production" locally
+	// or behind a private network to enable.
+	if !d.production {
+		r.Get("/docs/*", httpSwagger.Handler(httpSwagger.URL("/docs/doc.json")))
+	}
 
 	r.Route("/api/auth", func(r chi.Router) {
 		r.Use(middleware.AuthRateLimit())

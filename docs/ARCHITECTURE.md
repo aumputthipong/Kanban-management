@@ -127,6 +127,108 @@ The WebSocket event for the same action is *idempotent* on the local store — r
 
 ---
 
+## Planning section
+
+A meeting-notes-style capture surface that lives next to the Kanban board.
+The session → item → promote pipeline lets a requirement owner write down
+what was discussed and selectively push the actionable rows onto the
+board as cards, with the source link preserved both ways.
+
+```
+                                            ┌──────────────────────────┐
+                                            │ planning_sessions        │
+                                            │   per board, has many ↓  │
+                                            └─────────────┬────────────┘
+                                                          │
+                          ┌───────────────────────────────┼───────────────────────────────┐
+                          │                               │                               │
+                          ▼                               ▼                               ▼
+            ┌──────────────────────────┐   ┌──────────────────────────┐   ┌──────────────────────────┐
+            │ planning_items           │   │ planning_items           │   │ planning_items           │
+            │ type=REQ status=live     │   │ type=DEC status=live     │   │ type=Q   status=live     │
+            └─────────────┬────────────┘   └──────────────────────────┘   └──────────────────────────┘
+                          │ PromoteItem (tx)
+                          ▼
+            ┌──────────────────────────┐                                  ┌──────────────────────────┐
+            │ cards                    │ ◀── promoted_to_card_id ──────── │ planning_items           │
+            │ board.first TODO column  │      (back-link FK)              │ status=promoted          │
+            │ AC + Note copied over    │                                  │ claim auto-released      │
+            └──────────────────────────┘                                  └──────────────────────────┘
+```
+
+### Entities
+
+- **`planning_sessions`** — one per meeting. Scoped per board, soft-cascades on board delete.
+- **`planning_items`** — atomic rows. Three types (REQ / DEC / Q) and four statuses (live → selected → promoted, or live → dropped). Carry optional acceptance criteria + implementation note that survive promotion to a card.
+- **`planning_item_comments`** — per-item thread with soft delete so a deleted comment leaves a tombstone in place rather than shifting the thread.
+
+### Critical paths
+
+- **PromoteItem** is the only cross-table mutation in the section. Inside one transaction it:
+  1. Takes `SELECT ... FOR UPDATE` on the planning item (concurrent promoters serialise — see the integration test `TestPromoteItem_ConcurrentPromote_ExactlyOneSucceeds`).
+  2. Inserts a `cards` row in the board's first `TODO` column, copying `acceptance_criteria` + `implementation_note` forward.
+  3. Sets `status='promoted'` + `promoted_to_card_id=<new card>`.
+  4. Auto-releases any claim (clears `claimed_by_user_id` + `claimed_at`).
+- **ClaimItem** is atomic without a transaction: the `WHERE claimed_by_user_id IS NULL` predicate in the UPDATE is the serialisation point. Concurrent claimers see one success + N-1 `ErrPlanningItemAlreadyClaimed`.
+- **Card backlink** uses partial index `idx_planning_items_promoted_card WHERE promoted_to_card_id IS NOT NULL` so the reverse lookup `GET /api/cards/:cardID/source` stays cheap even as the cards table grows.
+
+### REST surface (all under `/api/planning`)
+
+```
+GET    /boards/:boardID/planning/sessions       list sessions on a board
+POST   /boards/:boardID/planning/sessions       create session
+GET    /planning/sessions/:sessionID            session detail (items inline)
+PATCH  /planning/sessions/:sessionID            edit session (PATCH semantics)
+DELETE /planning/sessions/:sessionID            delete session
+
+POST   /planning/sessions/:sessionID/items      capture item
+PATCH  /planning/items/:itemID                  edit item (type/title/status/AC/Note)
+DELETE /planning/items/:itemID                  delete item
+POST   /planning/items/:itemID/promote          → card
+
+GET    /planning/items/:itemID/comments         list thread (includes tombstones)
+POST   /planning/items/:itemID/comments         add comment
+PATCH  /planning/comments/:commentID            edit (author only)
+DELETE /planning/comments/:commentID            soft delete (author OR board owner/manager)
+
+POST   /planning/items/:itemID/claim            claim ("I'm looking at this")
+DELETE /planning/items/:itemID/claim            release (own OR force-release by owner/manager)
+
+GET    /cards/:cardID/source                    reverse: which planning row produced this card?
+```
+
+Permission gate is the standard 404-not-403 pattern. The handler resolves
+`boardID` from the request's nested ID (item → session → board for most
+routes; comment → item → session → board for the comment edit/delete
+paths) and calls `requireMembership` before any mutation. Non-members
+get 404 with no signal about whether the resource exists.
+
+### Activity event types
+
+Every mutation logs into `activities` after the underlying write commits.
+The full set the feed renderer knows about:
+
+```
+planning.session_{created,updated,deleted}
+planning.item_{created,updated,deleted,promoted}
+planning.comment_{created,edited,deleted}
+planning.item_{claimed,released}
+planning.claim_auto_released_on_promote
+```
+
+The comment + claim payloads carry a body preview / item title so the
+team feed (`TeamTabContent.describeActivity`) renders human-readable
+lines without joining back to the source tables.
+
+### Frontend layout
+
+- Page: `frontend/src/app/(project)/board/[boardId]/planning/[sessionId]/page.tsx`
+- Data hook: `useSessionItems(boardId, sessionId)` — initial fetch + optimistic CRUD over the items array, plus claim/release helpers.
+- Per-item thread hook: `usePlanningComments(itemId, currentUserId)` — lazy, never fetches until the consumer calls `load()`. Multi-instance design documented in the hook header.
+- Composition: `SessionCaptureView` orchestrates filter chips, items list, capture input, sidebar, deep-link scroll. `ItemRow` extracts a popover, claim affordance, action button cluster, and details panel (see `frontend/src/components/board/planning/`).
+
+---
+
 ## Cross-cutting concerns
 
 | Concern                  | Where it lives                                                            |

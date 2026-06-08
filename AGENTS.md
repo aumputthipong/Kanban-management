@@ -78,6 +78,41 @@ handler/  → service/  → db/ (sqlc-generated)
 - WS handlers ต้อง **idempotent** — รับ event ของ state ที่เป็นอยู่แล้ว = no-op (เพราะ writer ไม่ filter broadcast ของตัวเอง).
 - เพิ่ม event type ใหม่ → อัปเดต enum ทั้งฝั่ง Go และ TypeScript พร้อมกัน.
 
+### Activity event types (reference)
+
+Constants live in [`backend/internal/service/activity_service.go`](backend/internal/service/activity_service.go). The team feed renderer ([`frontend/src/components/board/overview/TeamTabContent.tsx`](frontend/src/components/board/overview/TeamTabContent.tsx) `describeActivity` + `eventBadge`) must have a case for every entry — adding an event without a renderer leaves the raw string ("planning.foo_bar") visible in the feed.
+
+| Area | Event type | Payload struct |
+|---|---|---|
+| Card | `card.created` | `CardCreatedPayload` |
+| Card | `card.moved` | `CardMovedPayload` |
+| Card | `card.updated` | `CardUpdatedPayload` (`fields []string`) |
+| Card | `card.deleted` | `CardDeletedPayload` |
+| Card | `card.done_toggled` | `CardDoneToggledPayload` |
+| Column | `column.created` | `ColumnCreatedPayload` |
+| Column | `column.deleted` | `ColumnDeletedPayload` |
+| Column | `column.renamed` | `ColumnRenamedPayload` |
+| Member | `member.added` | inline `{user_id, role}` |
+| Planning · session | `planning.session_created` | `PlanningSessionCreatedPayload` |
+| Planning · session | `planning.session_updated` | `PlanningSessionUpdatedPayload` (`fields []string`) |
+| Planning · session | `planning.session_deleted` | `PlanningSessionDeletedPayload` |
+| Planning · item | `planning.item_created` | `PlanningItemCreatedPayload` |
+| Planning · item | `planning.item_updated` | `PlanningItemUpdatedPayload` (`fields []string`, optional `previous_type`) |
+| Planning · item | `planning.item_deleted` | `PlanningItemDeletedPayload` |
+| Planning · item | `planning.item_promoted` | `PlanningItemPromotedPayload` (`to_card_id`) |
+| Planning · comment | `planning.comment_created` | `PlanningCommentCreatedPayload` (`body_preview` ≤80 chars) |
+| Planning · comment | `planning.comment_edited` | `PlanningCommentEditedPayload` |
+| Planning · comment | `planning.comment_deleted` | `PlanningCommentDeletedPayload` |
+| Planning · claim | `planning.item_claimed` | `PlanningItemClaimedPayload` |
+| Planning · claim | `planning.item_released` | `PlanningItemReleasedPayload` |
+| Planning · claim | `planning.claim_auto_released_on_promote` | `PlanningItemReleasedPayload` |
+
+**Adding a new event:**
+1. Add the constant + payload struct in `activity_service.go`.
+2. Emit it from the relevant handler (after the underlying mutation commits).
+3. Add a `case` to `describeActivity` AND an icon mapping in `eventBadge` so the feed doesn't fall through to the raw event-type string.
+4. Mention it in the table above so the next contributor doesn't have to grep.
+
 ### REST API conventions
 
 - **Endpoint shape:**

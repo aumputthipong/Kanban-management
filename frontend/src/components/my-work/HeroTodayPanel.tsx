@@ -9,7 +9,7 @@ interface HeroTodayPanelProps {
   /** Tasks completed in this session — drives the daily progress meter. */
   doneToday: number;
   onComplete: (cardId: string) => void;
-  onSnooze: (cardId: string, dueDate: string) => void;
+  onSnooze: (cardId: string, dueDate: string, label: string) => void;
   className?: string;
 }
 

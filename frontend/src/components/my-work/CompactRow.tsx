@@ -9,7 +9,7 @@ import { SnoozeMenu } from "./SnoozeMenu";
 interface CompactRowProps {
   card: MyWorkCard;
   onComplete: (cardId: string) => void;
-  onSnooze: (cardId: string, dueDate: string) => void;
+  onSnooze: (cardId: string, dueDate: string, label: string) => void;
   /** Drop the due/estimate columns (used by the "no date" panel). */
   slim?: boolean;
   /** Taller, slightly larger title — used inside the Today hero panel. */
@@ -155,7 +155,7 @@ export function CompactRow({ card, onComplete, onSnooze, slim = false, hero = fa
       )}
 
       <div className="w-6 flex justify-end shrink-0 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
-        <SnoozeMenu onSnooze={(dueDate) => onSnooze(card.id, dueDate)} />
+        <SnoozeMenu onSnooze={(dueDate, label) => onSnooze(card.id, dueDate, label)} />
       </div>
     </Link>
   );

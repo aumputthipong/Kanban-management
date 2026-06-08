@@ -380,16 +380,16 @@ func TestUpdateCard_NonMember_Returns404(t *testing.T) {
 
 // TestUpdateCard_PATCHSemantics_OmittedTitle pins a regression that AGENTS.md
 // flags as silent-clobber-prone: when a PATCH client omits `title`, the
-// service must receive Title="" (the zero value) — NOT have the existing
-// title accidentally cleared at the SQL layer. The COALESCE in the SQL query
-// is what prevents the clobber; this test asserts the contract at the handler
-// boundary.
+// existing title must survive. The UpdateCard SQL overwrites the title column
+// directly (no COALESCE on it), so the *handler* is what preserves it — by
+// merging the omitted field from the existing row before calling the service.
+// This test asserts that merge at the handler boundary.
 func TestUpdateCard_PATCHSemantics_OmittedTitle(t *testing.T) {
 	creator := ptr(validUserID)
 	var received service.UpdateCardParams
 	svc := &mock.MockBoardService{
 		GetCardFn: func(ctx context.Context, cardID string) (db.Card, error) {
-			return cardOwnedBy(creator, nil), nil
+			return cardOwnedBy(creator, nil), nil // Title: "Existing"
 		},
 		GetBoardIDByColumnFn: func(ctx context.Context, columnID string) (string, error) {
 			return validBoardID, nil
@@ -413,9 +413,62 @@ func TestUpdateCard_PATCHSemantics_OmittedTitle(t *testing.T) {
 	httputil.MakeHandler(h.UpdateCard)(w, req)
 
 	assert.Equal(t, http.StatusOK, w.Code)
-	assert.Equal(t, "", received.Title, "omitted title must arrive as empty string; SQL COALESCE preserves existing value")
+	assert.Equal(t, "Existing", received.Title, "omitted title must be preserved from the existing row, not clobbered to empty")
 	require.NotNil(t, received.Description)
 	assert.Equal(t, "hello", *received.Description)
+}
+
+// TestUpdateCard_PartialPatch_PreservesUntouchedFields is the My Work snooze
+// regression: a PATCH that touches only due_date must NOT wipe assignee,
+// priority, description, or estimated_hours. Before the handler-merge fix,
+// the overwrite-style SQL nulled every omitted column — clearing assignee_id
+// made the card disappear from the owner's inbox.
+func TestUpdateCard_PartialPatch_PreservesUntouchedFields(t *testing.T) {
+	assignee := ptr(validUserID)
+	var received service.UpdateCardParams
+	existing := db.Card{
+		ID:          validCardID,
+		ColumnID:    validColumnID,
+		Title:       "Keep me",
+		Description: ptr("keep this desc"),
+		AssigneeID:  assignee,
+		Priority:    ptr("high"),
+		CreatedBy:   ptr(otherUserID),
+	}
+	svc := &mock.MockBoardService{
+		GetCardFn: func(ctx context.Context, cardID string) (db.Card, error) {
+			return existing, nil
+		},
+		GetBoardIDByColumnFn: func(ctx context.Context, columnID string) (string, error) {
+			return validBoardID, nil
+		},
+		GetBoardMemberRoleFn: func(ctx context.Context, boardID, userID string) (string, error) {
+			return "member", nil // not manager — relies on the assignee carve-out
+		},
+		UpdateCardFn: func(ctx context.Context, arg service.UpdateCardParams) (db.Card, error) {
+			received = arg
+			return db.Card{ID: arg.ID}, nil
+		},
+	}
+	h := NewBoardHandler(svc, nil, nil)
+
+	// Snooze: only due_date supplied, exactly like lib/myWorkApi snoozeCardDueDate.
+	body := map[string]any{"due_date": "2026-06-10"}
+	req := withUserID(httptest.NewRequest(http.MethodPatch, "/cards/"+validCardID, jsonBody(t, body)), validUserID)
+	req = chiCtx(req, "cardID", validCardID)
+	w := httptest.NewRecorder()
+
+	httputil.MakeHandler(h.UpdateCard)(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Equal(t, "Keep me", received.Title, "title must survive a due_date-only patch")
+	require.NotNil(t, received.AssigneeID, "assignee must not be nulled — card would vanish from My Work")
+	assert.Equal(t, validUserID, *received.AssigneeID)
+	require.NotNil(t, received.Description)
+	assert.Equal(t, "keep this desc", *received.Description)
+	require.NotNil(t, received.Priority)
+	assert.Equal(t, "high", *received.Priority)
+	require.NotNil(t, received.DueDate, "due_date must be applied")
 }
 
 // TestUpdateCard_PATCHSemantics_EmptyTitleRejected verifies the validator

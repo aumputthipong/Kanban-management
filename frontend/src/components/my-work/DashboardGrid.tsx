@@ -14,7 +14,7 @@ interface DashboardGridProps {
   counts: MyWorkCounts;
   doneToday: number;
   onComplete: (cardId: string) => void;
-  onSnooze: (cardId: string, dueDate: string) => void;
+  onSnooze: (cardId: string, dueDate: string, label: string) => void;
 }
 
 const FOCUS_META: Record<

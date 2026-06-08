@@ -57,8 +57,12 @@ function CardSubtaskSectionImpl({
 
       {total > 0 && (
         <div className="w-full bg-slate-100 rounded-full h-1.5 mb-3 overflow-hidden">
+          {/* No transition. Animating width triggers layout on every frame
+              and the 500ms duration made each tick feel lagged — by the time
+              the bar caught up the user had ticked the next box. Optimistic
+              state already updates instantly; let the bar match. */}
           <div
-            className="bg-blue-500 h-1.5 rounded-full transition-all duration-500"
+            className="bg-blue-500 h-1.5 rounded-full"
             style={{ width: `${progressPercent}%` }}
           />
         </div>

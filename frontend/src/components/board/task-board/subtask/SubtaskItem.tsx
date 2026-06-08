@@ -87,7 +87,7 @@ export const SubtaskItem = memo(function SubtaskItem({
         <button
           type="button"
           onClick={() => setMenuOpen((v) => !v)}
-          className={`p-1 rounded transition-all ${
+          className={`p-1 rounded transition-colors ${
             menuOpen
               ? "bg-slate-200 text-slate-700"
               : "text-slate-400 opacity-0 group-hover:opacity-100 hover:bg-slate-200 hover:text-slate-700"

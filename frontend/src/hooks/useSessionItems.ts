@@ -34,6 +34,7 @@ export interface UseSessionItemsResult {
   changeType: (item: PlanningItem, t: PlanningItemType) => void;
   removeItem: (item: PlanningItem) => Promise<void>;
   promoteSelected: () => Promise<void>;
+  promoteOne: (item: PlanningItem) => Promise<void>;
   claimItem: (item: PlanningItem, currentUserId: string) => Promise<void>;
   releaseItem: (item: PlanningItem) => Promise<void>;
 }
@@ -260,6 +261,27 @@ export function useSessionItems(
     [showToast],
   );
 
+  // Direct per-row promote — the primary "→ ส่งขึ้น Board" action on a live
+  // row. Uses the same endpoint as the batch path, just for one item, so the
+  // user can send a requirement up without the select-then-promote two-step.
+  const promoteOne = useCallback(
+    async (item: PlanningItem) => {
+      try {
+        const res = await planningApi.promoteItem(item.id);
+        setItems((prev) =>
+          prev.map((cur) => (cur.id === item.id ? res.item : cur)),
+        );
+        showToast({ message: "ส่งเข้า Board แล้ว", duration: 2500 });
+      } catch {
+        showToast({
+          message: `ส่งเข้า Board ไม่ได้: ${item.title}`,
+          duration: 4000,
+        });
+      }
+    },
+    [showToast],
+  );
+
   const promoteSelected = useCallback(async () => {
     const targets = items.filter((it) => it.status === "selected");
     if (targets.length === 0) {
@@ -301,6 +323,7 @@ export function useSessionItems(
     changeType,
     removeItem,
     promoteSelected,
+    promoteOne,
     claimItem,
     releaseItem,
   };

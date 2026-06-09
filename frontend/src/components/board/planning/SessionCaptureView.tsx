@@ -10,6 +10,7 @@ import type { PlanningItemType } from "@/types/planning";
 import { CaptureInput } from "./CaptureInput";
 import { ExportDialog } from "./ExportDialog";
 import { ItemRow } from "./ItemRow";
+import { OpenQuestionsCallout } from "./OpenQuestionsCallout";
 import { SessionSidebar } from "./SessionSidebar";
 import {
   applySessionFilter,
@@ -48,6 +49,7 @@ export function SessionCaptureView({ boardId, sessionId }: Props) {
     changeType,
     removeItem,
     promoteSelected,
+    promoteOne,
     claimItem,
     releaseItem,
   } = useSessionItems(boardId, sessionId);
@@ -96,6 +98,22 @@ export function SessionCaptureView({ boardId, sessionId }: Props) {
 
   const visibleItems = useMemo(() => applySessionFilter(items, filter), [items, filter]);
   const filterCounts = useMemo(() => computeFilterCounts(items), [items]);
+  const openQuestions = useMemo(
+    () => items.filter((it) => it.type === "Q" && it.status === "live"),
+    [items],
+  );
+
+  // Jump to a question's row from the callout: make sure it's visible under
+  // the current filter, then scroll to it. #item-<id> anchors live on each
+  // ItemRow already (used by the card-modal deep-link too).
+  const jumpToItem = (itemId: string) => {
+    if (filter !== "all" && filter !== "q") handleFilterChange("q");
+    requestAnimationFrame(() => {
+      document
+        .getElementById(`item-${itemId}`)
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+  };
 
   const handleFilterChange = (next: SessionFilter) => {
     setFilter(next);
@@ -155,6 +173,13 @@ export function SessionCaptureView({ boardId, sessionId }: Props) {
             {savedAt && <>บันทึกอัตโนมัติแล้ว · {formatRelativeFromNow(savedAt)}</>}
           </p>
 
+          {openQuestions.length > 0 && (
+            <OpenQuestionsCallout
+              questions={openQuestions}
+              onJump={jumpToItem}
+            />
+          )}
+
           <div className="mt-4">
             <SessionFilterChips
               active={filter}
@@ -198,6 +223,7 @@ export function SessionCaptureView({ boardId, sessionId }: Props) {
                     )
                   }
                   onToggleStatus={(s) => toggleStatus(it, s)}
+                  onPromote={() => promoteOne(it)}
                   onDelete={() => removeItem(it)}
                   onClaim={() => {
                     if (currentUserId) claimItem(it, currentUserId);

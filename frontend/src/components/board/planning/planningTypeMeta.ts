@@ -3,7 +3,17 @@
 // each item row's small chip so the colour and Thai label stay consistent
 // across the two surfaces.
 
+import { Gavel, HelpCircle, Target, type LucideIcon } from "lucide-react";
 import type { PlanningItemType } from "@/types/planning";
+
+// Leading glyph on each type chip — Requirement = target (what we're aiming
+// for), Decision = gavel (what's been ruled), Question = help circle. Mirrors
+// the planning redesign so REQ/DEC/Q read at a glance, not just by colour.
+export const TYPE_ICON: Record<PlanningItemType, LucideIcon> = {
+  REQ: Target,
+  DEC: Gavel,
+  Q: HelpCircle,
+};
 
 // Full Thai label used in tooltips on the small REQ/DEC/Q chips so a hover
 // reveals "what does this code actually mean" — keeps row density compact

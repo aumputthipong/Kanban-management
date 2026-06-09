@@ -3,7 +3,14 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FileText, Plus } from "lucide-react";
+import {
+  ArrowRight,
+  CheckCircle2,
+  ChevronRight,
+  FileText,
+  HelpCircle,
+  Plus,
+} from "lucide-react";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useToastStore } from "@/store/useToastStore";
 import { planningApi } from "@/lib/planningApi";
@@ -91,18 +98,23 @@ export function SessionListView({ boardId }: Props) {
         <EmptyState onCreate={createSession} creating={creating} />
       ) : (
         <>
-          <div className="mb-4 flex flex-wrap items-center gap-4 text-xs text-slate-500">
-            <span>
-              <strong className="text-slate-800">{sessions.length}</strong> บันทึก
-            </span>
-            <span>
-              ส่งเข้า Board แล้ว{" "}
-              <strong className="text-indigo-700">{promoted}</strong>
-            </span>
-            <span>
-              คำถามค้าง{" "}
-              <strong className="text-amber-700">{openQuestions}</strong>
-            </span>
+          <div className="mb-5 flex flex-wrap items-center gap-2">
+            <StatPill icon={<FileText size={14} />}>
+              <strong className="font-bold text-slate-800">
+                {sessions.length}
+              </strong>{" "}
+              บันทึก
+            </StatPill>
+            <StatPill
+              icon={<HelpCircle size={14} />}
+              variant={openQuestions > 0 ? "alert" : "neutral"}
+            >
+              <strong className="font-bold">{openQuestions}</strong> คำถามค้าง ·
+              รอตอบ
+            </StatPill>
+            <StatPill icon={<ArrowRight size={14} />} variant="ok">
+              <strong className="font-bold">{promoted}</strong> ส่งเข้า Board แล้ว
+            </StatPill>
           </div>
 
           {grouped.map((group) => (
@@ -123,6 +135,52 @@ export function SessionListView({ boardId }: Props) {
   );
 }
 
+// Each row answers, at a glance: what state is this session in (open
+// questions / all sent / fresh / in-play), what's inside (type tally), and
+// how much already went to the Board (progress). All derived from the
+// summary counts — no extra fetch.
+type SessionState = "followup" | "done" | "fresh" | "active";
+
+const STATE_THEME: Record<
+  SessionState,
+  { accent: string; tile: string; Icon: typeof FileText }
+> = {
+  followup: {
+    accent: "bg-amber-400",
+    tile: "bg-amber-50 text-amber-600",
+    Icon: HelpCircle,
+  },
+  active: {
+    accent: "bg-indigo-400",
+    tile: "bg-indigo-50 text-indigo-600",
+    Icon: FileText,
+  },
+  done: {
+    accent: "bg-emerald-400",
+    tile: "bg-emerald-50 text-emerald-600",
+    Icon: CheckCircle2,
+  },
+  fresh: {
+    accent: "bg-slate-300",
+    tile: "bg-slate-100 text-slate-400",
+    Icon: FileText,
+  },
+};
+
+function sessionStat(s: PlanningSessionSummary) {
+  const live = s.req_count + s.dec_count + s.q_count;
+  // "to send" universe excludes the paused (dropped) pile — those have their
+  // own bucket and aren't pending promotion.
+  const total = live + s.promoted_count;
+  const pct = total > 0 ? Math.round((s.promoted_count / total) * 100) : 0;
+  let state: SessionState;
+  if (s.q_count > 0) state = "followup";
+  else if (s.promoted_count > 0 && live === 0) state = "done";
+  else if (total <= 1 && s.promoted_count === 0) state = "fresh";
+  else state = "active";
+  return { live, total, pct, state };
+}
+
 function SessionRow({
   boardId,
   session,
@@ -130,49 +188,129 @@ function SessionRow({
   boardId: string;
   session: PlanningSessionSummary;
 }) {
+  const { total, pct, state } = sessionStat(session);
+  const theme = STATE_THEME[state];
+  const Icon = theme.Icon;
+
   return (
     <Link
       href={`/board/${boardId}/planning/${session.id}`}
-      className="group flex flex-wrap items-center gap-4 rounded-xl border border-slate-200 bg-white p-4 transition-colors hover:border-indigo-300 hover:bg-indigo-50/30"
+      className="group relative flex items-stretch gap-3.5 rounded-xl border border-slate-200 bg-white py-4 pl-5 pr-3 transition-colors hover:border-indigo-300 hover:bg-indigo-50/30"
     >
-      <FileText size={18} className="shrink-0 text-slate-400" />
-      <div className="flex-1 min-w-0">
+      <span
+        className={`absolute left-0 top-3 bottom-3 w-[3px] rounded-full ${theme.accent}`}
+      />
+      <span
+        className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${theme.tile}`}
+      >
+        <Icon size={18} />
+      </span>
+
+      <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-semibold text-slate-800 group-hover:text-indigo-700">
           {session.title}
         </p>
-        <p className="text-xs text-slate-500">
-          {session.label ? `${session.label} · ` : ""}
-          {formatRelativeFromNow(session.updated_at)}
-        </p>
+        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-400">
+          <span>
+            {session.label ? `${session.label} · ` : ""}
+            {formatRelativeFromNow(session.updated_at)}
+          </span>
+          <Tally session={session} />
+        </div>
       </div>
-      <div className="flex items-center gap-1.5 text-[10px] font-bold">
-        {session.req_count > 0 && (
-          <span className="rounded bg-red-50 px-1.5 py-0.5 text-red-700">
-            {session.req_count} REQ
+
+      <div className="flex w-40 shrink-0 flex-col items-end justify-center gap-2">
+        {state === "followup" ? (
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-bold text-amber-700">
+            <HelpCircle size={13} />
+            {session.q_count} คำถามค้าง
           </span>
-        )}
-        {session.dec_count > 0 && (
-          <span className="rounded bg-blue-50 px-1.5 py-0.5 text-blue-700">
-            {session.dec_count} DEC
+        ) : state === "done" ? (
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700">
+            <CheckCircle2 size={13} />
+            ส่งครบแล้ว
           </span>
-        )}
-        {session.q_count > 0 && (
-          <span className="rounded bg-amber-50 px-1.5 py-0.5 text-amber-700">
-            {session.q_count} Q
+        ) : state === "fresh" ? (
+          <span className="text-[11px] font-semibold text-slate-400">
+            ยังไม่ได้คัดส่ง
           </span>
-        )}
-        {session.dropped_count > 0 && (
-          <span className="rounded bg-slate-100 px-1.5 py-0.5 text-slate-500 line-through">
-            {session.dropped_count}
-          </span>
+        ) : null}
+
+        {total > 0 && state !== "fresh" && (
+          <div className="w-full">
+            <div className="mb-1 text-right text-[11px] font-semibold text-slate-500">
+              <strong className="font-bold text-slate-800">
+                {session.promoted_count}
+              </strong>
+              /{total} ส่งเข้า Board
+            </div>
+            <div className="h-1 w-full overflow-hidden rounded-full bg-slate-200">
+              <div
+                className={`h-full rounded-full ${
+                  pct === 100 ? "bg-emerald-500" : "bg-indigo-500"
+                }`}
+                style={{ width: `${pct}%` }}
+              />
+            </div>
+          </div>
         )}
       </div>
-      {session.promoted_count > 0 && (
-        <span className="text-xs text-indigo-600">
-          → {session.promoted_count} promoted
-        </span>
-      )}
+
+      <ChevronRight
+        size={16}
+        className="self-center text-slate-300 group-hover:text-indigo-400"
+      />
     </Link>
+  );
+}
+
+// Type tally — coloured dots + counts for the live REQ/DEC/Q items, matching
+// the chip palette used inside a session.
+function Tally({ session }: { session: PlanningSessionSummary }) {
+  const parts: [string, number, string][] = [
+    ["REQ", session.req_count, "bg-red-500"],
+    ["DEC", session.dec_count, "bg-blue-500"],
+    ["Q", session.q_count, "bg-amber-500"],
+  ];
+  const shown = parts.filter(([, c]) => c > 0);
+  if (shown.length === 0) return null;
+  return (
+    <span className="flex items-center gap-2.5">
+      <span className="text-slate-300">·</span>
+      {shown.map(([label, count, dot]) => (
+        <span
+          key={label}
+          className="inline-flex items-center gap-1 font-semibold text-slate-500 tabular-nums"
+        >
+          <span className={`h-1.5 w-1.5 rounded-sm ${dot}`} />
+          {count} {label}
+        </span>
+      ))}
+    </span>
+  );
+}
+
+function StatPill({
+  icon,
+  variant = "neutral",
+  children,
+}: {
+  icon: React.ReactNode;
+  variant?: "neutral" | "alert" | "ok";
+  children: React.ReactNode;
+}) {
+  const styles = {
+    neutral: "border-slate-200 bg-white text-slate-600 [&>svg]:text-slate-400",
+    alert: "border-amber-200 bg-amber-50 text-amber-700 [&>svg]:text-amber-600",
+    ok: "border-emerald-200 bg-emerald-50 text-emerald-700 [&>svg]:text-emerald-600",
+  }[variant];
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium ${styles}`}
+    >
+      {icon}
+      <span>{children}</span>
+    </span>
   );
 }
 

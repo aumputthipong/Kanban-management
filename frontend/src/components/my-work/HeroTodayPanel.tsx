@@ -1,23 +1,28 @@
 "use client";
 
 import { Sun } from "lucide-react";
-import { CompactRow } from "./CompactRow";
+import { ProjectGroupedList } from "./ProjectGroupedList";
+import type { BoardMeta } from "./boardMeta";
 import type { MyWorkCard } from "@/types/myWork";
 
 interface HeroTodayPanelProps {
   cards: MyWorkCard[];
   /** Tasks completed in this session — drives the daily progress meter. */
   doneToday: number;
+  boardMeta: Map<string, BoardMeta>;
   onComplete: (cardId: string) => void;
   onSnooze: (cardId: string, dueDate: string, label: string) => void;
+  onOpenCard: (card: MyWorkCard) => void;
   className?: string;
 }
 
 export function HeroTodayPanel({
   cards,
   doneToday,
+  boardMeta,
   onComplete,
   onSnooze,
+  onOpenCard,
   className = "",
 }: HeroTodayPanelProps) {
   const total = cards.length + doneToday;
@@ -71,9 +76,14 @@ export function HeroTodayPanel({
             </span>
           </div>
         ) : (
-          cards.map((c) => (
-            <CompactRow key={c.id} card={c} hero onComplete={onComplete} onSnooze={onSnooze} />
-          ))
+          <ProjectGroupedList
+            cards={cards}
+            boardMeta={boardMeta}
+            hero
+            onComplete={onComplete}
+            onSnooze={onSnooze}
+            onOpenCard={onOpenCard}
+          />
         )}
       </div>
     </section>

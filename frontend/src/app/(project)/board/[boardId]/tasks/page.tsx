@@ -1,7 +1,8 @@
 "use client";
 
-import { use, useState, useRef } from "react";
+import { use, useEffect, useState, useRef } from "react";
 import { KanbanBoard } from "@/components/board/task-board/KanbanBoard";
+import { useCardHighlightStore } from "@/store/useCardHighlightStore";
 import { useBoardActions } from "@/hooks/useBoardActions";
 import { useBoardStore } from "@/store/useBoardStore";
 import { Plus } from "lucide-react";
@@ -98,6 +99,24 @@ function BoardToolbar({ boardId }: { boardId: string }) {
 
 export default function KanbanPage({ params }: PageProps) {
   const { boardId } = use(params);
+  const setTarget = useCardHighlightStore((s) => s.setTarget);
+
+  // Deep link from My Work ("เปิดในบอร์ด" → ?card=<id>): flag the card for the
+  // highlight, then strip the param so a reload/back doesn't re-trigger it.
+  // Reads window.location directly to avoid a useSearchParams Suspense boundary.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const cardId = params.get("card");
+    if (!cardId) return;
+    setTarget(cardId);
+    params.delete("card");
+    const qs = params.toString();
+    window.history.replaceState(
+      null,
+      "",
+      `${window.location.pathname}${qs ? `?${qs}` : ""}`,
+    );
+  }, [setTarget]);
 
   return (
     <div className="animate-in fade-in slide-in-from-bottom-2 duration-500 flex flex-col">

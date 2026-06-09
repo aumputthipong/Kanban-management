@@ -1,68 +1,45 @@
 "use client";
 
-import { AlertTriangle, Calendar, CalendarDays, CalendarRange, Inbox, Sun } from "lucide-react";
-import { CompactRow } from "./CompactRow";
+import { Calendar, CalendarDays, CalendarRange, Inbox } from "lucide-react";
 import { DashboardPanel } from "./DashboardPanel";
 import { HeroTodayPanel } from "./HeroTodayPanel";
 import { MyWorkEmptyState } from "./MyWorkEmptyState";
 import { OverdueStrip } from "./OverdueStrip";
-import type { MyWorkCard, MyWorkCounts, MyWorkFilter } from "@/types/myWork";
+import { ProjectGroupedList } from "./ProjectGroupedList";
+import type { BoardMeta } from "./boardMeta";
+import type { MyWorkCard, MyWorkCounts } from "@/types/myWork";
 
 interface DashboardGridProps {
-  filter: MyWorkFilter;
   cards: MyWorkCard[];
   counts: MyWorkCounts;
+  boardMeta: Map<string, BoardMeta>;
   doneToday: number;
   onComplete: (cardId: string) => void;
   onSnooze: (cardId: string, dueDate: string, label: string) => void;
+  onOpenCard: (card: MyWorkCard) => void;
 }
 
-const FOCUS_META: Record<
-  Exclude<MyWorkFilter, "all">,
-  { title: string; icon: React.ReactNode; tone: "danger" | "neutral" | "tint"; danger?: boolean; slim?: boolean }
-> = {
-  overdue: { title: "เลยกำหนด", icon: <AlertTriangle size={13} />, tone: "danger", danger: true },
-  today: { title: "วันนี้", icon: <Sun size={13} />, tone: "tint" },
-  this_week: { title: "สัปดาห์นี้", icon: <CalendarDays size={13} />, tone: "tint" },
-  no_date: { title: "ไม่มีวันที่", icon: <Inbox size={13} />, tone: "neutral", slim: true },
-};
-
 export function DashboardGrid({
-  filter,
   cards,
   counts,
+  boardMeta,
   doneToday,
   onComplete,
   onSnooze,
+  onOpenCard,
 }: DashboardGridProps) {
-  const rowProps = { onComplete, onSnooze };
+  const rowProps = { onComplete, onSnooze, onOpenCard };
 
-  // ── Focused single-group view (any chip other than "ทั้งหมด") ──
-  if (filter !== "all") {
-    const meta = FOCUS_META[filter];
+  // Whole inbox empty — one calm empty state instead of four empty panels.
+  if (cards.length === 0) {
     return (
-      <div className="grid grid-cols-1 min-h-0 lg:flex-1">
-        <DashboardPanel
-          icon={meta.icon}
-          iconTone={meta.tone}
-          title={meta.title}
-          danger={meta.danger}
-          count={cards.length}
-          className="min-h-0 dash-reveal d3"
-        >
-          {cards.length === 0 ? (
-            <div className="p-6">
-              <MyWorkEmptyState filter={filter} />
-            </div>
-          ) : (
-            cards.map((c) => <CompactRow key={c.id} card={c} slim={meta.slim} {...rowProps} />)
-          )}
-        </DashboardPanel>
+      <div className="min-h-0 lg:flex-1 flex items-center justify-center dash-reveal d3">
+        <MyWorkEmptyState filter="all" />
       </div>
     );
   }
 
-  // ── Overview (ทั้งหมด): Today hero is primary; overdue is a quiet strip ──
+  // Today hero is primary; overdue is a quiet strip; the rail holds the rest.
   const today = cards.filter((c) => c.group === "today");
   const overdue = cards.filter((c) => c.group === "overdue");
   const upcoming = cards
@@ -77,10 +54,16 @@ export function DashboardGrid({
         <HeroTodayPanel
           cards={today}
           doneToday={doneToday}
+          boardMeta={boardMeta}
           className="dash-reveal d3 flex-1"
           {...rowProps}
         />
-        <OverdueStrip cards={overdue} className="dash-reveal d4" {...rowProps} />
+        <OverdueStrip
+          cards={overdue}
+          boardMeta={boardMeta}
+          className="dash-reveal d4"
+          {...rowProps}
+        />
       </div>
 
       {/* RIGHT RAIL: secondary + tertiary */}
@@ -94,7 +77,7 @@ export function DashboardGrid({
           className="dash-reveal d3"
         >
           {upcoming.length > 0 ? (
-            upcoming.map((c) => <CompactRow key={c.id} card={c} {...rowProps} />)
+            <ProjectGroupedList cards={upcoming} boardMeta={boardMeta} {...rowProps} />
           ) : (
             <div>
               <UpcomingClearedRow icon={<CalendarDays size={15} />} label="สัปดาห์นี้" />
@@ -113,7 +96,7 @@ export function DashboardGrid({
           {noDate.length === 0 ? (
             <ClearedState text="ทุกงานมีกำหนดส่งแล้ว" sub="ไม่มีงานค้างไว้โดยไม่มีวันที่" />
           ) : (
-            noDate.map((c) => <CompactRow key={c.id} card={c} slim {...rowProps} />)
+            <ProjectGroupedList cards={noDate} boardMeta={boardMeta} slim {...rowProps} />
           )}
         </DashboardPanel>
       </div>

@@ -2,13 +2,16 @@
 
 import { useState } from "react";
 import { AlertTriangle, ChevronDown } from "lucide-react";
-import { CompactRow } from "./CompactRow";
+import { ProjectGroupedList } from "./ProjectGroupedList";
+import type { BoardMeta } from "./boardMeta";
 import type { MyWorkCard } from "@/types/myWork";
 
 interface OverdueStripProps {
   cards: MyWorkCard[];
+  boardMeta: Map<string, BoardMeta>;
   onComplete: (cardId: string) => void;
   onSnooze: (cardId: string, dueDate: string, label: string) => void;
+  onOpenCard: (card: MyWorkCard) => void;
   className?: string;
 }
 
@@ -17,7 +20,7 @@ interface OverdueStripProps {
  * countable, but it never dominates the page (per the Today-first hierarchy).
  * Red is reduced to a small badge + icon, not a full alarm section.
  */
-export function OverdueStrip({ cards, onComplete, onSnooze, className = "" }: OverdueStripProps) {
+export function OverdueStrip({ cards, boardMeta, onComplete, onSnooze, onOpenCard, className = "" }: OverdueStripProps) {
   const [open, setOpen] = useState(false);
   if (cards.length === 0) return null;
 
@@ -54,9 +57,13 @@ export function OverdueStrip({ cards, onComplete, onSnooze, className = "" }: Ov
 
       {open && (
         <div className="max-h-[230px] overflow-auto dash-scroll border-t border-slate-100">
-          {cards.map((c) => (
-            <CompactRow key={c.id} card={c} onComplete={onComplete} onSnooze={onSnooze} />
-          ))}
+          <ProjectGroupedList
+            cards={cards}
+            boardMeta={boardMeta}
+            onComplete={onComplete}
+            onSnooze={onSnooze}
+            onOpenCard={onOpenCard}
+          />
         </div>
       )}
     </div>

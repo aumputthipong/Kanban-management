@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { Calendar, Check, Clock } from "lucide-react";
 import { formatRelativeDueDate, formatThaiDate } from "@/utils/date_helper";
 import type { MyWorkCard, MyWorkGroup, MyWorkStatus } from "@/types/myWork";
@@ -10,29 +9,12 @@ interface CompactRowProps {
   card: MyWorkCard;
   onComplete: (cardId: string) => void;
   onSnooze: (cardId: string, dueDate: string, label: string) => void;
+  /** Open the task detail modal (replaces navigating to the board). */
+  onOpenCard: (card: MyWorkCard) => void;
   /** Drop the due/estimate columns (used by the "no date" panel). */
   slim?: boolean;
   /** Taller, slightly larger title — used inside the Today hero panel. */
   hero?: boolean;
-}
-
-// Deterministic project dot color — boards have no stored color, so we hash the
-// id onto a fixed palette that mirrors the sidebar project dots.
-const BOARD_PALETTE = [
-  "#1E40AF",
-  "#0EA5A4",
-  "#7C3AED",
-  "#F59E0B",
-  "#EC4899",
-  "#10B981",
-  "#3B82F6",
-  "#F97316",
-];
-
-function boardColor(id: string): string {
-  let hash = 0;
-  for (let i = 0; i < id.length; i++) hash = (hash * 31 + id.charCodeAt(i)) >>> 0;
-  return BOARD_PALETTE[hash % BOARD_PALETTE.length];
 }
 
 function statusDot(status: MyWorkStatus): string {
@@ -84,7 +66,7 @@ const PRI_BAR: Record<NonNullable<MyWorkCard["priority"]> | "none", string> = {
   none: "bg-slate-400",
 };
 
-export function CompactRow({ card, onComplete, onSnooze, slim = false, hero = false }: CompactRowProps) {
+export function CompactRow({ card, onComplete, onSnooze, onOpenCard, slim = false, hero = false }: CompactRowProps) {
   const handleComplete = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -92,9 +74,17 @@ export function CompactRow({ card, onComplete, onSnooze, slim = false, hero = fa
   };
 
   return (
-    <Link
-      href={`/board/${card.board_id}/tasks`}
-      className={`group relative flex items-center gap-3 pl-[18px] pr-3 border-b border-slate-100 last:border-b-0 hover:bg-slate-50 transition-colors ${hero ? "h-[52px]" : "h-12"}`}
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={() => onOpenCard(card)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onOpenCard(card);
+        }
+      }}
+      className={`group relative flex items-center gap-3 pl-[18px] pr-3 border-b border-slate-100 last:border-b-0 hover:bg-slate-50 transition-colors cursor-pointer ${hero ? "h-[52px]" : "h-12"}`}
     >
       <span
         aria-hidden
@@ -114,20 +104,12 @@ export function CompactRow({ card, onComplete, onSnooze, slim = false, hero = fa
         <span className={`font-semibold text-slate-900 truncate min-w-0 ${hero ? "text-sm" : "text-[13.5px]"}`}>
           {card.title}
         </span>
-        <span className="flex items-center gap-2 shrink-0">
-          <span
-            aria-hidden
-            title={card.board_name}
-            className="w-2 h-2 rounded-full shrink-0"
-            style={{ background: boardColor(card.board_id) }}
-          />
-          {card.column_name && (
-            <span className="hidden md:inline-flex items-center gap-1.5 text-[11.5px] font-medium text-slate-500 whitespace-nowrap">
-              <span aria-hidden className={`w-1.5 h-1.5 rounded-full shrink-0 ${statusDot(card.status)}`} />
-              {card.column_name}
-            </span>
-          )}
-        </span>
+        {card.column_name && (
+          <span className="hidden md:inline-flex items-center gap-1.5 shrink-0 text-[11.5px] font-medium text-slate-500 whitespace-nowrap">
+            <span aria-hidden className={`w-1.5 h-1.5 rounded-full shrink-0 ${statusDot(card.status)}`} />
+            {card.column_name}
+          </span>
+        )}
       </div>
 
       {!slim && (
@@ -157,6 +139,6 @@ export function CompactRow({ card, onComplete, onSnooze, slim = false, hero = fa
       <div className="w-6 flex justify-end shrink-0 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
         <SnoozeMenu onSnooze={(dueDate, label) => onSnooze(card.id, dueDate, label)} />
       </div>
-    </Link>
+    </div>
   );
 }

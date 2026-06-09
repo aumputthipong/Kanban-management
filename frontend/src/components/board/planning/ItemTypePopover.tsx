@@ -16,6 +16,7 @@ import {
   TYPE_CHIP,
   TYPE_CHIP_ACTIVE,
   TYPE_CYCLE,
+  TYPE_ICON,
   TYPE_LONG,
   TYPE_TOOLTIP,
 } from "./planningTypeMeta";
@@ -58,10 +59,14 @@ export function ItemTypePopover({ type, disabled, onChange }: Props) {
             ? "ส่งเข้า Board แล้ว เปลี่ยนประเภทไม่ได้"
             : `${TYPE_TOOLTIP[type]} · คลิกเพื่อเปลี่ยน`
         }
-        className={`rounded border px-1.5 py-0 text-[10px] font-bold uppercase ${TYPE_CHIP[type]} ${
+        className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[10px] font-bold uppercase ${TYPE_CHIP[type]} ${
           disabled ? "cursor-not-allowed opacity-60" : "hover:brightness-95"
         }`}
       >
+        {(() => {
+          const Icon = TYPE_ICON[type];
+          return <Icon size={11} />;
+        })()}
         {type}
       </button>
       {open && (

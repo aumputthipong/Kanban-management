@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { Trash2, X } from "lucide-react";
+import { Check, CircleCheck, Inbox, Trash2, X } from "lucide-react";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 // ── colour palette ────────────────────────────────────────────────────────────
@@ -81,6 +81,10 @@ export function ColumnOptionsModal({
   };
 
   const selectedHex = getColumnColorHex(color);
+  // Mirror the real column tint formula (Column.tsx) so the preview is truthful.
+  const previewBg = selectedHex
+    ? `color-mix(in srgb, ${selectedHex} 12%, white)`
+    : "#f1f5f9";
 
   return createPortal(
     <>
@@ -143,42 +147,94 @@ export function ColumnOptionsModal({
                   </button>
                 ))}
               </div>
+              <p className="text-[11px] leading-snug text-slate-400">
+                ประเภทกำหนด{" "}
+                <span className="font-semibold text-slate-500">พฤติกรรม</span> —
+                คอลัมน์ DONE จะยุบเป็นแถบและการ์ดแสดงแบบเสร็จแล้ว
+              </p>
             </div>
 
-            {/* ── color ── */}
+            {/* ── color ── identity, with a live header preview ── */}
             <div className="flex flex-col gap-2">
               <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
                 Color
               </label>
-              <div className="flex items-center gap-2 flex-wrap">
-                {COLUMN_COLOR_PALETTE.map(({ key, hex, label }) => (
-                  <button
-                    key={String(key)}
-                    title={label}
-                    onClick={() => setColor(key)}
-                    className={`w-7 h-7 rounded-full border-2 transition-transform hover:scale-110 ${
-                      color === key
-                        ? "border-slate-700 scale-110"
-                        : "border-transparent"
-                    }`}
-                    style={{
-                      backgroundColor: hex ?? "#e2e8f0",
-                      outline: color === key ? "2px solid #1e293b" : "none",
-                      outlineOffset: "2px",
-                    }}
-                  />
-                ))}
-              </div>
-              {selectedHex && (
-                <div className="flex items-center gap-2 text-xs text-slate-500">
+
+              {/* Live preview of the actual column header */}
+              <div
+                className="rounded-lg border border-slate-100 px-3 py-2.5"
+                style={{ backgroundColor: previewBg }}
+              >
+                <div className="flex items-center gap-2">
                   <span
-                    className="w-3 h-3 rounded-full inline-block"
-                    style={{ backgroundColor: selectedHex }}
+                    className="w-2.5 h-2.5 rounded-full shrink-0"
+                    style={{ backgroundColor: selectedHex ?? "#cbd5e1" }}
                   />
-                  Selected:{" "}
-                  {COLUMN_COLOR_PALETTE.find((c) => c.key === color)?.label}
+                  {category === "DONE" ? (
+                    <CircleCheck size={15} className="text-emerald-600 shrink-0" />
+                  ) : (
+                    <Inbox size={15} className="text-slate-400 shrink-0" />
+                  )}
+                  <span className="text-sm font-bold text-slate-700 truncate">
+                    {title.trim() || "ชื่อคอลัมน์"}
+                  </span>
+                  <span
+                    className={`ml-auto text-xs font-bold px-2 py-0.5 rounded-full min-w-5 text-center ${
+                      category === "DONE"
+                        ? "bg-emerald-100 text-emerald-700"
+                        : "bg-slate-200 text-slate-500"
+                    }`}
+                  >
+                    {cardCount}
+                  </span>
                 </div>
-              )}
+              </div>
+
+              {/* Curated swatch grid with labels + clear selected state */}
+              <div className="grid grid-cols-3 gap-1.5">
+                {COLUMN_COLOR_PALETTE.map(({ key, hex, label }) => {
+                  const isSel = color === key;
+                  return (
+                    <button
+                      key={String(key)}
+                      onClick={() => setColor(key)}
+                      className={`flex flex-col items-center gap-1 rounded-lg px-2 py-2 border transition-colors ${
+                        isSel
+                          ? "border-slate-300 bg-slate-50"
+                          : "border-transparent hover:bg-slate-50"
+                      }`}
+                    >
+                      <span
+                        className={`relative w-6 h-6 rounded-full flex items-center justify-center ring-2 ring-offset-2 ring-offset-white transition ${
+                          isSel ? "ring-slate-700" : "ring-transparent"
+                        }`}
+                        style={{ backgroundColor: hex ?? "#e2e8f0" }}
+                      >
+                        {isSel && (
+                          <Check
+                            size={12}
+                            strokeWidth={3}
+                            className={key ? "text-white" : "text-slate-600"}
+                          />
+                        )}
+                      </span>
+                      <span
+                        className={`text-[10.5px] font-semibold ${
+                          isSel ? "text-slate-700" : "text-slate-400"
+                        }`}
+                      >
+                        {label}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <p className="text-[11px] leading-snug text-slate-400">
+                สีคือ{" "}
+                <span className="font-semibold text-slate-500">identity</span>{" "}
+                ของคอลัมน์ ไม่ใช่สถานะ — ทุกสีคุมความสว่างใกล้กันเพื่อให้บอร์ดดูสงบ
+              </p>
             </div>
           </div>
 

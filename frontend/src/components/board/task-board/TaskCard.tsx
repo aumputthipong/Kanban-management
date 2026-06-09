@@ -5,6 +5,7 @@ import { memo } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import {
   Calendar,
+  Check,
   Clock,
   UserRound,
 } from "lucide-react";
@@ -78,7 +79,7 @@ export const TaskCard = memo(function TaskCard({
           isDragging
             ? "opacity-0 pointer-events-none"
             : card.is_done
-              ? "bg-slate-50/50 border-slate-200 opacity-80 shadow-sm cursor-grab"
+              ? "bg-emerald-50 border-emerald-200 shadow-sm cursor-grab hover:border-emerald-300"
               : "bg-white border-slate-200 shadow-sm cursor-grab hover:shadow-md hover:border-blue-300"
         }`}
       >
@@ -104,13 +105,21 @@ export const TaskCard = memo(function TaskCard({
               </div>
             ) : null}
 
-            <p
-              className={`text-sm font-semibold leading-snug transition-all line-clamp-2  ${
-                card.is_done ? "text-slate-400 line-through" : "text-slate-700"
-              }`}
-            >
-              {card.title}
-            </p>
+            {/* Done = check icon + state-done tint (design.md: never strikethrough) */}
+            <div className="flex items-start gap-1.5">
+              {card.is_done && (
+                <span className="mt-px shrink-0 w-[18px] h-[18px] rounded-full bg-emerald-600 text-white flex items-center justify-center">
+                  <Check size={11} strokeWidth={3} />
+                </span>
+              )}
+              <p
+                className={`text-sm font-semibold leading-snug transition-all line-clamp-2 ${
+                  card.is_done ? "text-emerald-900" : "text-slate-700"
+                }`}
+              >
+                {card.title}
+              </p>
+            </div>
           </div>
         </div>
 

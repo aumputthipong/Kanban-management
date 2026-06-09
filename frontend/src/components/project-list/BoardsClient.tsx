@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { LayoutGrid, List, Search, Zap, LayoutTemplate } from "lucide-react";
 import type { Board } from "@/types/board";
+import { useProjectViewStore } from "@/store/useProjectViewStore";
 import { ProjectCard } from "./ProjectCard";
 
 type SortOption =
@@ -77,7 +78,10 @@ function GroupLabel({
 export function BoardsClient({ boards }: BoardsClientProps) {
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<SortOption>("recent");
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  // Layout choice persists in localStorage (see useProjectViewStore) so it
+  // survives reloads, the same way the sidebar collapse state does.
+  const viewMode = useProjectViewStore((s) => s.viewMode);
+  const setViewMode = useProjectViewStore((s) => s.setViewMode);
   // Stable "now" reference per page session — passed to ProjectCard so the
   // freshness check stays pure. Lazy initial fn = called once at mount only.
   const [now] = useState(() => Date.now());

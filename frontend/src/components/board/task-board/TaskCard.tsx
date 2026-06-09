@@ -9,8 +9,9 @@ import {
   Clock,
   UserRound,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
+import { useCardHighlightStore } from "@/store/useCardHighlightStore";
 import type { Card } from "@/types/board";
 import type { FormState } from "../card-modal/CardDetailModal";
 
@@ -44,6 +45,20 @@ export const TaskCard = memo(function TaskCard({
 }: CardProps) {
   const [isDetailOpen, setIsDetailOpen] = useState(false);
 
+  // Deep-link highlight: when this card is the navigation target (e.g. opened
+  // from My Work's "เปิดในบอร์ด"), scroll it into view and hold a brief ring so
+  // the user can spot it, then clear the one-shot signal.
+  const isHighlighted = useCardHighlightStore((s) => s.targetId === card.id);
+  const clearHighlight = useCardHighlightStore((s) => s.setTarget);
+  useEffect(() => {
+    if (!isHighlighted) return;
+    document
+      .getElementById(`board-card-${card.id}`)
+      ?.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
+    const t = setTimeout(() => clearHighlight(null), 2800);
+    return () => clearTimeout(t);
+  }, [isHighlighted, card.id, clearHighlight]);
+
   const { handleAddSubtask } = useBoardActions(boardId);
   const canEdit = useCanEdit(card);
 
@@ -70,18 +85,19 @@ export const TaskCard = memo(function TaskCard({
   return (
     <>
       <div
+        id={`board-card-${card.id}`}
         ref={setNodeRef}
         style={style}
         {...listeners}
         {...attributes}
         onClick={() => setIsDetailOpen(true)}
-        className={`group relative p-4 rounded-xl border flex flex-col gap-3 transition-all duration-200 select-none ${
+        className={`group relative p-4 rounded-xl border flex flex-col gap-3 transition-all duration-300 select-none ${
           isDragging
             ? "opacity-0 pointer-events-none"
             : card.is_done
               ? "bg-emerald-50 border-emerald-200 shadow-sm cursor-grab hover:border-emerald-300"
               : "bg-white border-slate-200 shadow-sm cursor-grab hover:shadow-md hover:border-blue-300"
-        }`}
+        } ${isHighlighted ? "ring-2 ring-blue-400 border-blue-400 shadow-md" : "ring-0"}`}
       >
         <div className="flex items-start gap-3">
           <div className="flex flex-col gap-1.5 flex-1 min-w-0">

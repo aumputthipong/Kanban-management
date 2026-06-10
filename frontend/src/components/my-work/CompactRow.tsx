@@ -1,15 +1,12 @@
 "use client";
 
-import { Calendar, Check, Clock } from "lucide-react";
+import { Calendar, Clock, ListChecks } from "lucide-react";
 import { formatRelativeDueDate, formatThaiDate } from "@/utils/date_helper";
 import type { MyWorkCard, MyWorkGroup, MyWorkStatus } from "@/types/myWork";
-import { SnoozeMenu } from "./SnoozeMenu";
 
 interface CompactRowProps {
   card: MyWorkCard;
-  onComplete: (cardId: string) => void;
-  onSnooze: (cardId: string, dueDate: string, label: string) => void;
-  /** Open the task detail modal (replaces navigating to the board). */
+  /** Open the task detail modal — where done / snooze now live. */
   onOpenCard: (card: MyWorkCard) => void;
   /** Drop the due/estimate columns (used by the "no date" panel). */
   slim?: boolean;
@@ -66,12 +63,10 @@ const PRI_BAR: Record<NonNullable<MyWorkCard["priority"]> | "none", string> = {
   none: "bg-slate-400",
 };
 
-export function CompactRow({ card, onComplete, onSnooze, onOpenCard, slim = false, hero = false }: CompactRowProps) {
-  const handleComplete = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    onComplete(card.id);
-  };
+export function CompactRow({ card, onOpenCard, slim = false, hero = false }: CompactRowProps) {
+  const total = card.total_subtasks ?? 0;
+  const done = card.completed_subtasks ?? 0;
+  const allSubtasksDone = total > 0 && done === total;
 
   return (
     <div
@@ -91,23 +86,25 @@ export function CompactRow({ card, onComplete, onSnooze, onOpenCard, slim = fals
         className={`absolute left-0 top-[9px] bottom-[9px] w-[3px] rounded-r-sm ${PRI_BAR[card.priority ?? "none"]}`}
       />
 
-      <button
-        type="button"
-        onClick={handleComplete}
-        className="w-[18px] h-[18px] shrink-0 rounded-sm border-[1.75px] border-slate-300 flex items-center justify-center text-transparent hover:border-blue-700 hover:bg-blue-50 hover:text-blue-700 transition-colors"
-        aria-label="ทำเครื่องหมายว่าเสร็จแล้ว"
-      >
-        <Check size={11} strokeWidth={3.2} className="opacity-0 group-hover:opacity-100 transition-opacity" />
-      </button>
-
       <div className="flex items-center gap-2.5 min-w-0 flex-1">
         <span className={`font-semibold text-slate-900 truncate min-w-0 ${hero ? "text-sm" : "text-[13.5px]"}`}>
           {card.title}
         </span>
         {card.column_name && (
-          <span className="hidden md:inline-flex items-center gap-1.5 shrink-0 text-[11.5px] font-medium text-slate-500 whitespace-nowrap">
+          <span className="inline-flex items-center gap-1.5 shrink-0 text-[11.5px] font-medium text-slate-500 whitespace-nowrap">
             <span aria-hidden className={`w-1.5 h-1.5 rounded-full shrink-0 ${statusDot(card.status)}`} />
             {card.column_name}
+          </span>
+        )}
+        {total > 0 && (
+          <span
+            className={`inline-flex items-center gap-1 shrink-0 text-[11px] font-semibold tabular-nums ${
+              allSubtasksDone ? "text-emerald-600" : "text-slate-400"
+            }`}
+            title={`งานย่อย ${done}/${total}`}
+          >
+            <ListChecks size={11} />
+            {done}/{total}
           </span>
         )}
       </div>
@@ -135,10 +132,6 @@ export function CompactRow({ card, onComplete, onSnooze, onOpenCard, slim = fals
           </div>
         </>
       )}
-
-      <div className="w-6 flex justify-end shrink-0 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
-        <SnoozeMenu onSnooze={(dueDate, label) => onSnooze(card.id, dueDate, label)} />
-      </div>
     </div>
   );
 }

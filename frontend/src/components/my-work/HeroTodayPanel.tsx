@@ -10,8 +10,6 @@ interface HeroTodayPanelProps {
   /** Tasks completed in this session — drives the daily progress meter. */
   doneToday: number;
   boardMeta: Map<string, BoardMeta>;
-  onComplete: (cardId: string) => void;
-  onSnooze: (cardId: string, dueDate: string, label: string) => void;
   onOpenCard: (card: MyWorkCard) => void;
   className?: string;
 }
@@ -20,8 +18,6 @@ export function HeroTodayPanel({
   cards,
   doneToday,
   boardMeta,
-  onComplete,
-  onSnooze,
   onOpenCard,
   className = "",
 }: HeroTodayPanelProps) {
@@ -80,8 +76,6 @@ export function HeroTodayPanel({
             cards={cards}
             boardMeta={boardMeta}
             hero
-            onComplete={onComplete}
-            onSnooze={onSnooze}
             onOpenCard={onOpenCard}
           />
         )}

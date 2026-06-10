@@ -25,6 +25,8 @@ export interface MyWorkCard {
   estimated_hours: number | null;
   status: MyWorkStatus;
   group: MyWorkGroup;
+  total_subtasks: number;
+  completed_subtasks: number;
 }
 
 export interface MyWorkCounts {

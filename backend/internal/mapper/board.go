@@ -7,6 +7,7 @@ import (
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/db"
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/dto"
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/service"
+	"github.com/aumputthipong/mini-erp-kanban/backend/internal/util"
 )
 
 func ToStashedBoardDTO(b db.GetStashedBoardsForOwnerRow) dto.StashedBoardDTO {
@@ -104,6 +105,56 @@ func ToCardResponse(card service.CardData) dto.CardResponse {
 		TotalSubtasks:     card.TotalSubtasks,
 		CompletedSubtasks: card.CompletedSubtasks,
 		Tags:              tags,
+	}
+}
+
+func derefTime(t *time.Time) time.Time {
+	if t == nil {
+		return time.Time{}
+	}
+	return *t
+}
+
+// ToCardDetailResponse builds the enriched single-card payload (GET /cards/:id).
+func ToCardDetailResponse(d service.CardDetailData) dto.CardDetailResponse {
+	c := d.Card
+	subs := make([]dto.SubtaskResponse, len(d.Subtasks))
+	var completed int64
+	for i, st := range d.Subtasks {
+		subs[i] = dto.SubtaskResponse{
+			ID:        st.ID,
+			CardID:    st.CardID,
+			Title:     st.Title,
+			IsDone:    st.IsDone,
+			Position:  st.Position,
+			CreatedAt: derefTime(st.CreatedAt),
+			UpdatedAt: derefTime(st.UpdatedAt),
+		}
+		if st.IsDone {
+			completed++
+		}
+	}
+	tags := make([]dto.TagResponse, len(d.Tags))
+	for i, t := range d.Tags {
+		tags[i] = dto.TagResponse{ID: t.ID, BoardID: t.BoardID, Name: t.Name, Color: t.Color}
+	}
+	return dto.CardDetailResponse{
+		ID:                 c.ID,
+		ColumnID:           c.ColumnID,
+		Title:              c.Title,
+		Description:        c.Description,
+		DueDate:            timePtrToString(c.DueDate),
+		EstimatedHours:     util.PgNumericToFloat64Ptr(c.EstimatedHours),
+		AssigneeID:         c.AssigneeID,
+		AssigneeName:       d.AssigneeName,
+		Priority:           c.Priority,
+		IsDone:             c.IsDone,
+		AcceptanceCriteria: c.AcceptanceCriteria,
+		ImplementationNote: c.ImplementationNote,
+		TotalSubtasks:      int64(len(d.Subtasks)),
+		CompletedSubtasks:  completed,
+		Subtasks:           subs,
+		Tags:               tags,
 	}
 }
 

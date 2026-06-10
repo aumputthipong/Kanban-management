@@ -505,8 +505,8 @@ func TestUpdateCard_PATCHSemantics_EmptyTitleRejected(t *testing.T) {
 
 func TestGetCard_Success_RoundtripsTitle(t *testing.T) {
 	svc := &mock.MockBoardService{
-		GetCardFn: func(ctx context.Context, cardID string) (db.Card, error) {
-			return db.Card{ID: cardID, Title: "Hello"}, nil
+		GetCardDetailFn: func(ctx context.Context, cardID string) (service.CardDetailData, error) {
+			return service.CardDetailData{Card: db.Card{ID: cardID, Title: "Hello"}}, nil
 		},
 	}
 	h := NewBoardHandler(svc, nil, nil)
@@ -521,14 +521,15 @@ func TestGetCard_Success_RoundtripsTitle(t *testing.T) {
 
 	var body map[string]any
 	require.NoError(t, json.NewDecoder(w.Body).Decode(&body))
-	assert.Equal(t, "Hello", body["Title"])
+	// Enriched response is now snake_case dto.CardDetailResponse.
+	assert.Equal(t, "Hello", body["title"])
 }
 
 func TestGetCard_InvalidID_Returns400(t *testing.T) {
 	svc := &mock.MockBoardService{
-		GetCardFn: func(ctx context.Context, cardID string) (db.Card, error) {
+		GetCardDetailFn: func(ctx context.Context, cardID string) (service.CardDetailData, error) {
 			t.Fatal("must not query DB for malformed ID")
-			return db.Card{}, nil
+			return service.CardDetailData{}, nil
 		},
 	}
 	h := NewBoardHandler(svc, nil, nil)
@@ -543,13 +544,10 @@ func TestGetCard_InvalidID_Returns400(t *testing.T) {
 }
 
 func TestGetCard_NotFound_Returns404(t *testing.T) {
-	// Note: handler uses sql.ErrNoRows here (not pgx.ErrNoRows). Test mirrors
-	// that exactly — if someone changes the service to return pgx.ErrNoRows
-	// without updating the handler, this test stays green and a separate
-	// follow-up test below catches the gap.
+	// Handler maps both pgx.ErrNoRows and sql.ErrNoRows to 404.
 	svc := &mock.MockBoardService{
-		GetCardFn: func(ctx context.Context, cardID string) (db.Card, error) {
-			return db.Card{}, sql.ErrNoRows
+		GetCardDetailFn: func(ctx context.Context, cardID string) (service.CardDetailData, error) {
+			return service.CardDetailData{}, sql.ErrNoRows
 		},
 	}
 	h := NewBoardHandler(svc, nil, nil)
@@ -565,8 +563,8 @@ func TestGetCard_NotFound_Returns404(t *testing.T) {
 
 func TestGetCard_DBError_Returns500(t *testing.T) {
 	svc := &mock.MockBoardService{
-		GetCardFn: func(ctx context.Context, cardID string) (db.Card, error) {
-			return db.Card{}, errors.New("connection refused")
+		GetCardDetailFn: func(ctx context.Context, cardID string) (service.CardDetailData, error) {
+			return service.CardDetailData{}, errors.New("connection refused")
 		},
 	}
 	h := NewBoardHandler(svc, nil, nil)

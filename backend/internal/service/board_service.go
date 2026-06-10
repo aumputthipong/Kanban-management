@@ -239,17 +239,19 @@ func (s *BoardService) GetBoardIDByCard(ctx context.Context, cardID string) (str
 // otherwise. `Group` is the date bucket (overdue/today/this_week/later/no_date)
 // also computed in SQL against the caller's "today".
 type MyTaskData struct {
-	ID             string
-	Title          string
-	BoardID        string
-	BoardName      string
-	ColumnName     string
-	Priority       *string
-	DueDate        *time.Time
-	EstimatedHours *float64
-	IsDone         bool
-	Status         string
-	Group          string
+	ID                string
+	Title             string
+	BoardID           string
+	BoardName         string
+	ColumnName        string
+	Priority          *string
+	DueDate           *time.Time
+	EstimatedHours    *float64
+	IsDone            bool
+	Status            string
+	Group             string
+	TotalSubtasks     int64
+	CompletedSubtasks int64
 }
 
 // MyWorkFilter narrows what GetMyWork returns. Counts always reflect the
@@ -349,17 +351,19 @@ func (s *BoardService) GetMyWork(ctx context.Context, opts MyWorkOptions) (MyWor
 			continue
 		}
 		cards = append(cards, MyTaskData{
-			ID:             r.ID,
-			Title:          r.Title,
-			BoardID:        r.BoardID,
-			BoardName:      r.BoardName,
-			ColumnName:     r.ColumnName,
-			Priority:       r.Priority,
-			DueDate:        r.DueDate,
-			EstimatedHours: util.PgNumericToFloat64Ptr(r.EstimatedHours),
-			IsDone:         r.IsDone,
-			Status:         r.Status,
-			Group:          r.WorkGroup,
+			ID:                r.ID,
+			Title:             r.Title,
+			BoardID:           r.BoardID,
+			BoardName:         r.BoardName,
+			ColumnName:        r.ColumnName,
+			Priority:          r.Priority,
+			DueDate:           r.DueDate,
+			EstimatedHours:    util.PgNumericToFloat64Ptr(r.EstimatedHours),
+			IsDone:            r.IsDone,
+			Status:            r.Status,
+			Group:             r.WorkGroup,
+			TotalSubtasks:     r.TotalSubtasks,
+			CompletedSubtasks: r.CompletedSubtasks,
 		})
 	}
 	return MyWorkResult{Cards: cards, Counts: counts}, nil

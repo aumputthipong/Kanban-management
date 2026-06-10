@@ -39,9 +39,10 @@ type MockBoardService struct {
 	RemoveBoardMemberFn func(ctx context.Context, boardID, userID string) error
 	UpdateMemberRoleFn  func(ctx context.Context, boardID, userID string, role string) error
 
-	GetCardFn    func(ctx context.Context, cardID string) (db.Card, error)
-	CreateCardFn func(ctx context.Context, arg db.CreateCardParams) (db.CreateCardRow, error)
-	UpdateCardFn func(ctx context.Context, arg service.UpdateCardParams) (db.Card, error)
+	GetCardFn       func(ctx context.Context, cardID string) (db.Card, error)
+	GetCardDetailFn func(ctx context.Context, cardID string) (service.CardDetailData, error)
+	CreateCardFn    func(ctx context.Context, arg db.CreateCardParams) (db.CreateCardRow, error)
+	UpdateCardFn    func(ctx context.Context, arg service.UpdateCardParams) (db.Card, error)
 
 	GetAllUsersFn func(ctx context.Context) ([]db.GetAllUsersRow, error)
 }
@@ -127,6 +128,10 @@ func (m *MockBoardService) UpdateMemberRole(ctx context.Context, boardID, userID
 
 func (m *MockBoardService) GetCard(ctx context.Context, cardID string) (db.Card, error) {
 	return m.GetCardFn(ctx, cardID)
+}
+
+func (m *MockBoardService) GetCardDetail(ctx context.Context, cardID string) (service.CardDetailData, error) {
+	return m.GetCardDetailFn(ctx, cardID)
 }
 
 func (m *MockBoardService) CreateCard(ctx context.Context, arg db.CreateCardParams) (db.CreateCardRow, error) {

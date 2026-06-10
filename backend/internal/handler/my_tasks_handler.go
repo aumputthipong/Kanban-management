@@ -68,16 +68,18 @@ func (h *BoardHandler) GetMyTasks(w http.ResponseWriter, r *http.Request) error 
 			due = &s
 		}
 		cards = append(cards, dto.MyTaskResponse{
-			ID:             t.ID,
-			Title:          t.Title,
-			BoardID:        t.BoardID,
-			BoardName:      t.BoardName,
-			ColumnName:     t.ColumnName,
-			Priority:       t.Priority,
-			DueDate:        due,
-			EstimatedHours: t.EstimatedHours,
-			Status:         t.Status,
-			Group:          t.Group,
+			ID:                t.ID,
+			Title:             t.Title,
+			BoardID:           t.BoardID,
+			BoardName:         t.BoardName,
+			ColumnName:        t.ColumnName,
+			Priority:          t.Priority,
+			DueDate:           due,
+			EstimatedHours:    t.EstimatedHours,
+			Status:            t.Status,
+			Group:             t.Group,
+			TotalSubtasks:     t.TotalSubtasks,
+			CompletedSubtasks: t.CompletedSubtasks,
 		})
 	}
 

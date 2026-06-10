@@ -14,8 +14,6 @@ interface DashboardGridProps {
   counts: MyWorkCounts;
   boardMeta: Map<string, BoardMeta>;
   doneToday: number;
-  onComplete: (cardId: string) => void;
-  onSnooze: (cardId: string, dueDate: string, label: string) => void;
   onOpenCard: (card: MyWorkCard) => void;
 }
 
@@ -24,11 +22,9 @@ export function DashboardGrid({
   counts,
   boardMeta,
   doneToday,
-  onComplete,
-  onSnooze,
   onOpenCard,
 }: DashboardGridProps) {
-  const rowProps = { onComplete, onSnooze, onOpenCard };
+  const rowProps = { onOpenCard };
 
   // Whole inbox empty — one calm empty state instead of four empty panels.
   if (cards.length === 0) {

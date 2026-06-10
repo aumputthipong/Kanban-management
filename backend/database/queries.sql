@@ -43,6 +43,8 @@ SELECT
     col.board_id,
     b.title AS board_name,
     col.title AS column_name,
+    (SELECT COUNT(*) FROM card_subtasks cs WHERE cs.card_id = c.id) AS total_subtasks,
+    (SELECT COUNT(*) FROM card_subtasks cs WHERE cs.card_id = c.id AND cs.is_done) AS completed_subtasks,
     CASE
         WHEN col.category = 'TODO' AND col.position = ft.first_pos THEN 'todo'
         WHEN col.category = 'TODO' THEN 'in_progress'

@@ -45,6 +45,7 @@ type BoardServicer interface {
 
 	// Card
 	GetCard(ctx context.Context, cardID string) (db.Card, error)
+	GetCardDetail(ctx context.Context, cardID string) (CardDetailData, error)
 	CreateCard(ctx context.Context, arg db.CreateCardParams) (db.CreateCardRow, error)
 	UpdateCard(ctx context.Context, arg UpdateCardParams) (db.Card, error)
 

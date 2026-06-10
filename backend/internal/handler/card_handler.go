@@ -9,6 +9,7 @@ import (
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/db"
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/dto"
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/httputil"
+	"github.com/aumputthipong/mini-erp-kanban/backend/internal/mapper"
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/middleware"
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/service"
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/util"
@@ -211,14 +212,14 @@ func (h *BoardHandler) GetCard(w http.ResponseWriter, r *http.Request) error {
 		return httputil.NewAPIError(http.StatusBadRequest, "Invalid card ID format", err)
 	}
 
-	card, err := h.boardService.GetCard(r.Context(), cardIDStr)
+	detail, err := h.boardService.GetCardDetail(r.Context(), cardIDStr)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, pgx.ErrNoRows) || errors.Is(err, sql.ErrNoRows) {
 			return httputil.NewAPIError(http.StatusNotFound, "Card not found", nil)
 		}
 		return httputil.NewAPIError(http.StatusInternalServerError, "Internal server error", err)
 	}
 
-	httputil.RespondJSON(w, http.StatusOK, card)
+	httputil.RespondJSON(w, http.StatusOK, mapper.ToCardDetailResponse(detail))
 	return nil
 }

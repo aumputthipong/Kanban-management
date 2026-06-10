@@ -8,8 +8,6 @@ import type { MyWorkCard } from "@/types/myWork";
 interface Props {
   cards: MyWorkCard[];
   boardMeta: Map<string, BoardMeta>;
-  onComplete: (cardId: string) => void;
-  onSnooze: (cardId: string, dueDate: string, label: string) => void;
   onOpenCard: (card: MyWorkCard) => void;
   /** Forwarded to CompactRow — drop due/estimate columns. */
   slim?: boolean;
@@ -23,8 +21,6 @@ interface Props {
 export function ProjectGroupedList({
   cards,
   boardMeta,
-  onComplete,
-  onSnooze,
   onOpenCard,
   slim,
   hero,
@@ -71,8 +67,6 @@ export function ProjectGroupedList({
                   card={c}
                   slim={slim}
                   hero={hero}
-                  onComplete={onComplete}
-                  onSnooze={onSnooze}
                   onOpenCard={onOpenCard}
                 />
               ))}

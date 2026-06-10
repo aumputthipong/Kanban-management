@@ -692,9 +692,11 @@ func TestUpdateCard_ServiceError(t *testing.T) {
 
 func TestGetCard_Success(t *testing.T) {
 	svc := &mock.MockBoardService{
-		GetCardFn: func(ctx context.Context, cardID string) (db.Card, error) {
+		GetCardDetailFn: func(ctx context.Context, cardID string) (service.CardDetailData, error) {
 			assert.Equal(t, validCardID, cardID)
-			return db.Card{ID: validCardID, ColumnID: validColumnID, Title: "My Card"}, nil
+			return service.CardDetailData{
+				Card: db.Card{ID: validCardID, ColumnID: validColumnID, Title: "My Card"},
+			}, nil
 		},
 	}
 	h := NewBoardHandler(svc, nil, nil)
@@ -707,13 +709,13 @@ func TestGetCard_Success(t *testing.T) {
 	assert.Equal(t, http.StatusOK, w.Code)
 	var res map[string]interface{}
 	require.NoError(t, json.NewDecoder(w.Body).Decode(&res))
-	assert.Equal(t, validCardID, res["ID"])
+	assert.Equal(t, validCardID, res["id"])
 }
 
 func TestGetCard_NotFound(t *testing.T) {
 	svc := &mock.MockBoardService{
-		GetCardFn: func(ctx context.Context, cardID string) (db.Card, error) {
-			return db.Card{}, sql.ErrNoRows
+		GetCardDetailFn: func(ctx context.Context, cardID string) (service.CardDetailData, error) {
+			return service.CardDetailData{}, sql.ErrNoRows
 		},
 	}
 	h := NewBoardHandler(svc, nil, nil)
@@ -740,8 +742,8 @@ func TestGetCard_InvalidCardID(t *testing.T) {
 
 func TestGetCard_ServiceError(t *testing.T) {
 	svc := &mock.MockBoardService{
-		GetCardFn: func(ctx context.Context, cardID string) (db.Card, error) {
-			return db.Card{}, errors.New("db error")
+		GetCardDetailFn: func(ctx context.Context, cardID string) (service.CardDetailData, error) {
+			return service.CardDetailData{}, errors.New("db error")
 		},
 	}
 	h := NewBoardHandler(svc, nil, nil)

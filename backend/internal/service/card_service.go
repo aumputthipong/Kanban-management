@@ -36,6 +36,41 @@ func (s *BoardService) GetCard(ctx context.Context, cardID string) (db.Card, err
 	return s.queries.GetCard(ctx, cardID)
 }
 
+// CardDetailData is a fully enriched single card for the detail view (the My
+// Work modal). GetCard alone returns only the raw card row; this also resolves
+// the assignee's name and loads subtasks + tags so the response carries
+// everything the modal shows (description, dev notes, subtasks, tags).
+type CardDetailData struct {
+	Card         db.Card
+	AssigneeName *string
+	Subtasks     []db.CardSubtask
+	Tags         []db.GetTagsByCardIDsRow
+}
+
+func (s *BoardService) GetCardDetail(ctx context.Context, cardID string) (CardDetailData, error) {
+	card, err := s.queries.GetCard(ctx, cardID)
+	if err != nil {
+		return CardDetailData{}, err
+	}
+	subs, err := s.queries.GetSubtasksByCardID(ctx, cardID)
+	if err != nil {
+		return CardDetailData{}, fmt.Errorf("load subtasks: %w", err)
+	}
+	tags, err := s.queries.GetTagsByCardIDs(ctx, []string{cardID})
+	if err != nil {
+		return CardDetailData{}, fmt.Errorf("load tags: %w", err)
+	}
+	var assigneeName *string
+	if card.AssigneeID != nil {
+		// Best-effort: a missing user just leaves the name nil.
+		if u, uerr := s.queries.GetUserByID(ctx, *card.AssigneeID); uerr == nil {
+			name := u.FullName
+			assigneeName = &name
+		}
+	}
+	return CardDetailData{Card: card, AssigneeName: assigneeName, Subtasks: subs, Tags: tags}, nil
+}
+
 func (s *BoardService) UpdateCard(ctx context.Context, arg UpdateCardParams) (db.Card, error) {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {

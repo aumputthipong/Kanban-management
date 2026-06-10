@@ -1139,6 +1139,8 @@ SELECT
     col.board_id,
     b.title AS board_name,
     col.title AS column_name,
+    (SELECT COUNT(*) FROM card_subtasks cs WHERE cs.card_id = c.id) AS total_subtasks,
+    (SELECT COUNT(*) FROM card_subtasks cs WHERE cs.card_id = c.id AND cs.is_done) AS completed_subtasks,
     CASE
         WHEN col.category = 'TODO' AND col.position = ft.first_pos THEN 'todo'
         WHEN col.category = 'TODO' THEN 'in_progress'
@@ -1180,17 +1182,19 @@ type GetMyTasksParams struct {
 }
 
 type GetMyTasksRow struct {
-	ID             string
-	Title          string
-	Priority       *string
-	DueDate        *time.Time
-	EstimatedHours pgtype.Numeric
-	IsDone         bool
-	BoardID        string
-	BoardName      string
-	ColumnName     string
-	Status         string
-	WorkGroup      string
+	ID                string
+	Title             string
+	Priority          *string
+	DueDate           *time.Time
+	EstimatedHours    pgtype.Numeric
+	IsDone            bool
+	BoardID           string
+	BoardName         string
+	ColumnName        string
+	TotalSubtasks     int64
+	CompletedSubtasks int64
+	Status            string
+	WorkGroup         string
 }
 
 // Cards in the user's "work inbox": assigned to them, plus (when
@@ -1227,6 +1231,8 @@ func (q *Queries) GetMyTasks(ctx context.Context, arg GetMyTasksParams) ([]GetMy
 			&i.BoardID,
 			&i.BoardName,
 			&i.ColumnName,
+			&i.TotalSubtasks,
+			&i.CompletedSubtasks,
 			&i.Status,
 			&i.WorkGroup,
 		); err != nil {

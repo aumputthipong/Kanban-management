@@ -14,13 +14,26 @@ import {
   addDays,
 } from "date-fns";
 import { createPortal } from "react-dom";
+import dynamic from "next/dynamic";
 import { X } from "lucide-react";
 import { useBoardStore } from "@/store/useBoardStore";
+import { useBoardActions } from "@/hooks/useBoardActions";
+import { useCanEdit } from "@/hooks/useCanEdit";
 import type { Card } from "@/types/board";
+import type { FormState } from "@/components/board/card-modal/CardDetailModal";
 import { CalendarHeader, type CalendarView } from "./CalendarHeader";
 import { CalendarFilters } from "./CalendarFilters";
 import { TaskPill } from "./TaskPill";
+import { CalendarTaskModal } from "./CalendarTaskModal";
 import { classifyPillState, type PillState } from "./pillState";
+
+const CardDetailModal = dynamic(
+  () =>
+    import("@/components/board/card-modal/CardDetailModal").then((m) => ({
+      default: m.CardDetailModal,
+    })),
+  { ssr: false },
+);
 
 interface Props {
   boardId: string;
@@ -37,6 +50,14 @@ export function ProjectCalendar({ boardId }: Props) {
   const [statusFilter, setStatusFilter] = useState<PillState[]>([]);
   const [myTasksOnly, setMyTasksOnly] = useState(false);
   const [moreCellDate, setMoreCellDate] = useState<Date | null>(null);
+  // Clicking a task opens a read-only detail modal; "เปิด task" promotes it to
+  // the full editable card modal.
+  const [selectedCard, setSelectedCard] = useState<Card | null>(null);
+  const [editCard, setEditCard] = useState<Card | null>(null);
+  const openCard = (c: Card) => {
+    setMoreCellDate(null);
+    setSelectedCard(c);
+  };
   const today = useMemo(() => new Date(), []);
 
   const columns = useBoardStore((s) => s.columns);
@@ -186,7 +207,7 @@ export function ProjectCalendar({ boardId }: Props) {
 
                     <div className="flex flex-col gap-1 overflow-hidden">
                       {visiblePills.map((card) => (
-                        <TaskPill key={card.id} card={card} boardId={boardId} />
+                        <TaskPill key={card.id} card={card} onSelect={openCard} />
                       ))}
                       {overflow > 0 && (
                         <button
@@ -210,23 +231,88 @@ export function ProjectCalendar({ boardId }: Props) {
         <DayDetailModal
           date={moreCellDate}
           cards={cardsByDate.get(format(moreCellDate, "yyyy-MM-dd")) ?? []}
-          boardId={boardId}
+          onSelect={openCard}
           onClose={() => setMoreCellDate(null)}
+        />
+      )}
+
+      {selectedCard && (
+        <CalendarTaskModal
+          card={selectedCard}
+          columnName={columns.find((c) => c.id === selectedCard.column_id)?.title}
+          onClose={() => setSelectedCard(null)}
+          onOpenTask={() => {
+            setEditCard(selectedCard);
+            setSelectedCard(null);
+          }}
+        />
+      )}
+
+      {editCard && (
+        <EditCardModal
+          card={editCard}
+          boardId={boardId}
+          onClose={() => setEditCard(null)}
         />
       )}
     </div>
   );
 }
 
+// Wrapper that owns the board-action hooks for the editable card modal — kept
+// out of ProjectCalendar's body so its hooks only run while an edit is open.
+function EditCardModal({
+  card,
+  boardId,
+  onClose,
+}: {
+  card: Card;
+  boardId: string;
+  onClose: () => void;
+}) {
+  const { handleAddSubtask, handleDeleteCard, handleUpdateCard } =
+    useBoardActions(boardId);
+  const canEdit = useCanEdit(card);
+
+  return (
+    <CardDetailModal
+      key={card.id}
+      card={card}
+      boardId={boardId}
+      isOpen
+      onClose={onClose}
+      onUpdated={(cardId: string, form: FormState) =>
+        handleUpdateCard(cardId, {
+          title: form.title,
+          description: form.description,
+          due_date: form.due_date,
+          assignee_id: form.assignee_id,
+          priority: form.priority,
+          estimated_hours: form.estimated_hours,
+          tags: form.tags,
+          acceptance_criteria: form.acceptance_criteria,
+          implementation_note: form.implementation_note,
+        })
+      }
+      onDelete={(cardId: string) => {
+        handleDeleteCard(cardId);
+        onClose();
+      }}
+      onAddSubtask={handleAddSubtask}
+      canEdit={canEdit}
+    />
+  );
+}
+
 function DayDetailModal({
   date,
   cards,
-  boardId,
+  onSelect,
   onClose,
 }: {
   date: Date;
   cards: Card[];
-  boardId: string;
+  onSelect: (card: Card) => void;
   onClose: () => void;
 }) {
   const ref = useRef<HTMLDivElement | null>(null);
@@ -268,12 +354,7 @@ function DayDetailModal({
         </p>
         <div className="flex flex-col gap-1.5">
           {cards.map((card) => (
-            <TaskPill
-              key={card.id}
-              card={card}
-              boardId={boardId}
-              inPopover
-            />
+            <TaskPill key={card.id} card={card} onSelect={onSelect} inPopover />
           ))}
         </div>
       </div>

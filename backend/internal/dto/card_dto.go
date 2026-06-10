@@ -10,41 +10,65 @@ type TagResponse struct {
 }
 
 type CardResponse struct {
-	ID                  string        `json:"id"`
-	ColumnID            string        `json:"column_id"`
-	Title               string        `json:"title"`
-	Description         *string       `json:"description"`
-	Position            float64       `json:"position"`
-	DueDate             *string       `json:"due_date"`
-	EstimatedHours      *float64      `json:"estimated_hours"`
-	AssigneeID          *string       `json:"assignee_id"`
-	AssigneeName        *string       `json:"assignee_name"`
-	Priority            *string       `json:"priority"`
-	IsDone              bool          `json:"is_done"`
-	CompletedAt         *string       `json:"completed_at"`
-	CreatedAt           *string       `json:"created_at"`
-	CreatedBy           *string       `json:"created_by"`
-	TotalSubtasks       int64         `json:"total_subtasks"`
-	CompletedSubtasks   int64         `json:"completed_subtasks"`
-	Tags                []TagResponse `json:"tags"`
-	AcceptanceCriteria  *string       `json:"acceptance_criteria"`
-	ImplementationNote  *string       `json:"implementation_note"`
+	ID                 string        `json:"id"`
+	ColumnID           string        `json:"column_id"`
+	Title              string        `json:"title"`
+	Description        *string       `json:"description"`
+	Position           float64       `json:"position"`
+	DueDate            *string       `json:"due_date"`
+	EstimatedHours     *float64      `json:"estimated_hours"`
+	AssigneeID         *string       `json:"assignee_id"`
+	AssigneeName       *string       `json:"assignee_name"`
+	Priority           *string       `json:"priority"`
+	IsDone             bool          `json:"is_done"`
+	CompletedAt        *string       `json:"completed_at"`
+	CreatedAt          *string       `json:"created_at"`
+	CreatedBy          *string       `json:"created_by"`
+	TotalSubtasks      int64         `json:"total_subtasks"`
+	CompletedSubtasks  int64         `json:"completed_subtasks"`
+	Tags               []TagResponse `json:"tags"`
+	AcceptanceCriteria *string       `json:"acceptance_criteria"`
+	ImplementationNote *string       `json:"implementation_note"`
+}
+
+// CardDetailResponse is the fully enriched single card returned by
+// GET /api/cards/{id}. Unlike the raw sqlc row, it is snake_case and carries
+// everything a detail view needs: dev notes, subtasks, tags, assignee name.
+type CardDetailResponse struct {
+	ID                 string            `json:"id"`
+	ColumnID           string            `json:"column_id"`
+	Title              string            `json:"title"`
+	Description        *string           `json:"description"`
+	DueDate            *string           `json:"due_date"`
+	EstimatedHours     *float64          `json:"estimated_hours"`
+	AssigneeID         *string           `json:"assignee_id"`
+	AssigneeName       *string           `json:"assignee_name"`
+	Priority           *string           `json:"priority"`
+	IsDone             bool              `json:"is_done"`
+	AcceptanceCriteria *string           `json:"acceptance_criteria"`
+	ImplementationNote *string           `json:"implementation_note"`
+	TotalSubtasks      int64             `json:"total_subtasks"`
+	CompletedSubtasks  int64             `json:"completed_subtasks"`
+	Subtasks           []SubtaskResponse `json:"subtasks"`
+	Tags               []TagResponse     `json:"tags"`
 }
 
 // MyTaskResponse is one row in the My Work list. `group` is computed
 // server-side relative to the user's "today" (Asia/Bangkok in S.1) and is one
 // of: overdue, today, this_week, later, no_date.
 type MyTaskResponse struct {
-	ID             string   `json:"id"`
-	Title          string   `json:"title"`
-	BoardID        string   `json:"board_id"`
-	BoardName      string   `json:"board_name"`
-	ColumnName     string   `json:"column_name"`
-	Priority       *string  `json:"priority"`
-	DueDate        *string  `json:"due_date"`
-	EstimatedHours *float64 `json:"estimated_hours"`
-	Status         string   `json:"status"`
-	Group          string   `json:"group"`
+	ID                string   `json:"id"`
+	Title             string   `json:"title"`
+	BoardID           string   `json:"board_id"`
+	BoardName         string   `json:"board_name"`
+	ColumnName        string   `json:"column_name"`
+	Priority          *string  `json:"priority"`
+	DueDate           *string  `json:"due_date"`
+	EstimatedHours    *float64 `json:"estimated_hours"`
+	Status            string   `json:"status"`
+	Group             string   `json:"group"`
+	TotalSubtasks     int64    `json:"total_subtasks"`
+	CompletedSubtasks int64    `json:"completed_subtasks"`
 }
 
 // MyWorkCounts is the count per group across the *unfiltered* result set, so

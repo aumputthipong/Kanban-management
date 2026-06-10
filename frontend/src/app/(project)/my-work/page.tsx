@@ -381,8 +381,6 @@ function MyWorkPageInner() {
           counts={chipCounts}
           boardMeta={boardMeta ?? EMPTY_BOARD_META}
           doneToday={doneToday}
-          onComplete={handleComplete}
-          onSnooze={handleSnooze}
           onOpenCard={setSelectedCard}
         />
       )}

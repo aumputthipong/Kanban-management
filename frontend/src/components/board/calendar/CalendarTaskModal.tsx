@@ -29,10 +29,9 @@ const STATE_DOT: Record<PillState, string> = {
 };
 
 // Read-only detail view for a calendar task — same shape as the My Work modal.
-// Editing stays on the board card ("เปิด task"); this is a quick look + two
-// nav actions (open the task / jump the calendar to its date). Basics render
-// instantly from the board card; AC / dev note / subtask list are enriched via
-// GET /cards/:id.
+// Editing stays on the board card ("เปิด task"), the modal's single nav action.
+// Basics render instantly from the board card; AC / dev note / subtask list are
+// enriched via GET /cards/:id.
 export function CalendarTaskModal({ card, columnName, onClose, onOpenTask }: Props) {
   const [detail, setDetail] = useState<Card | null>(null);
   const [loading, setLoading] = useState(true);

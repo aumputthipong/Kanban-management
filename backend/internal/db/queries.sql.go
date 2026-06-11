@@ -224,9 +224,9 @@ func (q *Queries) CreateCard(ctx context.Context, arg CreateCardParams) (CreateC
 }
 
 const createColumn = `-- name: CreateColumn :one
-INSERT INTO columns (id, board_id, title, position, category, created_at, updated_at)
-VALUES (gen_random_uuid(), $1, $2, $3, $4, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-RETURNING id, board_id, title, position, category
+INSERT INTO columns (id, board_id, title, position, category, color, created_at, updated_at)
+VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+RETURNING id, board_id, title, position, category, color
 `
 
 type CreateColumnParams struct {
@@ -234,6 +234,7 @@ type CreateColumnParams struct {
 	Title    string
 	Position float64
 	Category string
+	Color    *string
 }
 
 type CreateColumnRow struct {
@@ -242,6 +243,7 @@ type CreateColumnRow struct {
 	Title    string
 	Position float64
 	Category string
+	Color    *string
 }
 
 func (q *Queries) CreateColumn(ctx context.Context, arg CreateColumnParams) (CreateColumnRow, error) {
@@ -250,6 +252,7 @@ func (q *Queries) CreateColumn(ctx context.Context, arg CreateColumnParams) (Cre
 		arg.Title,
 		arg.Position,
 		arg.Category,
+		arg.Color,
 	)
 	var i CreateColumnRow
 	err := row.Scan(
@@ -258,6 +261,7 @@ func (q *Queries) CreateColumn(ctx context.Context, arg CreateColumnParams) (Cre
 		&i.Title,
 		&i.Position,
 		&i.Category,
+		&i.Color,
 	)
 	return i, err
 }

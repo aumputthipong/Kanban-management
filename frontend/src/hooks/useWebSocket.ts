@@ -78,7 +78,15 @@ export const useWebSocket = (url: string) => {
           useBoardStore.getState().moveCard(card_id, new_column_id, position, is_done, completed_at);
         }
         if (parsedData.type === "CARD_CREATED") {
-          useBoardStore.getState().addCardToStore(parsedData.payload);
+          // The broadcast carries assignee_id but not the name — resolve it from
+          // boardMembers (every client has them) so the avatar renders without a
+          // round-trip. Quick-add cards have assignee_id null → name null.
+          const payload = parsedData.payload;
+          const { boardMembers } = useBoardStore.getState();
+          const assignee_name = payload.assignee_id
+            ? (boardMembers.find((m) => m.user_id === payload.assignee_id)?.full_name ?? null)
+            : null;
+          useBoardStore.getState().addCardToStore({ ...payload, assignee_name });
         }
         if (parsedData.type === "CARD_DELETED") {
           useBoardStore.getState().removeCardFromStore(parsedData.payload.card_id);
@@ -92,8 +100,10 @@ export const useWebSocket = (url: string) => {
           });
         }
         if (parsedData.type === "COLUMN_CREATED") {
-          const { id, title, position, category } = parsedData.payload;
-          useBoardStore.getState().addColumnToStore({ id, title, position, category, cards: [] });
+          const { id, title, position, category, color } = parsedData.payload;
+          useBoardStore
+            .getState()
+            .addColumnToStore({ id, title, position, category, color: color ?? null, cards: [] });
         }
         if (parsedData.type === "COLUMN_RENAMED") {
           const { column_id, title } = parsedData.payload;

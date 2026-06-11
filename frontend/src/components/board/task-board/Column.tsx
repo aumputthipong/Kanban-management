@@ -15,11 +15,12 @@ import {
   Plus,
 } from "lucide-react";
 import { TaskCard } from "./TaskCard";
-import { AddCardForm } from "./AddCardForm";
+import { CreateTaskModal } from "./CreateTaskModal";
 import type { Card, Column } from "@/types/board";
 import { FormState } from "../card-modal/CardDetailModal";
 import { ColumnOptionsModal, getColumnColorHex } from "./ColumnOptionsModal";
 import { useCanManageBoard } from "@/hooks/useBoardRole";
+import { UNASSIGNED_FILTER } from "@/store/useBoardStore";
 
 // Collapse state for DONE columns is remembered per board+column in localStorage.
 // DONE columns default to collapsed (design: keep finished work out of the way,
@@ -50,7 +51,11 @@ interface ColumnProps {
   color?: string | null;
   boardId: string;
   cards: Card[];
-  onAddCard: (columnId: string, title: string) => void;
+  onAddCard: (
+    columnId: string,
+    title: string,
+    opts?: { assigneeId: string | null; priority: string | null; dueDate: string | null },
+  ) => void;
   onDeleteCard: (cardId: string) => void;
   onSaveCard: (cardId: string, form: FormState) => void;
   onDeleteColumn: (columnId: string) => void;
@@ -109,7 +114,10 @@ export const KanbanColumn = memo(function KanbanColumn({
     () =>
       cards.filter(
         (card) =>
-          (filterAssigneeId == null || card.assignee_id === filterAssigneeId) &&
+          (filterAssigneeId == null ||
+            (filterAssigneeId === UNASSIGNED_FILTER
+              ? card.assignee_id == null
+              : card.assignee_id === filterAssigneeId)) &&
           (filterPriorities == null ||
             filterPriorities.length === 0 ||
             filterPriorities.includes(card.priority ?? "")) &&
@@ -124,6 +132,9 @@ export const KanbanColumn = memo(function KanbanColumn({
   const solidBgStyle = colorHex
     ? { backgroundColor: `color-mix(in srgb, ${colorHex} 12%, white)` }
     : undefined;
+  // Accent for the top strip + title dot — the column's own colour, or a neutral
+  // category fallback so every column still reads at a glance without a custom colour.
+  const accentColor = colorHex ?? (isDone ? "#10b981" : "#94a3b8");
 
   // Surface treatment when no custom color: DONE reads as a calm green zone,
   // TODO keeps the neutral slate it always had.
@@ -193,8 +204,7 @@ export const KanbanColumn = memo(function KanbanColumn({
 
         <ColumnOptionsModal
           key={`${id}-${optionsOpen}`}
-          open={optionsOpen}
-          columnId={id}
+          open={optionsOpen}
           initialTitle={title}
           initialCategory={category}
           initialColor={color ?? null}
@@ -214,15 +224,26 @@ export const KanbanColumn = memo(function KanbanColumn({
         className={`w-72 shrink-0 flex flex-col snap-start rounded-2xl border-2 transition-all duration-200 ${surfaceBorder} ${surfaceBg}`}
         style={solidBgStyle}
       >
-        {/* Sticky header — title row */}
+        {/* Sticky header — colored accent strip + title row */}
         <div
           className={`sticky top-0 z-10 rounded-t-2xl transition-colors pb-2 ${surfaceBg}`}
           style={solidBgStyle}
         >
-          <div className="flex items-center justify-between gap-3 px-4 pt-4">
+          {/* Top accent strip — the column's colour as a thin full-width bar. */}
+          <div
+            className="h-1.5 rounded-t-2xl"
+            style={{ backgroundColor: accentColor }}
+          />
+          <div className="flex items-center justify-between gap-3 px-4 pt-3">
             <div className="flex items-center gap-2 min-w-0 flex-1">
-              {isDone && (
+              {isDone ? (
                 <CircleCheck size={16} className="text-emerald-600 shrink-0" />
+              ) : (
+                <span
+                  aria-hidden
+                  className="w-2.5 h-2.5 rounded-full shrink-0"
+                  style={{ backgroundColor: accentColor }}
+                />
               )}
               <h2 className="font-bold text-slate-700 leading-tight truncate">
                 {title}
@@ -280,16 +301,6 @@ export const KanbanColumn = memo(function KanbanColumn({
           strategy={verticalListSortingStrategy}
         >
           <div className="px-4 pb-4 flex flex-col gap-2 flex-1">
-            {topAddOpen && (
-              <AddCardForm
-                defaultOpen
-                onAdd={(title) => {
-                  onAddCard(id, title);
-                  setTopAddOpen(false);
-                }}
-                onDismiss={() => setTopAddOpen(false)}
-              />
-            )}
             {visibleCards.map((card) => (
               <div key={card.id}>
                 {dropIndicatorBeforeId === card.id && <DropIndicator />}
@@ -302,7 +313,7 @@ export const KanbanColumn = memo(function KanbanColumn({
               </div>
             ))}
             {dropIndicatorBeforeId === null && <DropIndicator />}
-            {isDone && visibleCards.length === 0 && !topAddOpen && (
+            {isDone && visibleCards.length === 0 && (
               <p className="px-1 py-6 text-center text-xs text-slate-400">
                 ยังไม่มีงานเสร็จ — ลากการ์ดมาที่นี่เพื่อปิดงาน
               </p>
@@ -311,13 +322,22 @@ export const KanbanColumn = memo(function KanbanColumn({
         </SortableContext>
       </div>
 
+      {/* Column "+" opens the full create modal preset to this column (drops the
+          old title-only inline form for a consistent create UX). */}
+      {topAddOpen && (
+        <CreateTaskModal
+          defaultColumnId={id}
+          onCreate={onAddCard}
+          onClose={() => setTopAddOpen(false)}
+        />
+      )}
+
       {/* `key` remounts the modal whenever a different column opens it, so
           internal state initialises fresh from the new initialTitle/Category/Color
           props instead of being sync'd inside an effect. */}
       <ColumnOptionsModal
         key={`${id}-${optionsOpen}`}
-        open={optionsOpen}
-        columnId={id}
+        open={optionsOpen}
         initialTitle={title}
         initialCategory={category}
         initialColor={color ?? null}

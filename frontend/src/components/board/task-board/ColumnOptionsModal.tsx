@@ -29,7 +29,8 @@ export function getColumnColorHex(key?: string | null): string | null {
 // ── props ─────────────────────────────────────────────────────────────────────
 interface ColumnOptionsModalProps {
   open: boolean;
-  columnId: string;
+  /** "create" hides Delete + the card warning and titles the panel "New column". */
+  mode?: "edit" | "create";
   initialTitle: string;
   initialCategory: "TODO" | "DONE";
   initialColor: string | null;
@@ -39,13 +40,15 @@ interface ColumnOptionsModalProps {
     category: "TODO" | "DONE",
     color: string | null,
   ) => void;
-  onDelete: () => void;
+  /** Omitted in create mode (nothing to delete yet). */
+  onDelete?: () => void;
   onClose: () => void;
 }
 
 // ── component ─────────────────────────────────────────────────────────────────
 export function ColumnOptionsModal({
   open,
+  mode = "edit",
   initialTitle,
   initialCategory,
   initialColor,
@@ -54,6 +57,7 @@ export function ColumnOptionsModal({
   onDelete,
   onClose,
 }: ColumnOptionsModalProps) {
+  const isCreate = mode === "create";
   // State initialises from props once. Caller (Column.tsx) remounts this via
   // `key={`${columnId}-${open}`}` so each open starts fresh — no in-effect sync.
   const [title, setTitle] = useState(initialTitle);
@@ -99,7 +103,9 @@ export function ColumnOptionsModal({
         >
           {/* header */}
           <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-slate-100">
-            <h2 className="text-sm font-bold text-slate-800">Column options</h2>
+            <h2 className="text-sm font-bold text-slate-800">
+              {isCreate ? "New column" : "Column options"}
+            </h2>
             <button
               onClick={onClose}
               className="p-1 text-slate-400 hover:text-slate-600 rounded-md hover:bg-slate-100 transition-colors"
@@ -147,11 +153,6 @@ export function ColumnOptionsModal({
                   </button>
                 ))}
               </div>
-              <p className="text-[11px] leading-snug text-slate-400">
-                ประเภทกำหนด{" "}
-                <span className="font-semibold text-slate-500">พฤติกรรม</span> —
-                คอลัมน์ DONE จะยุบเป็นแถบและการ์ดแสดงแบบเสร็จแล้ว
-              </p>
             </div>
 
             {/* ── color ── identity, with a live header preview ── */}
@@ -190,51 +191,33 @@ export function ColumnOptionsModal({
                 </div>
               </div>
 
-              {/* Curated swatch grid with labels + clear selected state */}
-              <div className="grid grid-cols-3 gap-1.5">
+              {/* Compact swatch row — colour only (names live in the tooltip)
+                  to keep the modal short. */}
+              <div className="flex flex-wrap gap-2">
                 {COLUMN_COLOR_PALETTE.map(({ key, hex, label }) => {
                   const isSel = color === key;
                   return (
                     <button
                       key={String(key)}
                       onClick={() => setColor(key)}
-                      className={`flex flex-col items-center gap-1 rounded-lg px-2 py-2 border transition-colors ${
-                        isSel
-                          ? "border-slate-300 bg-slate-50"
-                          : "border-transparent hover:bg-slate-50"
+                      title={label}
+                      aria-label={label}
+                      className={`w-7 h-7 rounded-full flex items-center justify-center ring-2 ring-offset-2 ring-offset-white transition ${
+                        isSel ? "ring-slate-700" : "ring-transparent hover:ring-slate-300"
                       }`}
+                      style={{ backgroundColor: hex ?? "#e2e8f0" }}
                     >
-                      <span
-                        className={`relative w-6 h-6 rounded-full flex items-center justify-center ring-2 ring-offset-2 ring-offset-white transition ${
-                          isSel ? "ring-slate-700" : "ring-transparent"
-                        }`}
-                        style={{ backgroundColor: hex ?? "#e2e8f0" }}
-                      >
-                        {isSel && (
-                          <Check
-                            size={12}
-                            strokeWidth={3}
-                            className={key ? "text-white" : "text-slate-600"}
-                          />
-                        )}
-                      </span>
-                      <span
-                        className={`text-[10.5px] font-semibold ${
-                          isSel ? "text-slate-700" : "text-slate-400"
-                        }`}
-                      >
-                        {label}
-                      </span>
+                      {isSel && (
+                        <Check
+                          size={13}
+                          strokeWidth={3}
+                          className={key ? "text-white" : "text-slate-600"}
+                        />
+                      )}
                     </button>
                   );
                 })}
               </div>
-
-              <p className="text-[11px] leading-snug text-slate-400">
-                สีคือ{" "}
-                <span className="font-semibold text-slate-500">identity</span>{" "}
-                ของคอลัมน์ ไม่ใช่สถานะ — ทุกสีคุมความสว่างใกล้กันเพื่อให้บอร์ดดูสงบ
-              </p>
             </div>
           </div>
 
@@ -247,18 +230,22 @@ export function ColumnOptionsModal({
 
           {/* footer */}
           <div className="flex items-center justify-between px-5 py-4 border-t border-slate-100">
-            <button
-              onClick={() => setConfirmDeleteOpen(true)}
-              disabled={cardCount > 0}
-              title={
-                cardCount > 0
-                  ? "กรุณาย้ายการ์ดออกให้หมดก่อนลบคอลัมน์"
-                  : "Delete column"
-              }
-              className="flex items-center gap-1.5 text-xs font-semibold text-red-500 hover:text-red-600 hover:bg-red-50 px-3 py-2 rounded-lg transition-colors disabled:text-slate-300 disabled:hover:bg-transparent disabled:cursor-not-allowed"
-            >
-              <Trash2 size={14} /> Delete column
-            </button>
+            {isCreate ? (
+              <span />
+            ) : (
+              <button
+                onClick={() => setConfirmDeleteOpen(true)}
+                disabled={cardCount > 0}
+                title={
+                  cardCount > 0
+                    ? "กรุณาย้ายการ์ดออกให้หมดก่อนลบคอลัมน์"
+                    : "Delete column"
+                }
+                className="flex items-center gap-1.5 text-xs font-semibold text-red-500 hover:text-red-600 hover:bg-red-50 px-3 py-2 rounded-lg transition-colors disabled:text-slate-300 disabled:hover:bg-transparent disabled:cursor-not-allowed"
+              >
+                <Trash2 size={14} /> Delete column
+              </button>
+            )}
 
             <div className="flex gap-2">
               <button
@@ -272,7 +259,7 @@ export function ColumnOptionsModal({
                 disabled={!title.trim()}
                 className="px-4 py-2 text-sm rounded-lg bg-slate-900 text-white font-medium hover:bg-slate-700 disabled:opacity-40 transition-colors"
               >
-                Save
+                {isCreate ? "Create" : "Save"}
               </button>
             </div>
           </div>
@@ -288,7 +275,7 @@ export function ColumnOptionsModal({
         onConfirm={() => {
           setConfirmDeleteOpen(false);
           onClose();
-          onDelete();
+          onDelete?.();
         }}
         onCancel={() => setConfirmDeleteOpen(false)}
       />

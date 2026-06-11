@@ -105,7 +105,21 @@ func (c *Client) handleCardCreated(payload map[string]interface{}) {
 	priority, _ := payload["priority"].(string)
 	position, _ := payload["position"].(float64)
 
-	newCard, err := c.hub.boardCmd.CreateCardWS(ctx, columnIDStr, c.userID, title, priority, position)
+	// Optional fields from the Create Task modal (quick-add omits them).
+	var assigneeID *string
+	if a, ok := payload["assignee_id"].(string); ok && a != "" {
+		if _, err := uuid.Parse(a); err != nil {
+			log.Printf("Invalid assignee ID: %s", a)
+			return
+		}
+		assigneeID = &a
+	}
+	var dueDate *string
+	if d, ok := payload["due_date"].(string); ok && d != "" {
+		dueDate = &d
+	}
+
+	newCard, err := c.hub.boardCmd.CreateCardWS(ctx, columnIDStr, c.userID, title, priority, position, assigneeID, dueDate)
 	if err != nil {
 		log.Printf("Failed to create card: %v", err)
 		return
@@ -114,12 +128,14 @@ func (c *Client) handleCardCreated(payload map[string]interface{}) {
 	broadcastMsg := WSMessage{
 		Type: "CARD_CREATED",
 		Payload: map[string]interface{}{
-			"id":         newCard.ID,
-			"column_id":  newCard.ColumnID,
-			"title":      newCard.Title,
-			"position":   newCard.Position,
-			"priority":   newCard.Priority,
-			"created_by": newCard.CreatedBy,
+			"id":          newCard.ID,
+			"column_id":   newCard.ColumnID,
+			"title":       newCard.Title,
+			"position":    newCard.Position,
+			"priority":    newCard.Priority,
+			"created_by":  newCard.CreatedBy,
+			"assignee_id": assigneeID,
+			"due_date":    dueDate,
 		},
 	}
 

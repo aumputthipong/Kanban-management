@@ -33,11 +33,19 @@ export function useColumnActions() {
     });
   };
 
-  const handleAddColumn = (title: string) => {
+  const handleAddColumn = (
+    title: string,
+    category: "TODO" | "DONE" = "TODO",
+    color: string | null = null,
+  ) => {
     if (!title.trim()) return;
     sendMessage({
       type: "COLUMN_CREATED",
-      payload: { title: title.trim() },
+      payload: {
+        title: title.trim(),
+        category,
+        ...(color ? { color } : {}),
+      },
     });
   };
 

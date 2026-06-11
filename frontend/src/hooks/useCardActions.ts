@@ -18,7 +18,18 @@ export function useCardActions(boardId: string) {
     });
   };
 
-  const handleAddCard = (columnId: string, title: string) => {
+  // opts lets the Create Task modal seed assignee / priority / due date in one
+  // shot. Callers that omit opts (or pass null fields) send just
+  // column_id + title + position — the original quick-add WS payload.
+  const handleAddCard = (
+    columnId: string,
+    title: string,
+    opts?: {
+      assigneeId?: string | null;
+      priority?: string | null;
+      dueDate?: string | null;
+    },
+  ) => {
     const { columns } = useBoardStore.getState();
     const col = columns.find((c) => c.id === columnId);
     const sorted = col ? [...col.cards].sort((a, b) => a.position - b.position) : [];
@@ -27,7 +38,14 @@ export function useCardActions(boardId: string) {
 
     sendMessage({
       type: "CARD_CREATED",
-      payload: { column_id: columnId, title, position: newPosition },
+      payload: {
+        column_id: columnId,
+        title,
+        position: newPosition,
+        ...(opts?.assigneeId ? { assignee_id: opts.assigneeId } : {}),
+        ...(opts?.priority ? { priority: opts.priority } : {}),
+        ...(opts?.dueDate ? { due_date: opts.dueDate } : {}),
+      },
     });
   };
 

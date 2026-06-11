@@ -100,7 +100,9 @@ func (s *BoardCommandService) MoveCard(ctx context.Context, cardID, newColumnID 
 
 // CreateCardWS — สร้าง card ผ่าน WS flow; คำนวณ position ให้ถ้า frontend ไม่ส่งมา.
 // ใช้ชื่อ WS เพื่อไม่ชนกับ BoardService.CreateCard ที่มีอยู่แล้ว
-func (s *BoardCommandService) CreateCardWS(ctx context.Context, columnID, creatorID, title, priority string, position float64) (db.CreateCardRow, error) {
+// assigneeID / dueDate เป็น optional (nil = ไม่ระบุ) — รองรับ Create Task modal
+// ที่สร้าง card พร้อม assignee + due date ในครั้งเดียว (quick-add ส่ง nil).
+func (s *BoardCommandService) CreateCardWS(ctx context.Context, columnID, creatorID, title, priority string, position float64, assigneeID, dueDate *string) (db.CreateCardRow, error) {
 	if position <= 0 {
 		maxPos, err := s.queries.GetMaxPositionInColumn(ctx, columnID)
 		if err == nil {
@@ -114,11 +116,13 @@ func (s *BoardCommandService) CreateCardWS(ctx context.Context, columnID, creato
 		}
 	}
 	return s.queries.CreateCard(ctx, db.CreateCardParams{
-		ColumnID:  columnID,
-		Title:     title,
-		Position:  position,
-		Priority:  util.StringToPtr(priority),
-		CreatedBy: &creatorID,
+		ColumnID:   columnID,
+		Title:      title,
+		Position:   position,
+		Priority:   util.StringToPtr(priority),
+		AssigneeID: assigneeID,
+		DueDate:    util.PtrStringToTimePtr(dueDate),
+		CreatedBy:  &creatorID,
 	})
 }
 
@@ -207,8 +211,12 @@ func (s *BoardCommandService) ToggleCardDone(ctx context.Context, cardID, boardI
 // Column operations
 // -----------------------------
 
-// CreateColumn — insert column ใหม่ก่อน DONE column ถ้ามี
-func (s *BoardCommandService) CreateColumn(ctx context.Context, boardID, title string) (db.CreateColumnRow, error) {
+// CreateColumn — insert column ใหม่ก่อน DONE column ถ้ามี.
+// category + color มาจาก Create-column modal (quick path ส่ง "TODO" + nil).
+func (s *BoardCommandService) CreateColumn(ctx context.Context, boardID, title, category string, color *string) (db.CreateColumnRow, error) {
+	if category != "DONE" {
+		category = "TODO"
+	}
 	doneCol, err := s.queries.GetColumnByBoardAndCategory(ctx, db.GetColumnByBoardAndCategoryParams{
 		BoardID:  boardID,
 		Category: "DONE",
@@ -233,7 +241,8 @@ func (s *BoardCommandService) CreateColumn(ctx context.Context, boardID, title s
 		BoardID:  boardID,
 		Title:    title,
 		Position: position,
-		Category: "TODO",
+		Category: category,
+		Color:    color,
 	})
 }
 

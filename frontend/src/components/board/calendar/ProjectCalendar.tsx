@@ -16,7 +16,7 @@ import {
 import { createPortal } from "react-dom";
 import dynamic from "next/dynamic";
 import { X } from "lucide-react";
-import { useBoardStore } from "@/store/useBoardStore";
+import { useBoardStore, UNASSIGNED_FILTER } from "@/store/useBoardStore";
 import { useBoardActions } from "@/hooks/useBoardActions";
 import { useCanEdit } from "@/hooks/useCanEdit";
 import type { Card } from "@/types/board";
@@ -74,7 +74,11 @@ export function ProjectCalendar({ boardId }: Props) {
       .filter((card) => card.due_date)
       .filter((card) => {
         if (myTasksOnly && card.assignee_id !== currentUserId) return false;
-        if (filterAssigneeId && card.assignee_id !== filterAssigneeId) return false;
+        if (filterAssigneeId === UNASSIGNED_FILTER) {
+          if (card.assignee_id != null) return false;
+        } else if (filterAssigneeId && card.assignee_id !== filterAssigneeId) {
+          return false;
+        }
         if (filterPriorities.length > 0) {
           if (!card.priority || !filterPriorities.includes(card.priority)) return false;
         }
@@ -140,6 +144,7 @@ export function ProjectCalendar({ boardId }: Props) {
         onPrev={() => setCurrentDate(subMonths(currentDate, 1))}
         onNext={() => setCurrentDate(addMonths(currentDate, 1))}
         onToday={() => setCurrentDate(new Date())}
+        onSelectDate={setCurrentDate}
         onViewChange={setView}
       />
 

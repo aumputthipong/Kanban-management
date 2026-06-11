@@ -1,6 +1,7 @@
 // MemberFilterBar.tsx
-import { useBoardStore } from "@/store/useBoardStore";
+import { useBoardStore, UNASSIGNED_FILTER } from "@/store/useBoardStore";
 import { useState, useRef, useEffect } from "react";
+import { UserX } from "lucide-react";
 import { getAvatarColor } from "@/utils/avatar";
 
 export function MemberFilterBar() {
@@ -37,6 +38,7 @@ export function MemberFilterBar() {
   const hiddenMembers = otherMembers.slice(MAX_DISPLAY);
   const isFiltering = filterAssigneeId !== null;
   const isMineActive = filterAssigneeId === currentUserId;
+  const isUnassignedActive = filterAssigneeId === UNASSIGNED_FILTER;
 
   const me = boardMembers.find((m) => m?.user_id === currentUserId);
   const myInitial = me?.full_name?.charAt(0).toUpperCase() ?? "?";
@@ -98,6 +100,23 @@ export function MemberFilterBar() {
         }`}
       >
         All
+      </button>
+
+      {/* Unassigned — surfaces "งานที่ยังไม่มีเจ้าของ" (an open question that
+          needs an owner). Dashed outline + UserX mirrors the create modal so the
+          "no one" state reads the same everywhere. */}
+      <button
+        onClick={() =>
+          setFilterAssigneeId(isUnassignedActive ? null : UNASSIGNED_FILTER)
+        }
+        title="งานที่ยังไม่มีผู้รับผิดชอบ"
+        className={`cursor-pointer inline-flex items-center gap-1.5 px-3 h-7 text-xs font-semibold rounded-full border border-dashed transition-colors ${
+          isUnassignedActive
+            ? "bg-slate-800 text-white border-slate-800"
+            : "bg-white text-slate-500 border-slate-300 hover:border-slate-500 hover:text-slate-700"
+        }`}
+      >
+        <UserX size={13} /> Unassigned
       </button>
 
       <div className="w-px h-5 bg-slate-200 mx-1" />

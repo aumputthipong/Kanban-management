@@ -40,7 +40,7 @@ function fieldEqual(field: keyof FormState, a: FormState, b: FormState): boolean
  * which fires `onCommit` with the full current form snapshot — the same shape
  * `handleUpdateCard` already consumes (it diffs changed_fields itself). We send
  * the whole snapshot rather than a partial so backend COALESCE never clobbers
- * an untouched field, mirroring the calendar's CardPreviewPopover.
+ * an untouched field.
  */
 export function useCardForm(
   card: Card,

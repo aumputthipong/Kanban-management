@@ -28,6 +28,11 @@ export interface BoardMeta {
   icon?: string;
 }
 
+// Sentinel for `filterAssigneeId` meaning "cards with no assignee". null is
+// already taken by "All" (no filter), and real assignees are UUIDs, so this
+// string can never collide with a user id.
+export const UNASSIGNED_FILTER = "unassigned";
+
 interface BoardState {
   columns: Column[];
   currentUserId: string;

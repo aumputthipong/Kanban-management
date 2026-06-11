@@ -23,7 +23,15 @@ func (c *Client) handleColumnCreated(payload map[string]interface{}) {
 	ctx, cancel := context.WithTimeout(context.Background(), dbTimeout)
 	defer cancel()
 
-	newCol, err := c.hub.boardCmd.CreateColumn(ctx, c.boardID, title)
+	// Optional fields from the Create-column modal (quick path omits them →
+	// service falls back to TODO + no colour).
+	category, _ := payload["category"].(string)
+	var color *string
+	if cstr, ok := payload["color"].(string); ok && cstr != "" {
+		color = &cstr
+	}
+
+	newCol, err := c.hub.boardCmd.CreateColumn(ctx, c.boardID, title, category, color)
 	if err != nil {
 		log.Printf("Failed to create column: %v", err)
 		return
@@ -37,6 +45,7 @@ func (c *Client) handleColumnCreated(payload map[string]interface{}) {
 			"title":    newCol.Title,
 			"position": newCol.Position,
 			"category": newCol.Category,
+			"color":    newCol.Color,
 		},
 	}
 	msgBytes, err := json.Marshal(broadcastMsg)

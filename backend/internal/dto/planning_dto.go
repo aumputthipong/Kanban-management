@@ -67,12 +67,6 @@ type PlanningItemResponse struct {
 	CreatedAt          string  `json:"created_at"`
 	AcceptanceCriteria *string `json:"acceptance_criteria"`
 	ImplementationNote *string `json:"implementation_note"`
-	// Claim fields — null when free. The frontend derives the display
-	// name from its boardMembers store using ClaimedByUserID (already
-	// loaded when the session view opens) so we skip an extra JOIN
-	// here.
-	ClaimedByUserID *string `json:"claimed_by_user_id"`
-	ClaimedAt       *string `json:"claimed_at"`
 }
 
 type CreatePlanningSessionRequest struct {

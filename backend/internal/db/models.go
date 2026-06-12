@@ -98,8 +98,6 @@ type PlanningItem struct {
 	Position           float64
 	AcceptanceCriteria *string
 	ImplementationNote *string
-	ClaimedByUserID    *string
-	ClaimedAt          *time.Time
 	CreatedAt          time.Time
 }
 

@@ -39,11 +39,6 @@ export interface PlanningItem {
   // sees the same context the requirement owner captured during planning.
   acceptance_criteria?: string | null;
   implementation_note?: string | null;
-  // Soft "I'm looking at this" claim. Null when free. The frontend looks
-  // up the display name from useBoardStore.boardMembers via the userID
-  // (no separate name field returned by the API).
-  claimed_by_user_id?: string | null;
-  claimed_at?: string | null;
 }
 
 export interface PlanningSessionDetail {

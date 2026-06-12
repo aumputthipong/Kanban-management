@@ -56,14 +56,6 @@ var (
 	// a comment that has already been soft-deleted. Surface as 409 so the
 	// optimistic UI can revert.
 	ErrPlanningCommentDeleted = errors.New("planning comment already deleted")
-	// ErrPlanningItemAlreadyClaimed is returned by ClaimItem when another
-	// user holds the claim. Handlers surface as 409 so the optimistic UI
-	// can revert and show "<other user> is looking at it already".
-	ErrPlanningItemAlreadyClaimed = errors.New("planning item already claimed by someone else")
-	// ErrPlanningItemNotClaimedByYou is returned by ReleaseItem when the
-	// caller wasn't the one holding the claim. Surface as 403 (the row
-	// definitely exists; we just won't let you act on it).
-	ErrPlanningItemNotClaimedByYou = errors.New("planning item not claimed by you")
 )
 
 func (s *PlanningService) ListSessionsByBoard(ctx context.Context, boardID string) ([]db.ListPlanningSessionsByBoardRow, error) {
@@ -272,53 +264,6 @@ func (s *PlanningService) DeleteComment(ctx context.Context, commentID string) e
 	return s.queries.SoftDeletePlanningItemComment(ctx, commentID)
 }
 
-// ─── Claim / release ──────────────────────────────────────────────────────
-
-// ClaimItem takes a soft "I'm looking at this" claim. Atomic via the
-// "claimed_by_user_id IS NULL" guard in SQL — no transaction needed,
-// because the single-row UPDATE is itself the lock. Two concurrent
-// claimers see one success + one ErrPlanningItemAlreadyClaimed.
-func (s *PlanningService) ClaimItem(ctx context.Context, itemID, userID string) error {
-	// claimed_by_user_id is nullable, so sqlc types the param as *string.
-	// Pass a pointer to the request's userID — never nil, because that
-	// would skip the WHERE check.
-	n, err := s.queries.ClaimPlanningItem(ctx, db.ClaimPlanningItemParams{
-		UserID: &userID,
-		ID:     itemID,
-	})
-	if err != nil {
-		return fmt.Errorf("claim item: %w", err)
-	}
-	if n == 0 {
-		return ErrPlanningItemAlreadyClaimed
-	}
-	return nil
-}
-
-// ReleaseItemAsOwner clears the claim if the caller is the current
-// claimer. Returns ErrPlanningItemNotClaimedByYou if not — covers both
-// "wrong user" and "item already unclaimed" (the latter is rare but
-// reachable via auto-release races).
-func (s *PlanningService) ReleaseItemAsOwner(ctx context.Context, itemID, userID string) error {
-	n, err := s.queries.ReleasePlanningItemAsOwner(ctx, db.ReleasePlanningItemAsOwnerParams{
-		ID:     itemID,
-		UserID: &userID,
-	})
-	if err != nil {
-		return fmt.Errorf("release item: %w", err)
-	}
-	if n == 0 {
-		return ErrPlanningItemNotClaimedByYou
-	}
-	return nil
-}
-
-// ReleaseItemForce drops the claim regardless of who holds it. Used by
-// board owners/managers for moderation and by PromoteItem's auto-release
-// path. Idempotent — calling on an already-unclaimed item is a no-op.
-func (s *PlanningService) ReleaseItemForce(ctx context.Context, itemID string) error {
-	return s.queries.ReleasePlanningItemForce(ctx, itemID)
-}
 
 // PromoteItem turns a planning item into a Kanban card in the same board's
 // first TODO column. Wrapped in a tx so the cards.insert and the item's
@@ -399,14 +344,6 @@ func (s *PlanningService) PromoteItem(ctx context.Context, itemID, userID string
 		PromotedToCardID: util.StringToPtr(card.ID),
 	}); err != nil {
 		return db.PlanningItem{}, db.CreateCardRow{}, fmt.Errorf("mark promoted: %w", err)
-	}
-
-	// Auto-release any claim — the row is becoming a Kanban card; whoever
-	// was "looking at it" doesn't need to keep the planning-side claim.
-	// In the same tx so the auto-release is atomic with the promote: a
-	// rollback caused by the commit failing leaves the claim intact.
-	if err := qtx.ReleasePlanningItemForce(ctx, item.ID); err != nil {
-		return db.PlanningItem{}, db.CreateCardRow{}, fmt.Errorf("release claim on promote: %w", err)
 	}
 
 	if err := tx.Commit(ctx); err != nil {

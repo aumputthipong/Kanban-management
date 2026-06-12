@@ -38,36 +38,6 @@ func (q *Queries) AddBoardMember(ctx context.Context, arg AddBoardMemberParams) 
 	return i, err
 }
 
-const claimPlanningItem = `-- name: ClaimPlanningItem :execrows
-
-UPDATE planning_items
-SET claimed_by_user_id = $1,
-    claimed_at         = now()
-WHERE id = $2
-  AND claimed_by_user_id IS NULL
-`
-
-type ClaimPlanningItemParams struct {
-	UserID *string
-	ID     string
-}
-
-// Claim / release. Both queries return the row count via :execrows so the
-// service layer can map "0 rows updated" to the right sentinel — claim
-// needs to distinguish "row didn't exist" from "someone else holds it",
-// and release needs to distinguish "you didn't own it" from "no claim
-// existed in the first place".
-// ClaimPlanningItem succeeds only if the item is currently unclaimed.
-// The "claimed_by_user_id IS NULL" guard is what gives us the 409
-// semantics for free — no row matched = someone got there first.
-func (q *Queries) ClaimPlanningItem(ctx context.Context, arg ClaimPlanningItemParams) (int64, error) {
-	result, err := q.db.Exec(ctx, claimPlanningItem, arg.UserID, arg.ID)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected(), nil
-}
-
 const clearCardTags = `-- name: ClearCardTags :exec
 DELETE FROM card_tags WHERE card_id = $1
 `
@@ -293,7 +263,7 @@ func (q *Queries) CreateColumn(ctx context.Context, arg CreateColumnParams) (Cre
 const createPlanningItem = `-- name: CreatePlanningItem :one
 INSERT INTO planning_items (session_id, type, title, description, position)
 VALUES ($1, $2, $3, $4, $5)
-RETURNING id, session_id, type, title, description, status, promoted_to_card_id, position, acceptance_criteria, implementation_note, claimed_by_user_id, claimed_at, created_at
+RETURNING id, session_id, type, title, description, status, promoted_to_card_id, position, acceptance_criteria, implementation_note, created_at
 `
 
 type CreatePlanningItemParams struct {
@@ -324,8 +294,6 @@ func (q *Queries) CreatePlanningItem(ctx context.Context, arg CreatePlanningItem
 		&i.Position,
 		&i.AcceptanceCriteria,
 		&i.ImplementationNote,
-		&i.ClaimedByUserID,
-		&i.ClaimedAt,
 		&i.CreatedAt,
 	)
 	return i, err
@@ -1275,7 +1243,7 @@ func (q *Queries) GetMyTasks(ctx context.Context, arg GetMyTasksParams) ([]GetMy
 }
 
 const getPlanningItem = `-- name: GetPlanningItem :one
-SELECT id, session_id, type, title, description, status, promoted_to_card_id, position, acceptance_criteria, implementation_note, claimed_by_user_id, claimed_at, created_at FROM planning_items WHERE id = $1
+SELECT id, session_id, type, title, description, status, promoted_to_card_id, position, acceptance_criteria, implementation_note, created_at FROM planning_items WHERE id = $1
 `
 
 func (q *Queries) GetPlanningItem(ctx context.Context, id string) (PlanningItem, error) {
@@ -1292,8 +1260,6 @@ func (q *Queries) GetPlanningItem(ctx context.Context, id string) (PlanningItem,
 		&i.Position,
 		&i.AcceptanceCriteria,
 		&i.ImplementationNote,
-		&i.ClaimedByUserID,
-		&i.ClaimedAt,
 		&i.CreatedAt,
 	)
 	return i, err
@@ -2026,7 +1992,7 @@ func (q *Queries) ListPlanningItemComments(ctx context.Context, itemID string) (
 }
 
 const listPlanningItemsBySession = `-- name: ListPlanningItemsBySession :many
-SELECT id, session_id, type, title, description, status, promoted_to_card_id, position, acceptance_criteria, implementation_note, claimed_by_user_id, claimed_at, created_at FROM planning_items
+SELECT id, session_id, type, title, description, status, promoted_to_card_id, position, acceptance_criteria, implementation_note, created_at FROM planning_items
 WHERE session_id = $1
 ORDER BY position ASC
 `
@@ -2051,8 +2017,6 @@ func (q *Queries) ListPlanningItemsBySession(ctx context.Context, sessionID stri
 			&i.Position,
 			&i.AcceptanceCriteria,
 			&i.ImplementationNote,
-			&i.ClaimedByUserID,
-			&i.ClaimedAt,
 			&i.CreatedAt,
 		); err != nil {
 			return nil, err
@@ -2136,7 +2100,7 @@ func (q *Queries) ListPlanningSessionsByBoard(ctx context.Context, boardID strin
 }
 
 const lockPlanningItemForUpdate = `-- name: LockPlanningItemForUpdate :one
-SELECT id, session_id, type, title, description, status, promoted_to_card_id, position, acceptance_criteria, implementation_note, claimed_by_user_id, claimed_at, created_at FROM planning_items WHERE id = $1 FOR UPDATE
+SELECT id, session_id, type, title, description, status, promoted_to_card_id, position, acceptance_criteria, implementation_note, created_at FROM planning_items WHERE id = $1 FOR UPDATE
 `
 
 // LockPlanningItemForUpdate takes a row-level write lock on the planning
@@ -2158,50 +2122,9 @@ func (q *Queries) LockPlanningItemForUpdate(ctx context.Context, id string) (Pla
 		&i.Position,
 		&i.AcceptanceCriteria,
 		&i.ImplementationNote,
-		&i.ClaimedByUserID,
-		&i.ClaimedAt,
 		&i.CreatedAt,
 	)
 	return i, err
-}
-
-const releasePlanningItemAsOwner = `-- name: ReleasePlanningItemAsOwner :execrows
-UPDATE planning_items
-SET claimed_by_user_id = NULL,
-    claimed_at         = NULL
-WHERE id = $1
-  AND claimed_by_user_id = $2
-`
-
-type ReleasePlanningItemAsOwnerParams struct {
-	ID     string
-	UserID *string
-}
-
-// ReleasePlanningItemAsOwner clears the claim only if the caller is the
-// current claimer. Used by the "เลิกดู" button on the row owner side.
-func (q *Queries) ReleasePlanningItemAsOwner(ctx context.Context, arg ReleasePlanningItemAsOwnerParams) (int64, error) {
-	result, err := q.db.Exec(ctx, releasePlanningItemAsOwner, arg.ID, arg.UserID)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected(), nil
-}
-
-const releasePlanningItemForce = `-- name: ReleasePlanningItemForce :exec
-UPDATE planning_items
-SET claimed_by_user_id = NULL,
-    claimed_at         = NULL
-WHERE id = $1
-`
-
-// ReleasePlanningItemForce clears the claim regardless of who holds it.
-// Used by board owner/manager moderation and by PromoteItem's
-// auto-release path (the planning row is becoming a card; whoever was
-// looking at it doesn't need the claim anymore).
-func (q *Queries) ReleasePlanningItemForce(ctx context.Context, id string) error {
-	_, err := q.db.Exec(ctx, releasePlanningItemForce, id)
-	return err
 }
 
 const removeBoardMember = `-- name: RemoveBoardMember :exec
@@ -2550,7 +2473,7 @@ SET type                = COALESCE($1::varchar, type),
     acceptance_criteria = COALESCE($6::text, acceptance_criteria),
     implementation_note = COALESCE($7::text, implementation_note)
 WHERE id = $8
-RETURNING id, session_id, type, title, description, status, promoted_to_card_id, position, acceptance_criteria, implementation_note, claimed_by_user_id, claimed_at, created_at
+RETURNING id, session_id, type, title, description, status, promoted_to_card_id, position, acceptance_criteria, implementation_note, created_at
 `
 
 type UpdatePlanningItemParams struct {
@@ -2592,8 +2515,6 @@ func (q *Queries) UpdatePlanningItem(ctx context.Context, arg UpdatePlanningItem
 		&i.Position,
 		&i.AcceptanceCriteria,
 		&i.ImplementationNote,
-		&i.ClaimedByUserID,
-		&i.ClaimedAt,
 		&i.CreatedAt,
 	)
 	return i, err

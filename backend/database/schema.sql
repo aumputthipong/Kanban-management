@@ -149,8 +149,6 @@ CREATE TABLE planning_items (
     position              DOUBLE PRECISION NOT NULL,
     acceptance_criteria   TEXT,
     implementation_note   TEXT,
-    claimed_by_user_id    UUID REFERENCES users(id) ON DELETE SET NULL,
-    claimed_at            TIMESTAMPTZ,
     created_at            TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 

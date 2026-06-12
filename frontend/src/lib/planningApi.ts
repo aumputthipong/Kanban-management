@@ -106,16 +106,4 @@ export const planningApi = {
 
   deleteComment: (commentId: string) =>
     apiClient<null>(`/planning/comments/${commentId}`, { method: "DELETE" }),
-
-  // Claim / release. Both return 204 with no body — apiClient handles the
-  // empty response. Claim returns 409 when another user holds the lock;
-  // the caller catches via ApiError and surfaces the message.
-  claimItem: (itemId: string) =>
-    apiClient<null>(`/planning/items/${itemId}/claim`, {
-      method: "POST",
-      data: {},
-    }),
-
-  releaseItem: (itemId: string) =>
-    apiClient<null>(`/planning/items/${itemId}/claim`, { method: "DELETE" }),
 };

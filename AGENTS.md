@@ -103,9 +103,11 @@ Constants live in [`backend/internal/service/activity_service.go`](backend/inter
 | Planning · comment | `planning.comment_created` | `PlanningCommentCreatedPayload` (`body_preview` ≤80 chars) |
 | Planning · comment | `planning.comment_edited` | `PlanningCommentEditedPayload` |
 | Planning · comment | `planning.comment_deleted` | `PlanningCommentDeletedPayload` |
-| Planning · claim | `planning.item_claimed` | `PlanningItemClaimedPayload` |
-| Planning · claim | `planning.item_released` | `PlanningItemReleasedPayload` |
-| Planning · claim | `planning.claim_auto_released_on_promote` | `PlanningItemReleasedPayload` |
+| Planning · claim *(legacy)* | `planning.item_claimed` | `PlanningItemClaimedPayload` |
+| Planning · claim *(legacy)* | `planning.item_released` | `PlanningItemReleasedPayload` |
+| Planning · claim *(legacy)* | `planning.claim_auto_released_on_promote` | `PlanningItemReleasedPayload` |
+
+> **Legacy claim events** — the planning-item "claim" feature was removed (UI + endpoints + `claimed_*` columns dropped in migration `000017`). These three event types are **no longer emitted**, but the constants/payloads (Go) and the feed renderer cases (`describeActivity`/`eventBadge`) are **kept** because historical `activities` rows still reference them. Don't delete the renderer cases — that would surface raw event-type strings on old rows.
 
 **Adding a new event:**
 1. Add the constant + payload struct in `activity_service.go`.

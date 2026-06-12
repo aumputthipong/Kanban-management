@@ -124,8 +124,6 @@ func itemToResponse(it db.PlanningItem) dto.PlanningItemResponse {
 		CreatedAt:          it.CreatedAt.Format(time.RFC3339),
 		AcceptanceCriteria: it.AcceptanceCriteria,
 		ImplementationNote: it.ImplementationNote,
-		ClaimedByUserID:    it.ClaimedByUserID,
-		ClaimedAt:          ptrTimeToString(it.ClaimedAt),
 	}
 }
 
@@ -498,11 +496,8 @@ func (h *PlanningHandler) PromoteItem(w http.ResponseWriter, r *http.Request) er
 	if apiErr != nil {
 		return apiErr
 	}
-	// Load the item before promoting so we can detect a pre-existing
-	// claim. The service's tx auto-releases the claim atomically with
-	// the promote; this snapshot just lets us emit a distinct
-	// claim_auto_released_on_promote event afterwards so the feed
-	// doesn't silently swallow the release.
+	// Load the item first so we can resolve its board for the membership
+	// gate (and fail fast with 404 on a bad id).
 	before, err := h.planning.GetItem(r.Context(), itemID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -545,17 +540,6 @@ func (h *PlanningHandler) PromoteItem(w http.ResponseWriter, r *http.Request) er
 			ToCardID: card.ID,
 		},
 	)
-	// If someone was holding the claim before the promote, the service
-	// dropped it atomically; surface that on the feed as a distinct
-	// event so the reader can tell "promote auto-released this" apart
-	// from "user manually released earlier".
-	if before.ClaimedByUserID != nil {
-		h.recordActivity(r, boardID, userID,
-			service.EventPlanningItemClaimAutoReleased, service.EntityPlanningItem,
-			strPtr(item.ID),
-			service.PlanningItemReleasedPayload{Title: item.Title, Type: item.Type},
-		)
-	}
 	httputil.RespondJSON(w, http.StatusOK, map[string]any{
 		"item":    itemToResponse(item),
 		"card_id": card.ID,

@@ -32,9 +32,6 @@ type MockPlanningService struct {
 	CreateCommentFn       func(ctx context.Context, itemID, authorID, body string) (db.PlanningItemComment, error)
 	EditCommentFn         func(ctx context.Context, commentID, body string) (db.PlanningItemComment, error)
 	DeleteCommentFn       func(ctx context.Context, commentID string) error
-	ClaimItemFn           func(ctx context.Context, itemID, userID string) error
-	ReleaseItemAsOwnerFn  func(ctx context.Context, itemID, userID string) error
-	ReleaseItemForceFn    func(ctx context.Context, itemID string) error
 }
 
 func (m *MockPlanningService) ListSessionsByBoard(ctx context.Context, boardID string) ([]db.ListPlanningSessionsByBoardRow, error) {
@@ -115,18 +112,6 @@ func (m *MockPlanningService) EditComment(ctx context.Context, commentID, body s
 
 func (m *MockPlanningService) DeleteComment(ctx context.Context, commentID string) error {
 	return m.DeleteCommentFn(ctx, commentID)
-}
-
-func (m *MockPlanningService) ClaimItem(ctx context.Context, itemID, userID string) error {
-	return m.ClaimItemFn(ctx, itemID, userID)
-}
-
-func (m *MockPlanningService) ReleaseItemAsOwner(ctx context.Context, itemID, userID string) error {
-	return m.ReleaseItemAsOwnerFn(ctx, itemID, userID)
-}
-
-func (m *MockPlanningService) ReleaseItemForce(ctx context.Context, itemID string) error {
-	return m.ReleaseItemForceFn(ctx, itemID)
 }
 
 // MockActivityRecorder records each Record() invocation in a slice so tests

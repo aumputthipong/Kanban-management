@@ -91,11 +91,6 @@ type PlanningServicer interface {
 	CreateComment(ctx context.Context, itemID, authorID, body string) (db.PlanningItemComment, error)
 	EditComment(ctx context.Context, commentID, body string) (db.PlanningItemComment, error)
 	DeleteComment(ctx context.Context, commentID string) error
-
-	// Claim / working state
-	ClaimItem(ctx context.Context, itemID, userID string) error
-	ReleaseItemAsOwner(ctx context.Context, itemID, userID string) error
-	ReleaseItemForce(ctx context.Context, itemID string) error
 }
 
 // ActivityRecorder is the narrow contract handlers need to log audit events.

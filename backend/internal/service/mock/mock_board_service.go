@@ -20,7 +20,7 @@ import (
 type MockBoardService struct {
 	GetAllBoardsFn              func(ctx context.Context, userID string) ([]service.BoardSummaryData, error)
 	GetBoardWithCardsFn         func(ctx context.Context, boardID string) ([]service.ColumnData, error)
-	CreateBoardFn               func(ctx context.Context, title string, ownerID string) (string, error)
+	CreateBoardFn               func(ctx context.Context, title string, description, color, icon *string, ownerID string) (string, error)
 	UpdateBoardFn               func(ctx context.Context, id string, title *string, budget *float64, description, color, icon *string) (db.Board, error)
 	StashBoardFn                func(ctx context.Context, boardID string) error
 	GetStashedBoardsFn          func(ctx context.Context, userID string) ([]db.GetStashedBoardsForOwnerRow, error)
@@ -55,8 +55,8 @@ func (m *MockBoardService) GetBoardWithCards(ctx context.Context, boardID string
 	return m.GetBoardWithCardsFn(ctx, boardID)
 }
 
-func (m *MockBoardService) CreateBoard(ctx context.Context, title string, ownerID string) (string, error) {
-	return m.CreateBoardFn(ctx, title, ownerID)
+func (m *MockBoardService) CreateBoard(ctx context.Context, title string, description, color, icon *string, ownerID string) (string, error) {
+	return m.CreateBoardFn(ctx, title, description, color, icon, ownerID)
 }
 
 func (m *MockBoardService) UpdateBoard(ctx context.Context, id string, title *string, budget *float64, description, color, icon *string) (db.Board, error) {

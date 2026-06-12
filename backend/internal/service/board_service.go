@@ -88,7 +88,10 @@ func NewBoardService(pool *pgxpool.Pool, queries *db.Queries) *BoardService {
 
 // CreateBoard สร้าง board ใหม่พร้อม 3 columns เริ่มต้น และกำหนด ownerID เป็น owner
 // รับและคืน string แทน uuid.UUID เพื่อให้ตรงกับ type จาก sqlc
-func (s *BoardService) CreateBoard(ctx context.Context, title string, ownerID string) (string, error) {
+//
+// description/color/icon เป็น optional — nil = ใช้ default ของ column (handled
+// in the CreateBoard query via COALESCE), ไม่ต้อง resolve default ที่ service.
+func (s *BoardService) CreateBoard(ctx context.Context, title string, description, color, icon *string, ownerID string) (string, error) {
 	if strings.TrimSpace(title) == "" {
 		return "", fmt.Errorf("board title cannot be empty")
 	}
@@ -101,7 +104,12 @@ func (s *BoardService) CreateBoard(ctx context.Context, title string, ownerID st
 
 	qtx := s.queries.WithTx(tx)
 
-	board, err := qtx.CreateBoard(ctx, title)
+	board, err := qtx.CreateBoard(ctx, db.CreateBoardParams{
+		Title:       title,
+		Description: description,
+		Color:       color,
+		Icon:        icon,
+	})
 	if err != nil {
 		return "", fmt.Errorf("create board: %w", err)
 	}

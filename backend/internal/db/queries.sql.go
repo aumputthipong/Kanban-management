@@ -141,26 +141,48 @@ func (q *Queries) CreateActivity(ctx context.Context, arg CreateActivityParams) 
 }
 
 const createBoard = `-- name: CreateBoard :one
-INSERT INTO boards (id, title, created_at, updated_at)
-VALUES (gen_random_uuid(), $1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+INSERT INTO boards (id, title, description, color, icon, created_at, updated_at)
+VALUES (
+    gen_random_uuid(),
+    $1,
+    COALESCE($2, ''),
+    COALESCE($3, '#1E40AF'),
+    COALESCE($4, 'board'),
+    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+)
 RETURNING id, title
 `
+
+type CreateBoardParams struct {
+	Title       string
+	Description interface{}
+	Color       interface{}
+	Icon        interface{}
+}
 
 type CreateBoardRow struct {
 	ID    string
 	Title string
 }
 
-func (q *Queries) CreateBoard(ctx context.Context, title string) (CreateBoardRow, error) {
-	row := q.db.QueryRow(ctx, createBoard, title)
+// Appearance is optional at create time: a NULL narg falls back to the column
+// default (description ”, color '#1E40AF', icon 'board') so the board always
+// has a sensible identity even when the client omits these.
+func (q *Queries) CreateBoard(ctx context.Context, arg CreateBoardParams) (CreateBoardRow, error) {
+	row := q.db.QueryRow(ctx, createBoard,
+		arg.Title,
+		arg.Description,
+		arg.Color,
+		arg.Icon,
+	)
 	var i CreateBoardRow
 	err := row.Scan(&i.ID, &i.Title)
 	return i, err
 }
 
 const createCard = `-- name: CreateCard :one
-INSERT INTO cards (column_id, title, position, due_date, assignee_id, priority, created_by, acceptance_criteria, implementation_note)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+INSERT INTO cards (column_id, title, position, due_date, assignee_id, priority, created_by, acceptance_criteria, implementation_note, description)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 RETURNING id, column_id, title, description, position, due_date, assignee_id, priority, created_by, acceptance_criteria, implementation_note
 `
 
@@ -174,6 +196,7 @@ type CreateCardParams struct {
 	CreatedBy          *string
 	AcceptanceCriteria *string
 	ImplementationNote *string
+	Description        *string
 }
 
 type CreateCardRow struct {
@@ -205,6 +228,7 @@ func (q *Queries) CreateCard(ctx context.Context, arg CreateCardParams) (CreateC
 		arg.CreatedBy,
 		arg.AcceptanceCriteria,
 		arg.ImplementationNote,
+		arg.Description,
 	)
 	var i CreateCardRow
 	err := row.Scan(

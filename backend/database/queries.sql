@@ -119,8 +119,18 @@ WHERE c.column_id = ANY($1::uuid[])
 GROUP BY c.id, u.full_name
 ORDER BY c.position ASC;
 -- name: CreateBoard :one
-INSERT INTO boards (id, title, created_at, updated_at)
-VALUES (gen_random_uuid(), $1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+-- Appearance is optional at create time: a NULL narg falls back to the column
+-- default (description '', color '#1E40AF', icon 'board') so the board always
+-- has a sensible identity even when the client omits these.
+INSERT INTO boards (id, title, description, color, icon, created_at, updated_at)
+VALUES (
+    gen_random_uuid(),
+    sqlc.arg('title'),
+    COALESCE(sqlc.narg('description'), ''),
+    COALESCE(sqlc.narg('color'), '#1E40AF'),
+    COALESCE(sqlc.narg('icon'), 'board'),
+    CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+)
 RETURNING id, title;
 
 -- name: CreateColumn :one
@@ -165,8 +175,8 @@ WHERE column_id = $1;
 -- inserts so PromoteItem can carry the planning row's values onto the
 -- resulting card in one statement. User-initiated card creation passes
 -- nil and the columns stay NULL.
-INSERT INTO cards (column_id, title, position, due_date, assignee_id, priority, created_by, acceptance_criteria, implementation_note)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+INSERT INTO cards (column_id, title, position, due_date, assignee_id, priority, created_by, acceptance_criteria, implementation_note, description)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 RETURNING id, column_id, title, description, position, due_date, assignee_id, priority, created_by, acceptance_criteria, implementation_note;
 
 -- name: UpdateCardColumn :exec

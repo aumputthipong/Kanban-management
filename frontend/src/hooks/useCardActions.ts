@@ -18,9 +18,11 @@ export function useCardActions(boardId: string) {
     });
   };
 
-  // opts lets the Create Task modal seed assignee / priority / due date in one
-  // shot. Callers that omit opts (or pass null fields) send just
-  // column_id + title + position — the original quick-add WS payload.
+  // opts lets the Create Task modal seed assignee / priority / due date /
+  // description / subtasks in one shot. Callers that omit opts (or pass null /
+  // empty fields) send just column_id + title + position — the original
+  // quick-add WS payload. Subtasks are titles only; the backend creates them
+  // alongside the card in one transaction (the card id doesn't exist yet).
   const handleAddCard = (
     columnId: string,
     title: string,
@@ -28,6 +30,8 @@ export function useCardActions(boardId: string) {
       assigneeId?: string | null;
       priority?: string | null;
       dueDate?: string | null;
+      description?: string | null;
+      subtasks?: string[];
     },
   ) => {
     const { columns } = useBoardStore.getState();
@@ -45,6 +49,8 @@ export function useCardActions(boardId: string) {
         ...(opts?.assigneeId ? { assignee_id: opts.assigneeId } : {}),
         ...(opts?.priority ? { priority: opts.priority } : {}),
         ...(opts?.dueDate ? { due_date: opts.dueDate } : {}),
+        ...(opts?.description ? { description: opts.description } : {}),
+        ...(opts?.subtasks && opts.subtasks.length > 0 ? { subtasks: opts.subtasks } : {}),
       },
     });
   };

@@ -54,7 +54,13 @@ interface ColumnProps {
   onAddCard: (
     columnId: string,
     title: string,
-    opts?: { assigneeId: string | null; priority: string | null; dueDate: string | null },
+    opts?: {
+      assigneeId: string | null;
+      priority: string | null;
+      dueDate: string | null;
+      description?: string | null;
+      subtasks?: string[];
+    },
   ) => void;
   onDeleteCard: (cardId: string) => void;
   onSaveCard: (cardId: string, form: FormState) => void;
@@ -204,7 +210,7 @@ export const KanbanColumn = memo(function KanbanColumn({
 
         <ColumnOptionsModal
           key={`${id}-${optionsOpen}`}
-          open={optionsOpen}
+          open={optionsOpen}
           initialTitle={title}
           initialCategory={category}
           initialColor={color ?? null}
@@ -337,7 +343,7 @@ export const KanbanColumn = memo(function KanbanColumn({
           props instead of being sync'd inside an effect. */}
       <ColumnOptionsModal
         key={`${id}-${optionsOpen}`}
-        open={optionsOpen}
+        open={optionsOpen}
         initialTitle={title}
         initialCategory={category}
         initialColor={color ?? null}

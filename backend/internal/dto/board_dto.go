@@ -14,6 +14,12 @@ type ColumnResponse struct {
 
 type CreateBoardRequest struct {
 	Title string `json:"title" validate:"required,min=1,max=120"`
+	// Appearance is optional at create time. Omit/null = column default
+	// (description '', color '#1E40AF', icon 'board'). Same validation as the
+	// PATCH path so a board can be born with its chosen identity in one request.
+	Description *string `json:"description" validate:"omitempty,max=160"`
+	Color       *string `json:"color"       validate:"omitempty,hexcolor"`
+	Icon        *string `json:"icon"        validate:"omitempty,oneof=board rocket target bolt bug"`
 }
 type MemberSummary struct {
 	UserID   string `json:"user_id"`

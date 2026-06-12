@@ -14,16 +14,18 @@ import (
 
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/db"
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/util"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 const wsPositionGap = 65536.0
 
 type BoardCommandService struct {
+	pool    *pgxpool.Pool
 	queries *db.Queries
 }
 
-func NewBoardCommandService(queries *db.Queries) *BoardCommandService {
-	return &BoardCommandService{queries: queries}
+func NewBoardCommandService(pool *pgxpool.Pool, queries *db.Queries) *BoardCommandService {
+	return &BoardCommandService{pool: pool, queries: queries}
 }
 
 // ErrEntityBoardMismatch is returned when a WS handler tries to mutate a card
@@ -100,9 +102,12 @@ func (s *BoardCommandService) MoveCard(ctx context.Context, cardID, newColumnID 
 
 // CreateCardWS — สร้าง card ผ่าน WS flow; คำนวณ position ให้ถ้า frontend ไม่ส่งมา.
 // ใช้ชื่อ WS เพื่อไม่ชนกับ BoardService.CreateCard ที่มีอยู่แล้ว
-// assigneeID / dueDate เป็น optional (nil = ไม่ระบุ) — รองรับ Create Task modal
-// ที่สร้าง card พร้อม assignee + due date ในครั้งเดียว (quick-add ส่ง nil).
-func (s *BoardCommandService) CreateCardWS(ctx context.Context, columnID, creatorID, title, priority string, position float64, assigneeID, dueDate *string) (db.CreateCardRow, error) {
+//
+// assigneeID / dueDate / description เป็น optional (nil = ไม่ระบุ) และ
+// subtaskTitles เป็น list ชื่อ subtask ที่ Create Task modal แนบมา. card +
+// subtasks ถูกสร้างใน transaction เดียว — ถ้า subtask ใดล้ม card จะ rollback
+// ด้วย (ไม่เหลือ card ที่ subtask ไม่ครบ). quick-add ส่ง nil/empty หมด.
+func (s *BoardCommandService) CreateCardWS(ctx context.Context, columnID, creatorID, title, priority string, position float64, assigneeID, dueDate, description *string, subtaskTitles []string) (db.CreateCardRow, []db.CardSubtask, error) {
 	if position <= 0 {
 		maxPos, err := s.queries.GetMaxPositionInColumn(ctx, columnID)
 		if err == nil {
@@ -115,15 +120,45 @@ func (s *BoardCommandService) CreateCardWS(ctx context.Context, columnID, creato
 			position = wsPositionGap
 		}
 	}
-	return s.queries.CreateCard(ctx, db.CreateCardParams{
-		ColumnID:   columnID,
-		Title:      title,
-		Position:   position,
-		Priority:   util.StringToPtr(priority),
-		AssigneeID: assigneeID,
-		DueDate:    util.PtrStringToTimePtr(dueDate),
-		CreatedBy:  &creatorID,
+
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return db.CreateCardRow{}, nil, fmt.Errorf("begin tx: %w", err)
+	}
+	defer tx.Rollback(ctx)
+	qtx := s.queries.WithTx(tx)
+
+	card, err := qtx.CreateCard(ctx, db.CreateCardParams{
+		ColumnID:    columnID,
+		Title:       title,
+		Position:    position,
+		Priority:    util.StringToPtr(priority),
+		AssigneeID:  assigneeID,
+		DueDate:     util.PtrStringToTimePtr(dueDate),
+		CreatedBy:   &creatorID,
+		Description: description,
 	})
+	if err != nil {
+		return db.CreateCardRow{}, nil, fmt.Errorf("create card: %w", err)
+	}
+
+	subtasks := make([]db.CardSubtask, 0, len(subtaskTitles))
+	for i, t := range subtaskTitles {
+		sub, err := qtx.CreateSubtask(ctx, db.CreateSubtaskParams{
+			CardID:   card.ID,
+			Title:    t,
+			Position: wsPositionGap * float64(i+1),
+		})
+		if err != nil {
+			return db.CreateCardRow{}, nil, fmt.Errorf("create subtask %d: %w", i, err)
+		}
+		subtasks = append(subtasks, sub)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return db.CreateCardRow{}, nil, fmt.Errorf("commit tx: %w", err)
+	}
+	return card, subtasks, nil
 }
 
 // DeleteCard — คืน title ของ card ก่อนลบ เพื่อใช้เขียน activity

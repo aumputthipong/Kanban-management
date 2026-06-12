@@ -9,11 +9,13 @@ import {
 import {
   ArrowRight,
   CheckCircle2,
+  CheckSquare,
   Circle,
   Clock,
   FileText,
-  ListChecks,
   MessageSquare,
+  Pencil,
+  Square,
 } from "lucide-react";
 import { useBoardStore } from "@/store/useBoardStore";
 import type {
@@ -22,26 +24,27 @@ import type {
   PlanningItemType,
 } from "@/types/planning";
 import { CommentThread } from "./CommentThread";
-import { ItemActionButtons } from "./ItemActionButtons";
-import { ItemClaimAffordance } from "./ItemClaimAffordance";
-import { ItemDetailsPanel, countNonEmptyLines } from "./ItemDetailsPanel";
-import { ItemTypePopover } from "./ItemTypePopover";
+import { ItemActionMenu } from "./ItemActionMenu";
+import { ItemDetailsPanel } from "./ItemDetailsPanel";
+import { ItemTypeChip } from "./ItemTypeChip";
 import { usePlanningComments } from "@/hooks/usePlanningComments";
 
 interface ItemRowProps {
   index: number;
   item: PlanningItem;
   focused: boolean;
+  /** Bulk select-mode: rows show a leading checkbox and clicking toggles the
+   *  selection instead of focusing/editing. */
+  selectMode: boolean;
+  isSelected: boolean;
+  onToggleSelect: () => void;
   onFocus: () => void;
   onChangeType: (t: PlanningItemType) => void;
   onChangeTitle: (t: string) => void;
   onToggleStatus: (s: PlanningItemStatus) => void;
   onPromote: () => void;
   onDelete: () => void;
-  onChangeAcceptanceCriteria: (value: string) => void;
-  onChangeImplementationNote: (value: string) => void;
-  onClaim: () => void;
-  onRelease: () => void;
+  onChangeNote: (value: string) => void;
   onUp: () => void;
   onDown: () => void;
 }
@@ -56,16 +59,16 @@ export function ItemRow({
   index,
   item,
   focused,
+  selectMode,
+  isSelected,
+  onToggleSelect,
   onFocus,
   onChangeType,
   onChangeTitle,
   onToggleStatus,
   onPromote,
   onDelete,
-  onChangeAcceptanceCriteria,
-  onChangeImplementationNote,
-  onClaim,
-  onRelease,
+  onChangeNote,
   onUp,
   onDown,
 }: ItemRowProps) {
@@ -73,20 +76,11 @@ export function ItemRow({
   const [expanded, setExpanded] = useState(false);
   const [commentsExpanded, setCommentsExpanded] = useState(false);
   const currentUserId = useBoardStore((s) => s.currentUserId);
-  const boardMembers = useBoardStore((s) => s.boardMembers);
   // Lazy comment thread — the hook never fetches until `load()` is called,
   // which happens the first time the user clicks the comment badge. Each
   // row owns its own hook instance so the threads don't interleave.
   const comments = usePlanningComments(item.id, currentUserId || null);
 
-  const claimedByUserId = item.claimed_by_user_id ?? null;
-  const isClaimedByMe =
-    !!currentUserId && claimedByUserId === currentUserId;
-  const claimerName =
-    claimedByUserId
-      ? boardMembers.find((m) => m.user_id === claimedByUserId)?.full_name ||
-        "ผู้ใช้คนอื่น"
-      : "";
   const [draft, setDraft] = useState(item.title);
   // Tracks the last item.title we synced from so we can detect prop changes
   // during render without a useEffect+setState (which trips React 19's
@@ -145,9 +139,8 @@ export function ItemRow({
   const promoted = item.status === "promoted";
   const dropped = item.status === "dropped";
   const selected = item.status === "selected";
-  const acCount = countNonEmptyLines(item.acceptance_criteria);
   const hasNote = (item.implementation_note ?? "").trim().length > 0;
-  const hasDetails = acCount > 0 || hasNote;
+  const hasDetails = hasNote;
 
   // Status line shown under the title — a one-glance answer to "where is
   // this item now": on the board, awaiting an answer, paused, or still a
@@ -170,41 +163,53 @@ export function ItemRow({
       className="flex flex-col border-b border-slate-100 last:border-b-0"
     >
       <div
-        onClick={onFocus}
-        className={`group flex items-start gap-3 rounded-md px-2 py-2.5 ${
-          focused ? "bg-indigo-50" : "hover:bg-slate-50"
-        }`}
+        onClick={selectMode ? (promoted ? undefined : onToggleSelect) : onFocus}
+        className={`group flex items-start gap-3 rounded-md border-l-2 px-2 py-2.5 ${
+          isSelected ? "border-indigo-400" : "border-transparent"
+        } ${
+          focused
+            ? "bg-indigo-50"
+            : isSelected
+              ? "bg-indigo-50/50"
+              : "hover:bg-slate-50"
+        } ${selectMode && !promoted ? "cursor-pointer" : ""}`}
       >
-        <span className="w-6 shrink-0 pt-0.5 text-right text-xs font-semibold tabular-nums text-slate-400">
-          {String(index + 1).padStart(2, "0")}
-        </span>
+        {selectMode ? (
+          // Select-mode: a leading checkbox replaces the index. Promoted rows
+          // can't be re-sent, so their box is disabled/greyed.
+          <span className="flex w-6 shrink-0 justify-center pt-0.5" aria-hidden>
+            {promoted ? (
+              <Square size={16} className="text-slate-200" />
+            ) : isSelected ? (
+              <CheckSquare size={16} className="text-indigo-600" />
+            ) : (
+              <Square size={16} className="text-slate-400" />
+            )}
+          </span>
+        ) : (
+          <span className="w-6 shrink-0 pt-0.5 text-right text-xs font-semibold tabular-nums text-slate-400">
+            {String(index + 1).padStart(2, "0")}
+          </span>
+        )}
 
         <div className="min-w-0 flex-1">
           {/* Line 1 — type chip, title, detail badges */}
           <div className="flex items-center gap-2">
-            <ItemTypePopover
-              type={item.type}
-              disabled={promoted}
-              onChange={onChangeType}
-            />
-            {editing ? (
+            <ItemTypeChip type={item.type} />
+            {editing && !selectMode ? (
               <input
                 ref={inputRef}
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
                 onBlur={commit}
                 onKeyDown={onKey}
-                className="min-w-0 flex-1 bg-transparent text-sm text-slate-800 outline-none"
+                className="min-w-0 flex-1 rounded-md border border-indigo-300 bg-white px-2 py-1 text-sm text-slate-800 shadow-sm outline-none focus:ring-2 focus:ring-indigo-400"
               />
             ) : (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (!promoted) setEditing(true);
-                }}
-                onKeyDown={onKey}
-                className={`min-w-0 flex-1 truncate bg-transparent text-left text-sm font-medium outline-none focus:ring-0 ${
+              // Display-only title — renaming is triggered from the "⋯" menu
+              // (one place for every row action), not by clicking the title.
+              <span
+                className={`min-w-0 flex-1 truncate text-sm font-medium ${
                   dropped
                     ? "text-slate-400 line-through"
                     : promoted
@@ -213,48 +218,40 @@ export function ItemRow({
                 }`}
               >
                 {item.title}
-              </button>
+              </span>
             )}
             {/* Indicator badges — visible at full opacity so a glance reveals
                 which rows have detail attached without having to expand them. */}
-            {!expanded && acCount > 0 && (
-              <span
-                className="inline-flex shrink-0 items-center gap-0.5 rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700"
-                title={`Acceptance criteria · ${acCount} ข้อ`}
-              >
-                <ListChecks size={10} /> AC: {acCount} ข้อ
-              </span>
-            )}
             {!expanded && hasNote && (
               <span
                 className="inline-flex shrink-0 items-center gap-0.5 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-600"
-                title="มี implementation note"
+                title="มีรายละเอียด"
               >
-                <FileText size={10} /> มี note
+                <FileText size={10} /> มีรายละเอียด
               </span>
             )}
-            {!promoted && (
-              <ItemClaimAffordance
-                claimedByUserId={claimedByUserId}
-                isClaimedByMe={isClaimedByMe}
-                claimerName={claimerName}
-                claimedAt={item.claimed_at ?? null}
-                onClaim={onClaim}
-                onRelease={onRelease}
-              />
-            )}
           </div>
 
-          {/* Line 2 — status */}
-          <div
-            className={`mt-1 flex items-center gap-1.5 text-[11px] font-medium ${statusMeta.cls}`}
-          >
-            <StatusIcon size={12} />
-            <span>{statusMeta.label}</span>
-          </div>
+          {/* Line 2 — status, or an explicit "you're editing" hint while the
+              title is being renamed so the edit state is unmistakable. */}
+          {editing ? (
+            <div className="mt-1 flex items-center gap-1.5 text-[11px] font-medium text-indigo-500">
+              <Pencil size={11} />
+              <span>กำลังแก้ไขชื่อ — Enter เพื่อบันทึก · Esc ยกเลิก</span>
+            </div>
+          ) : (
+            <div
+              className={`mt-1 flex items-center gap-1.5 text-[11px] font-medium ${statusMeta.cls}`}
+            >
+              <StatusIcon size={12} />
+              <span>{statusMeta.label}</span>
+            </div>
+          )}
         </div>
 
-        {/* Right action cluster */}
+        {/* Right action cluster — hidden in select-mode, where the row's only
+            job is to be ticked. */}
+        {!selectMode && (
         <div className="flex shrink-0 items-center gap-1 pt-0.5">
           {/* Direct promote — primary action on a live row (the picture's
               "→ ส่งขึ้น Board"). Promoted/paused rows hide it. */}
@@ -298,26 +295,25 @@ export function ItemRow({
               ? comments.comments.filter((c) => !c.deleted_at).length
               : ""}
           </button>
-          <ItemActionButtons
-            selected={selected}
+          <ItemActionMenu
+            currentType={item.type}
             dropped={dropped}
             promoted={promoted}
             expanded={expanded}
             hasDetails={hasDetails}
-            onToggleSelected={() => onToggleStatus("selected")}
+            onRename={() => setEditing(true)}
+            onChangeType={onChangeType}
             onToggleDropped={() => onToggleStatus("dropped")}
             onDelete={onDelete}
             onToggleExpanded={() => setExpanded((v) => !v)}
           />
         </div>
+        )}
       </div>
     {expanded && (
       <ItemDetailsPanel
-        itemType={item.type}
-        acceptanceCriteria={item.acceptance_criteria}
-        implementationNote={item.implementation_note}
-        onChangeAcceptanceCriteria={onChangeAcceptanceCriteria}
-        onChangeImplementationNote={onChangeImplementationNote}
+        note={item.implementation_note}
+        onChangeNote={onChangeNote}
       />
     )}
     {commentsExpanded && (

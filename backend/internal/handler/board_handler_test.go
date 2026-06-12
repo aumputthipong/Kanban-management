@@ -218,7 +218,7 @@ func TestGetBoardData_ServiceError(t *testing.T) {
 
 func TestCreateBoard_Success(t *testing.T) {
 	svc := &mock.MockBoardService{
-		CreateBoardFn: func(ctx context.Context, title string, ownerID string) (string, error) {
+		CreateBoardFn: func(ctx context.Context, title string, description, color, icon *string, ownerID string) (string, error) {
 			assert.Equal(t, "My Board", title)
 			assert.Equal(t, validUserID, ownerID)
 			return validBoardID, nil

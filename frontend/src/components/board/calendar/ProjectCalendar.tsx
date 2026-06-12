@@ -21,7 +21,7 @@ import { useBoardActions } from "@/hooks/useBoardActions";
 import { useCanEdit } from "@/hooks/useCanEdit";
 import type { Card } from "@/types/board";
 import type { FormState } from "@/components/board/card-modal/CardDetailModal";
-import { CalendarHeader, type CalendarView } from "./CalendarHeader";
+import { CalendarHeader } from "./CalendarHeader";
 import { CalendarFilters } from "./CalendarFilters";
 import { TaskPill } from "./TaskPill";
 import { CalendarTaskModal } from "./CalendarTaskModal";
@@ -46,7 +46,6 @@ const MAX_PILLS_PER_CELL = 3;
 
 export function ProjectCalendar({ boardId }: Props) {
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [view, setView] = useState<CalendarView>("month");
   const [statusFilter, setStatusFilter] = useState<PillState[]>([]);
   const [myTasksOnly, setMyTasksOnly] = useState(false);
   const [moreCellDate, setMoreCellDate] = useState<Date | null>(null);
@@ -140,12 +139,10 @@ export function ProjectCalendar({ boardId }: Props) {
       <CalendarHeader
         currentDate={currentDate}
         today={today}
-        view={view}
         onPrev={() => setCurrentDate(subMonths(currentDate, 1))}
         onNext={() => setCurrentDate(addMonths(currentDate, 1))}
         onToday={() => setCurrentDate(new Date())}
         onSelectDate={setCurrentDate}
-        onViewChange={setView}
       />
 
       <CalendarFilters

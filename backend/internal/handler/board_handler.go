@@ -147,7 +147,7 @@ func (h *BoardHandler) CreateBoard(w http.ResponseWriter, r *http.Request) error
 		return httputil.NewAPIError(http.StatusInternalServerError, "Invalid user ID in token", err)
 	}
 
-	boardID, err := h.boardService.CreateBoard(r.Context(), req.Title, userIDStr)
+	boardID, err := h.boardService.CreateBoard(r.Context(), req.Title, req.Description, req.Color, req.Icon, userIDStr)
 	if err != nil {
 		return httputil.NewAPIError(http.StatusInternalServerError, "Failed to create board", err)
 	}

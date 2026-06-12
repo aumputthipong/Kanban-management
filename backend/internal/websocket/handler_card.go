@@ -10,6 +10,7 @@ import (
 	"context"
 	"encoding/json"
 	"log"
+	"strings"
 
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/service"
 	"github.com/google/uuid"
@@ -118,24 +119,47 @@ func (c *Client) handleCardCreated(payload map[string]interface{}) {
 	if d, ok := payload["due_date"].(string); ok && d != "" {
 		dueDate = &d
 	}
+	var description *string
+	if d, ok := payload["description"].(string); ok && d != "" {
+		description = &d
+	}
+	// Subtasks come from the modal's optional checklist — titles only; the card
+	// id doesn't exist yet, so they're created alongside the card server-side.
+	subtaskTitles := parseSubtaskTitles(payload["subtasks"])
 
-	newCard, err := c.hub.boardCmd.CreateCardWS(ctx, columnIDStr, c.userID, title, priority, position, assigneeID, dueDate)
+	newCard, subtasks, err := c.hub.boardCmd.CreateCardWS(ctx, columnIDStr, c.userID, title, priority, position, assigneeID, dueDate, description, subtaskTitles)
 	if err != nil {
 		log.Printf("Failed to create card: %v", err)
 		return
 	}
 
+	// Subtasks shaped for the frontend store (matches types/board Subtask).
+	subPayload := make([]map[string]interface{}, 0, len(subtasks))
+	for _, st := range subtasks {
+		subPayload = append(subPayload, map[string]interface{}{
+			"id":       st.ID,
+			"card_id":  st.CardID,
+			"title":    st.Title,
+			"is_done":  st.IsDone,
+			"position": st.Position,
+		})
+	}
+
 	broadcastMsg := WSMessage{
 		Type: "CARD_CREATED",
 		Payload: map[string]interface{}{
-			"id":          newCard.ID,
-			"column_id":   newCard.ColumnID,
-			"title":       newCard.Title,
-			"position":    newCard.Position,
-			"priority":    newCard.Priority,
-			"created_by":  newCard.CreatedBy,
-			"assignee_id": assigneeID,
-			"due_date":    dueDate,
+			"id":                 newCard.ID,
+			"column_id":          newCard.ColumnID,
+			"title":              newCard.Title,
+			"position":           newCard.Position,
+			"priority":           newCard.Priority,
+			"created_by":         newCard.CreatedBy,
+			"assignee_id":        assigneeID,
+			"due_date":           dueDate,
+			"description":        description,
+			"subtasks":           subPayload,
+			"total_subtasks":     len(subPayload),
+			"completed_subtasks": 0,
 		},
 	}
 
@@ -151,6 +175,38 @@ func (c *Client) handleCardCreated(payload map[string]interface{}) {
 		Title:    newCard.Title,
 		ColumnID: newCard.ColumnID,
 	})
+}
+
+// parseSubtaskTitles normalises the modal's optional "subtasks" payload (a JSON
+// array of strings) into clean titles: trimmed, empties dropped, each capped at
+// 200 chars (mirrors UpdateSubtaskRequest's max) and the list capped at 50 so a
+// malformed client can't insert an unbounded batch in one card create.
+func parseSubtaskTitles(raw interface{}) []string {
+	arr, ok := raw.([]interface{})
+	if !ok {
+		return nil
+	}
+	const maxSubtasks = 50
+	const maxLen = 200
+	titles := make([]string, 0, len(arr))
+	for _, v := range arr {
+		s, ok := v.(string)
+		if !ok {
+			continue
+		}
+		s = strings.TrimSpace(s)
+		if s == "" {
+			continue
+		}
+		if len(s) > maxLen {
+			s = s[:maxLen]
+		}
+		titles = append(titles, s)
+		if len(titles) >= maxSubtasks {
+			break
+		}
+	}
+	return titles
 }
 
 func (c *Client) handleCardDeleted(payload map[string]interface{}, rawMsg []byte) {

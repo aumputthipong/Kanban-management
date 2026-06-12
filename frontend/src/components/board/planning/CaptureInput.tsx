@@ -26,8 +26,8 @@ interface Props {
 // Capture row — segmented type picker plus the free-text input. Clicking a
 // type button sets the type and refocuses the input, so the user can stay in
 // flow: click → type → Enter. The only keyboard handling here is Enter
-// (commit) and ArrowUp (jump into the existing item list); both come from
-// the parent so it can decide what "commit" and "jump" mean.
+// (commit) and ArrowDown (jump down into the item list, which sits below this
+// box); both come from the parent so it can decide what "commit"/"jump" mean.
 export function CaptureInput({
   draft,
   onDraftChange,
@@ -43,7 +43,7 @@ export function CaptureInput({
       onCommit();
       return;
     }
-    if (e.key === "ArrowUp") {
+    if (e.key === "ArrowDown") {
       e.preventDefault();
       onJumpToList();
     }

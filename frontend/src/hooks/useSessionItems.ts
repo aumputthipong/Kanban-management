@@ -33,10 +33,8 @@ export interface UseSessionItemsResult {
   toggleStatus: (item: PlanningItem, target: PlanningItemStatus) => void;
   changeType: (item: PlanningItem, t: PlanningItemType) => void;
   removeItem: (item: PlanningItem) => Promise<void>;
-  promoteSelected: () => Promise<void>;
+  promoteMany: (ids: string[]) => Promise<void>;
   promoteOne: (item: PlanningItem) => Promise<void>;
-  claimItem: (item: PlanningItem, currentUserId: string) => Promise<void>;
-  releaseItem: (item: PlanningItem) => Promise<void>;
 }
 
 export function useSessionItems(
@@ -198,69 +196,6 @@ export function useSessionItems(
     [showToast],
   );
 
-  const claimItem = useCallback(
-    async (item: PlanningItem, currentUserId: string) => {
-      // Optimistic claim: mark the row immediately so the button flips
-      // without a roundtrip. Revert on 409 (someone got there first) and
-      // surface the backend message — apiClient passes the Thai 409
-      // message through err.message.
-      const now = new Date().toISOString();
-      setItems((prev) =>
-        prev.map((it) =>
-          it.id === item.id
-            ? { ...it, claimed_by_user_id: currentUserId, claimed_at: now }
-            : it,
-        ),
-      );
-      try {
-        await planningApi.claimItem(item.id);
-      } catch (err: unknown) {
-        setItems((prev) =>
-          prev.map((it) =>
-            it.id === item.id
-              ? {
-                  ...it,
-                  claimed_by_user_id: item.claimed_by_user_id ?? null,
-                  claimed_at: item.claimed_at ?? null,
-                }
-              : it,
-          ),
-        );
-        const message =
-          err instanceof Error && err.message ? err.message : "claim ไม่ได้";
-        showToast({ message, duration: 4000 });
-      }
-    },
-    [showToast],
-  );
-
-  const releaseItem = useCallback(
-    async (item: PlanningItem) => {
-      const previousClaim = item.claimed_by_user_id ?? null;
-      const previousAt = item.claimed_at ?? null;
-      setItems((prev) =>
-        prev.map((it) =>
-          it.id === item.id
-            ? { ...it, claimed_by_user_id: null, claimed_at: null }
-            : it,
-        ),
-      );
-      try {
-        await planningApi.releaseItem(item.id);
-      } catch {
-        setItems((prev) =>
-          prev.map((it) =>
-            it.id === item.id
-              ? { ...it, claimed_by_user_id: previousClaim, claimed_at: previousAt }
-              : it,
-          ),
-        );
-        showToast({ message: "release ไม่ได้", duration: 4000 });
-      }
-    },
-    [showToast],
-  );
-
   // Direct per-row promote — the primary "→ ส่งขึ้น Board" action on a live
   // row. Uses the same endpoint as the batch path, just for one item, so the
   // user can send a requirement up without the select-then-promote two-step.
@@ -282,34 +217,38 @@ export function useSessionItems(
     [showToast],
   );
 
-  const promoteSelected = useCallback(async () => {
-    const targets = items.filter((it) => it.status === "selected");
-    if (targets.length === 0) {
+  // Bulk-promote by explicit ids — the "select mode" surface holds the chosen
+  // ids in ephemeral client state (a tick no longer persists a "selected"
+  // status), so the caller passes them in here when committing. Already-promoted
+  // ids are skipped so a stale selection can't double-promote.
+  const promoteMany = useCallback(
+    async (ids: string[]) => {
+      const idSet = new Set(ids);
+      const targets = items.filter(
+        (it) => idSet.has(it.id) && it.status !== "promoted",
+      );
+      if (targets.length === 0) return;
+      // Promote sequentially to keep board card positions stable.
+      for (const it of targets) {
+        try {
+          const res = await planningApi.promoteItem(it.id);
+          setItems((prev) =>
+            prev.map((cur) => (cur.id === it.id ? res.item : cur)),
+          );
+        } catch {
+          showToast({
+            message: `ส่งเข้า Board ไม่ได้: ${it.title}`,
+            duration: 4000,
+          });
+        }
+      }
       showToast({
-        message: "ยังไม่ได้เลือกรายการ — กดปุ่มเลือกที่บรรทัดก่อน",
+        message: `ส่งเข้า Board แล้ว ${targets.length} รายการ`,
         duration: 3000,
       });
-      return;
-    }
-    // Promote sequentially to keep board card positions stable.
-    for (const it of targets) {
-      try {
-        const res = await planningApi.promoteItem(it.id);
-        setItems((prev) =>
-          prev.map((cur) => (cur.id === it.id ? res.item : cur)),
-        );
-      } catch {
-        showToast({
-          message: `ส่งเข้า Board ไม่ได้: ${it.title}`,
-          duration: 4000,
-        });
-      }
-    }
-    showToast({
-      message: `ส่งเข้า Board แล้ว ${targets.length} รายการ`,
-      duration: 3000,
-    });
-  }, [items, showToast]);
+    },
+    [items, showToast],
+  );
 
   return {
     detail,
@@ -322,9 +261,7 @@ export function useSessionItems(
     toggleStatus,
     changeType,
     removeItem,
-    promoteSelected,
+    promoteMany,
     promoteOne,
-    claimItem,
-    releaseItem,
   };
 }

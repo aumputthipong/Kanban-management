@@ -1,6 +1,7 @@
 "use client";
 
-import { ChevronRight, HelpCircle } from "lucide-react";
+import { useState } from "react";
+import { ChevronDown, ChevronRight, HelpCircle } from "lucide-react";
 import type { PlanningItem } from "@/types/planning";
 
 interface Props {
@@ -14,13 +15,31 @@ interface Props {
 // design: there is no "answered" status or "waiting on X" field in the data
 // model yet, so this only chases visibility — clicking a row jumps to the
 // item to act on it inline.
+//
+// Collapsible: the header toggles the list. On a short session the questions
+// also appear as rows just below, so being able to fold this away keeps it
+// from feeling like duplicated noise; the header (with its count) always stays
+// as the pinned reminder.
 export function OpenQuestionsCallout({ questions, onJump }: Props) {
+  const [open, setOpen] = useState(true);
+
   return (
     <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3.5">
-      <div className="flex items-center gap-2 text-sm font-bold text-amber-800">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="flex w-full items-center gap-2 text-sm font-bold text-amber-800"
+      >
         <HelpCircle size={16} />
         <span>{questions.length} คำถามที่ยังรอคำตอบ</span>
-      </div>
+        {open ? (
+          <ChevronDown size={15} className="ml-auto text-amber-500" />
+        ) : (
+          <ChevronRight size={15} className="ml-auto text-amber-500" />
+        )}
+      </button>
+      {open && (
       <div className="mt-2.5 flex flex-col gap-2">
         {questions.map((q) => (
           <button
@@ -39,6 +58,7 @@ export function OpenQuestionsCallout({ questions, onJump }: Props) {
           </button>
         ))}
       </div>
+      )}
     </div>
   );
 }

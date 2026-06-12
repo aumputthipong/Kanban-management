@@ -46,7 +46,7 @@ func (s *SeedHelper) User(ctx context.Context) string {
 // in one transaction).
 func (s *SeedHelper) Board(ctx context.Context, ownerID string) string {
 	s.t.Helper()
-	b, err := s.queries.CreateBoard(ctx, "Test Board")
+	b, err := s.queries.CreateBoard(ctx, db.CreateBoardParams{Title: "Test Board"})
 	if err != nil {
 		s.t.Fatalf("seed board: %v", err)
 	}

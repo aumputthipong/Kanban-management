@@ -21,7 +21,7 @@ type BoardServicer interface {
 	// Board
 	GetAllBoards(ctx context.Context, userID string) ([]BoardSummaryData, error)
 	GetBoardWithCards(ctx context.Context, boardID string) ([]ColumnData, error)
-	CreateBoard(ctx context.Context, title string, ownerID string) (string, error)
+	CreateBoard(ctx context.Context, title string, description, color, icon *string, ownerID string) (string, error)
 	UpdateBoard(ctx context.Context, id string, title *string, budget *float64, description, color, icon *string) (db.Board, error)
 	StashBoard(ctx context.Context, boardID string) error
 	GetStashedBoards(ctx context.Context, userID string) ([]db.GetStashedBoardsForOwnerRow, error)

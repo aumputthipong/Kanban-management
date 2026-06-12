@@ -107,7 +107,10 @@ export function ProjectCard({ board, viewMode, now }: ProjectCardProps) {
   if (viewMode === "list") {
     return (
       <Link href={`/board/${board.id}/tasks`}>
-        <div className="relative bg-white pl-6 pr-5 py-3.5 rounded-lg border border-slate-200 hover:border-blue-300 hover:shadow-sm transition-all duration-200 grid grid-cols-[auto_1fr_160px_auto_auto] items-center gap-5 group overflow-hidden">
+        {/* Avatars + status are fixed-width tracks (not auto) so their varying
+            content width can't shift the 160px progress column — every row's
+            progress bar then starts at the same x. */}
+        <div className="relative bg-white pl-6 pr-5 py-3.5 rounded-lg border border-slate-200 hover:border-blue-300 hover:shadow-sm transition-all duration-200 grid grid-cols-[auto_1fr_160px_76px_76px] items-center gap-5 group overflow-hidden">
           <span
             className="absolute left-0 top-0 bottom-0 w-[3px]"
             style={{ background: accent }}
@@ -144,7 +147,9 @@ export function ProjectCard({ board, viewMode, now }: ProjectCardProps) {
           </div>
 
           <Avatars board={board} size="sm" />
-          <StatusBadge active={isActive} />
+          <div className="justify-self-end">
+            <StatusBadge active={isActive} />
+          </div>
         </div>
       </Link>
     );

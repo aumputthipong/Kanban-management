@@ -1,9 +1,8 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import { useBoardStore } from "@/store/useBoardStore";
 import Link from "next/link";
-import { ChevronLeft, Download, ArrowRight } from "lucide-react";
+import { ChevronLeft, Download, ArrowRight, ListChecks } from "lucide-react";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useSessionItems } from "@/hooks/useSessionItems";
 import type { PlanningItemType } from "@/types/planning";
@@ -48,17 +47,19 @@ export function SessionCaptureView({ boardId, sessionId }: Props) {
     toggleStatus,
     changeType,
     removeItem,
-    promoteSelected,
+    promoteMany,
     promoteOne,
-    claimItem,
-    releaseItem,
   } = useSessionItems(boardId, sessionId);
-  const currentUserId = useBoardStore((s) => s.currentUserId);
 
   const [newType, setNewType] = useState<PlanningItemType>("REQ");
   const [draft, setDraft] = useState("");
   const [focusIndex, setFocusIndex] = useState<number>(-1);
   const [showExport, setShowExport] = useState(false);
+  // Bulk select-mode: an ephemeral set of ids (a tick no longer persists a
+  // "selected" status). Entering the mode reveals a checkbox on every row;
+  // committing promotes the ticked ids in one go, cancelling just discards.
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   // Filter is local state, synced to a `?filter=` query param so a copy-
   // paste of the URL preserves the view. Initial value reads from the
   // URL directly (avoids useSearchParams, which would force a Suspense
@@ -121,6 +122,29 @@ export function SessionCaptureView({ boardId, sessionId }: Props) {
     writeFilterToURL(next);
   };
 
+  const enterSelectMode = () => {
+    setSelectMode(true);
+    setSelectedIds(new Set());
+    setFocusIndex(-1);
+  };
+  const exitSelectMode = () => {
+    setSelectMode(false);
+    setSelectedIds(new Set());
+  };
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+  const handleBulkSend = async () => {
+    if (selectedIds.size === 0) return;
+    await promoteMany([...selectedIds]);
+    exitSelectMode();
+  };
+
   if (!detail) {
     return <CaptureSkeleton />;
   }
@@ -141,25 +165,13 @@ export function SessionCaptureView({ boardId, sessionId }: Props) {
         >
           <ChevronLeft size={14} /> Planning
         </Link>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setShowExport(true)}
-            className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-          >
-            <Download size={14} /> ส่งออก
-          </button>
-          <button
-            type="button"
-            onClick={promoteSelected}
-            disabled={stats.selected === 0}
-            className="inline-flex items-center gap-1.5 rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700 disabled:opacity-40"
-          >
-            <ArrowRight size={14} />
-            ส่งเข้า Board
-            {stats.selected > 0 && <span>({stats.selected})</span>}
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => setShowExport(true)}
+          className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+        >
+          <Download size={14} /> ส่งออก
+        </button>
       </div>
 
       <div className="flex flex-col gap-6 lg:flex-row">
@@ -173,6 +185,19 @@ export function SessionCaptureView({ boardId, sessionId }: Props) {
             {savedAt && <>บันทึกอัตโนมัติแล้ว · {formatRelativeFromNow(savedAt)}</>}
           </p>
 
+          {/* Capture box sits at the top so it never sinks below a long list. */}
+          <CaptureInput
+            inputRef={inputRef}
+            draft={draft}
+            onDraftChange={setDraft}
+            newType={newType}
+            onTypeChange={setNewType}
+            onCommit={handleCommit}
+            onJumpToList={() => {
+              if (items.length > 0) setFocusIndex(0);
+            }}
+          />
+
           {openQuestions.length > 0 && (
             <OpenQuestionsCallout
               questions={openQuestions}
@@ -185,11 +210,45 @@ export function SessionCaptureView({ boardId, sessionId }: Props) {
               active={filter}
               counts={filterCounts}
               onChange={handleFilterChange}
+              trailing={
+                selectMode ? (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold text-slate-500">
+                      เลือกแล้ว {selectedIds.size}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleBulkSend}
+                      disabled={selectedIds.size === 0}
+                      className="inline-flex items-center gap-1.5 rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700 disabled:opacity-40"
+                    >
+                      <ArrowRight size={14} />
+                      ส่งเข้า Board
+                      {selectedIds.size > 0 && <span>({selectedIds.size})</span>}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={exitSelectMode}
+                      className="rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+                    >
+                      ยกเลิก
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={enterSelectMode}
+                    className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                  >
+                    <ListChecks size={14} /> เลือกส่งเข้า Board
+                  </button>
+                )
+              }
             />
             <div className="flex flex-col gap-1">
               {items.length === 0 && (
                 <p className="rounded border border-dashed border-slate-300 bg-slate-50/40 p-6 text-center text-sm text-slate-400">
-                  ลองเริ่มที่ช่องด้านล่าง · พิมพ์แล้วกด Enter
+                  ลองเริ่มที่ช่องด้านบน · พิมพ์แล้วกด Enter
                 </p>
               )}
               {items.length > 0 && visibleItems.length === 0 && (
@@ -203,19 +262,15 @@ export function SessionCaptureView({ boardId, sessionId }: Props) {
                   index={i}
                   item={it}
                   focused={focusIndex === i}
+                  selectMode={selectMode}
+                  isSelected={selectedIds.has(it.id)}
+                  onToggleSelect={() => toggleSelect(it.id)}
                   onFocus={() => setFocusIndex(i)}
                   onChangeType={(t) => changeType(it, t)}
                   onChangeTitle={(title) =>
                     patchItem(it.id, { title }, { title })
                   }
-                  onChangeAcceptanceCriteria={(value) =>
-                    patchItem(
-                      it.id,
-                      { acceptance_criteria: value },
-                      { acceptance_criteria: value },
-                    )
-                  }
-                  onChangeImplementationNote={(value) =>
+                  onChangeNote={(value) =>
                     patchItem(
                       it.id,
                       { implementation_note: value },
@@ -225,35 +280,22 @@ export function SessionCaptureView({ boardId, sessionId }: Props) {
                   onToggleStatus={(s) => toggleStatus(it, s)}
                   onPromote={() => promoteOne(it)}
                   onDelete={() => removeItem(it)}
-                  onClaim={() => {
-                    if (currentUserId) claimItem(it, currentUserId);
-                  }}
-                  onRelease={() => releaseItem(it)}
-                  onUp={() => setFocusIndex(Math.max(0, i - 1))}
-                  onDown={() => {
-                    if (i + 1 >= visibleItems.length) {
+                  onUp={() => {
+                    // First row → back up to the capture box (now above the list).
+                    if (i === 0) {
                       setFocusIndex(-1);
                       inputRef.current?.focus();
                     } else {
-                      setFocusIndex(i + 1);
+                      setFocusIndex(i - 1);
                     }
+                  }}
+                  onDown={() => {
+                    if (i + 1 < visibleItems.length) setFocusIndex(i + 1);
                   }}
                 />
               ))}
             </div>
           </div>
-
-          <CaptureInput
-            inputRef={inputRef}
-            draft={draft}
-            onDraftChange={setDraft}
-            newType={newType}
-            onTypeChange={setNewType}
-            onCommit={handleCommit}
-            onJumpToList={() => {
-              if (items.length > 0) setFocusIndex(items.length - 1);
-            }}
-          />
         </div>
 
         <SessionSidebar stats={stats} promotedItems={promotedItems} />

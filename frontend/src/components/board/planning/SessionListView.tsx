@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -9,6 +9,7 @@ import {
   ChevronRight,
   FileText,
   HelpCircle,
+  Pencil,
   Plus,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -58,6 +59,24 @@ export function SessionListView({ boardId }: Props) {
       setCreating(false);
     }
   }, [boardId, creating, router, showToast]);
+
+  // Inline rename — optimistic, reverts the single row's title on failure.
+  // Owned here because this component holds the sessions list state.
+  const handleRename = async (id: string, title: string) => {
+    const prevTitle = sessions?.find((s) => s.id === id)?.title ?? "";
+    if (title === prevTitle) return;
+    setSessions((cur) =>
+      cur ? cur.map((s) => (s.id === id ? { ...s, title } : s)) : cur,
+    );
+    try {
+      await planningApi.updateSession(id, { title });
+    } catch {
+      showToast({ message: "เปลี่ยนชื่อบันทึกไม่สำเร็จ", duration: 4000 });
+      setSessions((cur) =>
+        cur ? cur.map((s) => (s.id === id ? { ...s, title: prevTitle } : s)) : cur,
+      );
+    }
+  };
 
   if (sessions === null) {
     return <ListSkeleton />;
@@ -124,7 +143,12 @@ export function SessionListView({ boardId }: Props) {
               </p>
               <div className="flex flex-col gap-2">
                 {group.sessions.map((s) => (
-                  <SessionRow key={s.id} boardId={boardId} session={s} />
+                  <SessionRow
+                    key={s.id}
+                    boardId={boardId}
+                    session={s}
+                    onRename={handleRename}
+                  />
                 ))}
               </div>
             </div>
@@ -184,13 +208,37 @@ function sessionStat(s: PlanningSessionSummary) {
 function SessionRow({
   boardId,
   session,
+  onRename,
 }: {
   boardId: string;
   session: PlanningSessionSummary;
+  onRename: (id: string, title: string) => void;
 }) {
   const { total, pct, state } = sessionStat(session);
   const theme = STATE_THEME[state];
   const Icon = theme.Icon;
+  const isAuto = isAutoTitle(session.title);
+
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(session.title);
+  // Escape sets this so the unmount-triggered onBlur doesn't also commit.
+  const escapingRef = useRef(false);
+
+  const startEdit = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDraft(session.title);
+    setEditing(true);
+  };
+  const commit = () => {
+    if (escapingRef.current) {
+      escapingRef.current = false;
+      return;
+    }
+    setEditing(false);
+    const t = draft.trim();
+    if (t && t !== session.title) onRename(session.id, t);
+  };
 
   return (
     <Link
@@ -207,9 +255,58 @@ function SessionRow({
       </span>
 
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-semibold text-slate-800 group-hover:text-indigo-700">
-          {session.title}
-        </p>
+        {editing ? (
+          <input
+            autoFocus
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+            onKeyDown={(e) => {
+              e.stopPropagation();
+              if (e.key === "Enter") {
+                e.preventDefault();
+                commit();
+              } else if (e.key === "Escape") {
+                e.preventDefault();
+                escapingRef.current = true;
+                setDraft(session.title);
+                setEditing(false);
+              }
+            }}
+            onBlur={commit}
+            placeholder="ตั้งชื่อบันทึกนี้..."
+            className="w-full max-w-md rounded-md border border-indigo-300 bg-white px-2 py-1 text-sm font-semibold text-slate-800 shadow-sm outline-none focus:ring-2 focus:ring-indigo-400"
+          />
+        ) : (
+          <div className="flex items-center gap-1.5">
+            <p
+              className={`truncate text-sm ${
+                isAuto
+                  ? "font-medium italic text-slate-500"
+                  : "font-semibold text-slate-800 group-hover:text-indigo-700"
+              }`}
+            >
+              {session.title}
+            </p>
+            {/* Rename affordance — always shown as "ตั้งชื่อ" while the session
+                still carries its auto date-title; a quiet hover pencil once it
+                has a real name. */}
+            <button
+              type="button"
+              onClick={startEdit}
+              title="ตั้งชื่อบันทึกนี้"
+              className={`inline-flex shrink-0 items-center gap-1 rounded px-1 py-0.5 text-[11px] font-semibold text-indigo-500 transition-opacity hover:text-indigo-700 ${
+                isAuto ? "" : "opacity-0 group-hover:opacity-100"
+              }`}
+            >
+              <Pencil size={12} />
+              {isAuto && <span>ตั้งชื่อ</span>}
+            </button>
+          </div>
+        )}
         <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-400">
           <span>
             {session.label ? `${session.label} · ` : ""}
@@ -219,41 +316,48 @@ function SessionRow({
         </div>
       </div>
 
+      {/* Fixed-height status + progress slots so every row's right column is the
+          same height — rows without a progress bar no longer come up short and
+          the list reads as one even stack. */}
       <div className="flex w-40 shrink-0 flex-col items-end justify-center gap-2">
-        {state === "followup" ? (
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-bold text-amber-700">
-            <HelpCircle size={13} />
-            {session.q_count} คำถามค้าง
-          </span>
-        ) : state === "done" ? (
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700">
-            <CheckCircle2 size={13} />
-            ส่งครบแล้ว
-          </span>
-        ) : state === "fresh" ? (
-          <span className="text-[11px] font-semibold text-slate-400">
-            ยังไม่ได้คัดส่ง
-          </span>
-        ) : null}
+        <div className="flex h-6 items-center">
+          {state === "followup" ? (
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-bold text-amber-700">
+              <HelpCircle size={13} />
+              {session.q_count} คำถามค้าง
+            </span>
+          ) : state === "done" ? (
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700">
+              <CheckCircle2 size={13} />
+              ส่งครบแล้ว
+            </span>
+          ) : state === "fresh" ? (
+            <span className="text-[11px] font-semibold text-slate-400">
+              ยังไม่ได้คัดส่ง
+            </span>
+          ) : null}
+        </div>
 
-        {total > 0 && state !== "fresh" && (
-          <div className="w-full">
-            <div className="mb-1 text-right text-[11px] font-semibold text-slate-500">
-              <strong className="font-bold text-slate-800">
-                {session.promoted_count}
-              </strong>
-              /{total} ส่งเข้า Board
-            </div>
-            <div className="h-1 w-full overflow-hidden rounded-full bg-slate-200">
-              <div
-                className={`h-full rounded-full ${
-                  pct === 100 ? "bg-emerald-500" : "bg-indigo-500"
-                }`}
-                style={{ width: `${pct}%` }}
-              />
-            </div>
-          </div>
-        )}
+        <div className="h-7 w-full">
+          {total > 0 && state !== "fresh" && (
+            <>
+              <div className="mb-1 text-right text-[11px] font-semibold text-slate-500">
+                <strong className="font-bold text-slate-800">
+                  {session.promoted_count}
+                </strong>
+                /{total} ส่งเข้า Board
+              </div>
+              <div className="h-1 w-full overflow-hidden rounded-full bg-slate-200">
+                <div
+                  className={`h-full rounded-full ${
+                    pct === 100 ? "bg-emerald-500" : "bg-indigo-500"
+                  }`}
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
       <ChevronRight
@@ -360,6 +464,13 @@ function defaultSessionTitle() {
     month: "short",
     year: "numeric",
   })}`;
+}
+
+// A session is "not yet named" while it still carries the date-based title
+// minted by defaultSessionTitle ("บันทึก <date>") — the row uses this to nudge
+// the user to give it a real name instead of just showing a quiet pencil.
+function isAutoTitle(title: string) {
+  return /^บันทึก\s+\d/.test(title.trim());
 }
 
 // Group by "this week / earlier this month / older". Sessions list is small

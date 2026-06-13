@@ -78,8 +78,10 @@ type BoardMemberResponse struct {
 }
 
 type AddMemberRequest struct {
-	UserID string `json:"user_id" validate:"required,uuid"`
-	Role   string `json:"role"    validate:"required,oneof=owner manager member"`
+	// Invite by email — the inviter types the exact address (no user list is
+	// exposed, for privacy). The service resolves it to a registered user.
+	Email string `json:"email" validate:"required,email"`
+	Role  string `json:"role"  validate:"required,oneof=owner manager member"`
 }
 
 type UpdateMemberRoleRequest struct {

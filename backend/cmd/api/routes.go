@@ -103,7 +103,6 @@ func setupRoutes(d routerDeps) http.Handler {
 		})
 
 		r.Get("/api/auth/me", httputil.MakeHandler(d.authHandler.Me))
-		r.Get("/api/users", httputil.MakeHandler(d.boardHandler.GetAllUsers))
 
 		r.Route("/api/my-tasks", func(r chi.Router) {
 			r.Get("/", httputil.MakeHandler(d.boardHandler.GetMyTasks))

@@ -1,12 +1,11 @@
 // components/board/members/useBoardMembers.ts
-import { useState, useEffect, useMemo } from "react";
-import type { BoardMember, User } from "@/types/board";
+import { useState, useEffect } from "react";
+import type { BoardMember } from "@/types/board";
 import { apiClient } from "@/lib/apiClient";
 import { useBoardStore } from "@/store/useBoardStore";
 
 export function useBoardMembers(boardId: string) {
   const [members, setMembers] = useState<BoardMember[]>([]);
-  const [allUsers, setAllUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isAdding, setIsAdding] = useState(false);
   const [loadingId, setLoadingId] = useState<string | null>(null);
@@ -18,15 +17,11 @@ export function useBoardMembers(boardId: string) {
     setIsLoading(true);
     const loadData = async () => {
       try {
-        const [membersData, usersData] = await Promise.all([
-          apiClient(`/boards/${boardId}/members`),
-          apiClient(`/users`),
-        ]);
+        const membersData = await apiClient(`/boards/${boardId}/members`);
         if (cancelled) return;
         setMembers(Array.isArray(membersData) ? membersData.filter(Boolean) : []);
-        setAllUsers(Array.isArray(usersData) ? usersData.filter(Boolean) : []);
       } catch {
-        if (!cancelled) setError("Failed to load members or users.");
+        if (!cancelled) setError("Failed to load members.");
       } finally {
         if (!cancelled) setIsLoading(false);
       }
@@ -37,27 +32,23 @@ export function useBoardMembers(boardId: string) {
       cancelled = true;
     };
   }, [boardId]);
-  const nonMembers = useMemo(() => {
-    const memberIds = new Set(members.filter(Boolean).map((m) => m.user_id));
-    return allUsers.filter((u) => !memberIds.has(u.id));
-  }, [members, allUsers]);
 
-  const addMember = async (userId: string, role: string) => {
+  // Invite by exact email — no user list is fetched/exposed (privacy). Returns
+  // an error message to show inline (e.g. "ไม่พบผู้ใช้อีเมลนี้") or null on success.
+  const addMember = async (email: string, role: string): Promise<string | null> => {
     setIsAdding(true);
-    setError(null);
     try {
       await apiClient(`/boards/${boardId}/members`, {
-        data: { user_id: userId, role },
+        data: { email, role },
       });
       // Re-fetch the full list so the UI reflects the actual DB state
       const fresh: BoardMember[] = await apiClient(`/boards/${boardId}/members`);
       const cleaned = Array.isArray(fresh) ? fresh.filter(Boolean) : [];
       setMembers(cleaned);
       setBoardMembers(cleaned); // sync Zustand so MemberFilterBar also updates
-      return true;
+      return null;
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong.");
-      return false;
+      return err instanceof Error ? err.message : "เพิ่มสมาชิกไม่สำเร็จ";
     } finally {
       setIsAdding(false);
     }
@@ -110,7 +101,6 @@ export function useBoardMembers(boardId: string) {
 
   return {
     members,
-    nonMembers,
     isLoading,
     isAdding,
     loadingId,

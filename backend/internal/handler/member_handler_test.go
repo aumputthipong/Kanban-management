@@ -11,6 +11,7 @@ import (
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/db"
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/httputil"
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/middleware"
+	"github.com/aumputthipong/mini-erp-kanban/backend/internal/service"
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/service/mock"
 	"github.com/stretchr/testify/assert"
 )
@@ -51,18 +52,18 @@ func TestGetBoardMembers_InvalidBoardID_Returns400(t *testing.T) {
 func TestAddBoardMember_Success(t *testing.T) {
 	var (
 		gotBoardID string
-		gotUserID  string
+		gotEmail   string
 		gotRole    string
 	)
 	svc := &mock.MockBoardService{
-		AddBoardMemberFn: func(ctx context.Context, boardID, userID, role string) error {
-			gotBoardID, gotUserID, gotRole = boardID, userID, role
+		AddBoardMemberByEmailFn: func(ctx context.Context, boardID, email, role string) error {
+			gotBoardID, gotEmail, gotRole = boardID, email, role
 			return nil
 		},
 	}
 	h := NewBoardHandler(svc, nil, nil)
 
-	body := strings.NewReader(`{"user_id":"` + otherUserID + `","role":"member"}`)
+	body := strings.NewReader(`{"email":"newbie@example.com","role":"member"}`)
 	req := httptest.NewRequest(http.MethodPost, "/boards/"+validBoardID+"/members", body)
 	req = chiCtx(req, "boardID", validBoardID)
 	w := httptest.NewRecorder()
@@ -71,7 +72,7 @@ func TestAddBoardMember_Success(t *testing.T) {
 
 	assert.Equal(t, http.StatusCreated, w.Code)
 	assert.Equal(t, validBoardID, gotBoardID)
-	assert.Equal(t, otherUserID, gotUserID)
+	assert.Equal(t, "newbie@example.com", gotEmail)
 	assert.Equal(t, "member", gotRole)
 }
 
@@ -79,7 +80,7 @@ func TestAddBoardMember_InvalidBoardID_Returns400(t *testing.T) {
 	svc := &mock.MockBoardService{}
 	h := NewBoardHandler(svc, nil, nil)
 
-	body := strings.NewReader(`{"user_id":"` + otherUserID + `","role":"member"}`)
+	body := strings.NewReader(`{"email":"newbie@example.com","role":"member"}`)
 	req := httptest.NewRequest(http.MethodPost, "/boards/bad/members", body)
 	req = chiCtx(req, "boardID", "not-a-uuid")
 	w := httptest.NewRecorder()
@@ -95,14 +96,14 @@ func TestAddBoardMember_InvalidBoardID_Returns400(t *testing.T) {
 // a missing validator here would let any string land in the role column.
 func TestAddBoardMember_InvalidRole_Returns400(t *testing.T) {
 	svc := &mock.MockBoardService{
-		AddBoardMemberFn: func(ctx context.Context, boardID, userID, role string) error {
+		AddBoardMemberByEmailFn: func(ctx context.Context, boardID, email, role string) error {
 			t.Fatal("must reject unknown role at validator, never call service")
 			return nil
 		},
 	}
 	h := NewBoardHandler(svc, nil, nil)
 
-	body := strings.NewReader(`{"user_id":"` + otherUserID + `","role":"superadmin"}`)
+	body := strings.NewReader(`{"email":"newbie@example.com","role":"superadmin"}`)
 	req := httptest.NewRequest(http.MethodPost, "/boards/"+validBoardID+"/members", body)
 	req = chiCtx(req, "boardID", validBoardID)
 	w := httptest.NewRecorder()
@@ -112,7 +113,7 @@ func TestAddBoardMember_InvalidRole_Returns400(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 }
 
-func TestAddBoardMember_MissingUserID_Returns400(t *testing.T) {
+func TestAddBoardMember_MissingEmail_Returns400(t *testing.T) {
 	svc := &mock.MockBoardService{}
 	h := NewBoardHandler(svc, nil, nil)
 
@@ -126,15 +127,72 @@ func TestAddBoardMember_MissingUserID_Returns400(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 }
 
+// A malformed email is rejected by the validator's `email` rule before the
+// service is ever called — the invite path never trusts the address shape.
+func TestAddBoardMember_InvalidEmail_Returns400(t *testing.T) {
+	svc := &mock.MockBoardService{
+		AddBoardMemberByEmailFn: func(ctx context.Context, boardID, email, role string) error {
+			t.Fatal("must reject malformed email at validator, never call service")
+			return nil
+		},
+	}
+	h := NewBoardHandler(svc, nil, nil)
+
+	body := strings.NewReader(`{"email":"not-an-email","role":"member"}`)
+	req := httptest.NewRequest(http.MethodPost, "/boards/"+validBoardID+"/members", body)
+	req = chiCtx(req, "boardID", validBoardID)
+	w := httptest.NewRecorder()
+
+	httputil.MakeHandler(h.AddBoardMember)(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+func TestAddBoardMember_UserNotFound_Returns404(t *testing.T) {
+	svc := &mock.MockBoardService{
+		AddBoardMemberByEmailFn: func(ctx context.Context, boardID, email, role string) error {
+			return service.ErrUserNotFound
+		},
+	}
+	h := NewBoardHandler(svc, nil, nil)
+
+	body := strings.NewReader(`{"email":"ghost@example.com","role":"member"}`)
+	req := httptest.NewRequest(http.MethodPost, "/boards/"+validBoardID+"/members", body)
+	req = chiCtx(req, "boardID", validBoardID)
+	w := httptest.NewRecorder()
+
+	httputil.MakeHandler(h.AddBoardMember)(w, req)
+
+	assert.Equal(t, http.StatusNotFound, w.Code)
+}
+
+func TestAddBoardMember_AlreadyMember_Returns409(t *testing.T) {
+	svc := &mock.MockBoardService{
+		AddBoardMemberByEmailFn: func(ctx context.Context, boardID, email, role string) error {
+			return service.ErrAlreadyMember
+		},
+	}
+	h := NewBoardHandler(svc, nil, nil)
+
+	body := strings.NewReader(`{"email":"existing@example.com","role":"member"}`)
+	req := httptest.NewRequest(http.MethodPost, "/boards/"+validBoardID+"/members", body)
+	req = chiCtx(req, "boardID", validBoardID)
+	w := httptest.NewRecorder()
+
+	httputil.MakeHandler(h.AddBoardMember)(w, req)
+
+	assert.Equal(t, http.StatusConflict, w.Code)
+}
+
 func TestAddBoardMember_ServiceError_Returns500(t *testing.T) {
 	svc := &mock.MockBoardService{
-		AddBoardMemberFn: func(ctx context.Context, boardID, userID, role string) error {
+		AddBoardMemberByEmailFn: func(ctx context.Context, boardID, email, role string) error {
 			return errors.New("constraint violation")
 		},
 	}
 	h := NewBoardHandler(svc, nil, nil)
 
-	body := strings.NewReader(`{"user_id":"` + otherUserID + `","role":"member"}`)
+	body := strings.NewReader(`{"email":"newbie@example.com","role":"member"}`)
 	req := httptest.NewRequest(http.MethodPost, "/boards/"+validBoardID+"/members", body)
 	req = chiCtx(req, "boardID", validBoardID)
 	w := httptest.NewRecorder()
@@ -450,26 +508,6 @@ func TestLeaveBoard_ServiceError_Returns500(t *testing.T) {
 	w := httptest.NewRecorder()
 
 	httputil.MakeHandler(h.LeaveBoard)(w, req)
-
-	assert.Equal(t, http.StatusInternalServerError, w.Code)
-}
-
-// ────────────────────────────────────────────────
-// GetAllUsers
-// ────────────────────────────────────────────────
-
-func TestGetAllUsers_DBError_Returns500(t *testing.T) {
-	svc := &mock.MockBoardService{
-		GetAllUsersFn: func(ctx context.Context) ([]db.GetAllUsersRow, error) {
-			return nil, errors.New("query failed")
-		},
-	}
-	h := NewBoardHandler(svc, nil, nil)
-
-	req := httptest.NewRequest(http.MethodGet, "/users", nil)
-	w := httptest.NewRecorder()
-
-	httputil.MakeHandler(h.GetAllUsers)(w, req)
 
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
 }

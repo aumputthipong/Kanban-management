@@ -2,9 +2,17 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/db"
+	"github.com/jackc/pgx/v5"
+)
+
+// Invite-by-email outcomes the handler maps to HTTP codes.
+var (
+	ErrUserNotFound  = errors.New("no user with that email")
+	ErrAlreadyMember = errors.New("user is already a member of this board")
 )
 
 type BoardMember struct {
@@ -19,10 +27,32 @@ func (s *BoardService) GetBoardMembers(ctx context.Context, boardID string) ([]d
 	return s.queries.GetBoardMembers(ctx, boardID)
 }
 
-func (s *BoardService) AddBoardMember(ctx context.Context, boardID, userID string, role string) error {
-	_, err := s.queries.AddBoardMember(ctx, db.AddBoardMemberParams{
+// AddBoardMemberByEmail resolves an exact email to a registered user and adds
+// them to the board. Returns ErrUserNotFound when no account has that email
+// (the inviter must type it correctly — there is no user list to pick from) and
+// ErrAlreadyMember when they're already on the board.
+func (s *BoardService) AddBoardMemberByEmail(ctx context.Context, boardID, email, role string) error {
+	user, err := s.queries.GetUserByEmail(ctx, email)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrUserNotFound
+		}
+		return fmt.Errorf("lookup user by email: %w", err)
+	}
+
+	// Already a member? GetBoardMemberRole returns ErrNoRows when not.
+	if _, err := s.queries.GetBoardMemberRole(ctx, db.GetBoardMemberRoleParams{
 		BoardID: boardID,
-		UserID:  userID,
+		UserID:  user.ID,
+	}); err == nil {
+		return ErrAlreadyMember
+	} else if !errors.Is(err, pgx.ErrNoRows) {
+		return fmt.Errorf("check existing membership: %w", err)
+	}
+
+	_, err = s.queries.AddBoardMember(ctx, db.AddBoardMemberParams{
+		BoardID: boardID,
+		UserID:  user.ID,
 		Role:    role,
 	})
 	return err

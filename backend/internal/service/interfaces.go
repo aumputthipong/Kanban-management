@@ -39,7 +39,7 @@ type BoardServicer interface {
 
 	// Member
 	GetBoardMembers(ctx context.Context, boardID string) ([]db.GetBoardMembersRow, error)
-	AddBoardMember(ctx context.Context, boardID, userID, role string) error
+	AddBoardMemberByEmail(ctx context.Context, boardID, email, role string) error
 	RemoveBoardMember(ctx context.Context, boardID, userID string) error
 	UpdateMemberRole(ctx context.Context, boardID, userID string, role string) error
 

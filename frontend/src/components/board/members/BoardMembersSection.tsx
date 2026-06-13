@@ -19,7 +19,6 @@ interface BoardMembersSectionProps {
 export function BoardMembersSection({ boardId }: BoardMembersSectionProps) {
   const {
     members,
-    nonMembers,
     isLoading,
     isAdding,
     loadingId,
@@ -98,7 +97,7 @@ export function BoardMembersSection({ boardId }: BoardMembersSectionProps) {
       <div className="mb-3 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         {canInvite && (
           <>
-            <AddMemberForm nonMembers={nonMembers} isAdding={isAdding} onAdd={addMember} />
+            <AddMemberForm isAdding={isAdding} onAdd={addMember} />
             <div className="h-px bg-slate-100" />
           </>
         )}

@@ -1,51 +1,57 @@
 // components/board/members/AddMemberForm.tsx
 import { useState } from "react";
-import { Users, ChevronDown, UserPlus, Loader2 } from "lucide-react";
-import type { User } from "@/types/board";
+import { Mail, ChevronDown, UserPlus, Loader2 } from "lucide-react";
 
 interface AddMemberFormProps {
-  nonMembers: User[];
   isAdding: boolean;
-  onAdd: (userId: string, role: string) => Promise<boolean>;
+  /** Returns an error message to show inline, or null on success. */
+  onAdd: (email: string, role: string) => Promise<string | null>;
 }
 
-export function AddMemberForm({ nonMembers, isAdding, onAdd }: AddMemberFormProps) {
-  const [selectedUserId, setSelectedUserId] = useState("");
+// Invite by typing an exact email — no user list is shown (privacy: you can't
+// browse who's registered, you must know the address). The server resolves the
+// email to a registered account; an unknown / already-member address comes back
+// as an inline error.
+export function AddMemberForm({ isAdding, onAdd }: AddMemberFormProps) {
+  const [email, setEmail] = useState("");
   const [selectedRole, setSelectedRole] = useState<"manager" | "member">("member");
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async () => {
-    if (!selectedUserId) return;
-    const success = await onAdd(selectedUserId, selectedRole);
-    if (success) setSelectedUserId("");
+    const trimmed = email.trim();
+    if (!trimmed || isAdding) return;
+    const err = await onAdd(trimmed, selectedRole);
+    if (err) {
+      setError(err);
+    } else {
+      setEmail("");
+      setError(null);
+    }
   };
 
   return (
     <div className="p-3">
       <div className="flex flex-wrap items-center gap-2.5">
-        {/* user picker — styled as one cohesive field */}
+        {/* email field */}
         <label className="flex h-10 min-w-0 flex-1 items-center gap-2.5 rounded-md border border-slate-200 bg-slate-50/70 px-3 transition focus-within:border-indigo-200 focus-within:bg-white focus-within:ring-2 focus-within:ring-blue-900/10">
-          <Users size={18} className="shrink-0 text-slate-400" />
-          <div className="relative min-w-0 flex-1">
-            <select
-              value={selectedUserId}
-              onChange={(e) => setSelectedUserId(e.target.value)}
-              disabled={isAdding}
-              className={`w-full appearance-none truncate border-0 bg-transparent pr-6 text-sm outline-none disabled:opacity-50 ${
-                selectedUserId ? "text-slate-900" : "text-slate-400"
-              }`}
-            >
-              <option value="">เลือกสมาชิกในเวิร์กสเปซเพื่อเพิ่มเข้าบอร์ด…</option>
-              {nonMembers.map((u) => (
-                <option key={u.id} value={u.id} className="text-slate-900">
-                  {u.full_name} ({u.email})
-                </option>
-              ))}
-            </select>
-            <ChevronDown
-              size={15}
-              className="pointer-events-none absolute right-0 top-1/2 -translate-y-1/2 text-slate-400"
-            />
-          </div>
+          <Mail size={18} className="shrink-0 text-slate-400" />
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              if (error) setError(null);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                handleSubmit();
+              }
+            }}
+            disabled={isAdding}
+            placeholder="พิมพ์อีเมลผู้ใช้ที่ต้องการเชิญ…"
+            className="min-w-0 flex-1 border-0 bg-transparent text-sm text-slate-900 placeholder:text-slate-400 outline-none disabled:opacity-50"
+          />
         </label>
 
         {/* role select */}
@@ -68,13 +74,15 @@ export function AddMemberForm({ nonMembers, isAdding, onAdd }: AddMemberFormProp
 
         <button
           onClick={handleSubmit}
-          disabled={!selectedUserId || isAdding}
+          disabled={!email.trim() || isAdding}
           className="inline-flex h-10 shrink-0 cursor-pointer items-center gap-2 whitespace-nowrap rounded-md bg-blue-800 px-4 text-[14px] font-bold text-white shadow-sm transition hover:bg-blue-900 disabled:opacity-40"
         >
           {isAdding ? <Loader2 size={17} className="animate-spin" /> : <UserPlus size={17} />}
-          เพิ่มสมาชิก
+          เชิญ
         </button>
       </div>
+
+      {error && <p className="mt-2 text-sm font-medium text-red-600">{error}</p>}
     </div>
   );
 }

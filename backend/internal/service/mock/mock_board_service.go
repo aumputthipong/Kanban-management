@@ -35,7 +35,7 @@ type MockBoardService struct {
 	CompleteMyTaskFn            func(ctx context.Context, cardID, userID string) (service.CompleteMyTaskResult, error)
 
 	GetBoardMembersFn   func(ctx context.Context, boardID string) ([]db.GetBoardMembersRow, error)
-	AddBoardMemberFn    func(ctx context.Context, boardID, userID, role string) error
+	AddBoardMemberByEmailFn func(ctx context.Context, boardID, email, role string) error
 	RemoveBoardMemberFn func(ctx context.Context, boardID, userID string) error
 	UpdateMemberRoleFn  func(ctx context.Context, boardID, userID string, role string) error
 
@@ -114,8 +114,8 @@ func (m *MockBoardService) GetBoardMembers(ctx context.Context, boardID string) 
 	return m.GetBoardMembersFn(ctx, boardID)
 }
 
-func (m *MockBoardService) AddBoardMember(ctx context.Context, boardID, userID, role string) error {
-	return m.AddBoardMemberFn(ctx, boardID, userID, role)
+func (m *MockBoardService) AddBoardMemberByEmail(ctx context.Context, boardID, email, role string) error {
+	return m.AddBoardMemberByEmailFn(ctx, boardID, email, role)
 }
 
 func (m *MockBoardService) RemoveBoardMember(ctx context.Context, boardID, userID string) error {

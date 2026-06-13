@@ -1,12 +1,14 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/core"
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/dto"
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/httputil"
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/middleware"
+	"github.com/aumputthipong/mini-erp-kanban/backend/internal/service"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 )
@@ -51,8 +53,15 @@ func (h *BoardHandler) AddBoardMember(w http.ResponseWriter, r *http.Request) er
 		return err
 	}
 
-	if err := h.boardService.AddBoardMember(r.Context(), boardID, req.UserID, req.Role); err != nil {
-		return httputil.NewAPIError(http.StatusInternalServerError, "Failed to add member", err)
+	if err := h.boardService.AddBoardMemberByEmail(r.Context(), boardID, req.Email, req.Role); err != nil {
+		switch {
+		case errors.Is(err, service.ErrUserNotFound):
+			return httputil.NewAPIError(http.StatusNotFound, "ไม่พบผู้ใช้ที่มีอีเมลนี้", err)
+		case errors.Is(err, service.ErrAlreadyMember):
+			return httputil.NewAPIError(http.StatusConflict, "ผู้ใช้นี้เป็นสมาชิกบอร์ดอยู่แล้ว", err)
+		default:
+			return httputil.NewAPIError(http.StatusInternalServerError, "Failed to add member", err)
+		}
 	}
 
 	w.WriteHeader(http.StatusCreated)
@@ -134,24 +143,3 @@ func (h *BoardHandler) LeaveBoard(w http.ResponseWriter, r *http.Request) error 
 	return nil
 }
 
-func (h *BoardHandler) GetAllUsers(w http.ResponseWriter, r *http.Request) error {
-	users, err := h.boardService.GetAllUsers(r.Context())
-	if err != nil {
-		return httputil.NewAPIError(http.StatusInternalServerError, "Failed to fetch users", err)
-	}
-
-	result := make([]dto.UserResponse, 0, len(users))
-	for _, u := range users {
-		result = append(result, dto.UserResponse{
-			ID:       u.ID,
-			Email:    u.Email,
-			FullName: u.FullName,
-		})
-	}
-
-	// User directory rarely changes within a session; cache privately for 30s
-	// so reopening assignee dropdowns doesn't hit the DB each time.
-	w.Header().Set("Cache-Control", "private, max-age=30")
-	httputil.RespondJSON(w, http.StatusOK, result)
-	return nil
-}

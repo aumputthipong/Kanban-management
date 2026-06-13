@@ -104,7 +104,6 @@ func setupRoutes(d routerDeps) http.Handler {
 		})
 
 		r.Get("/api/auth/me", httputil.MakeHandler(d.authHandler.Me))
-		r.Get("/api/users", httputil.MakeHandler(d.boardHandler.GetAllUsers))
 
 		// Accept an invite link — authenticated but NOT board-gated (the caller
 		// is joining, not yet a member). A valid token is the authorization.

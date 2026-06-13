@@ -369,32 +369,6 @@ func TestGetBoardMembers_DBError(t *testing.T) {
 }
 
 // ────────────────────────────────────────────────
-// GetAllUsers
-// ────────────────────────────────────────────────
-
-func TestGetAllUsers_Success(t *testing.T) {
-	svc := &mock.MockBoardService{
-		GetAllUsersFn: func(ctx context.Context) ([]db.GetAllUsersRow, error) {
-			return []db.GetAllUsersRow{
-				{ID: "u-1", Email: "bob@example.com", FullName: "Bob"},
-			}, nil
-		},
-	}
-	h := NewBoardHandler(svc, nil, nil)
-	req := httptest.NewRequest(http.MethodGet, "/users", nil)
-	w := httptest.NewRecorder()
-
-	httputil.MakeHandler(h.GetAllUsers)(w, req)
-
-	assert.Equal(t, http.StatusOK, w.Code)
-
-	var result []map[string]interface{}
-	require.NoError(t, json.NewDecoder(w.Body).Decode(&result))
-	assert.Len(t, result, 1)
-	assert.Equal(t, "Bob", result[0]["full_name"])
-}
-
-// ────────────────────────────────────────────────
 // UpdateBoard
 // ────────────────────────────────────────────────
 

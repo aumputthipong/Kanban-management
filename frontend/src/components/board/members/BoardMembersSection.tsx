@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { LogOut, Loader2 } from "lucide-react";
 import { useBoardMembers } from "../../../hooks/useBoardMembers";
 import { AddMemberForm } from "./AddMemberForm";
+import { InviteLinkSection } from "./InviteLinkSection";
 import { MemberToolbar, type MemberFilter } from "./MemberToolbar";
 import { MemberGroup } from "./MemberGroup";
 import { MemberToolbarSkeleton, MemberGroupsSkeleton } from "./MembersSkeleton";
@@ -99,6 +100,8 @@ export function BoardMembersSection({ boardId }: BoardMembersSectionProps) {
         {canInvite && (
           <>
             <AddMemberForm nonMembers={nonMembers} isAdding={isAdding} onAdd={addMember} />
+            <div className="h-px bg-slate-100" />
+            <InviteLinkSection boardId={boardId} />
             <div className="h-px bg-slate-100" />
           </>
         )}

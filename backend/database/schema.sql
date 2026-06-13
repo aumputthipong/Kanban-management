@@ -192,3 +192,18 @@ CREATE TABLE user_settings (
     timezone         VARCHAR(50) NOT NULL DEFAULT 'Asia/Bangkok',
     updated_at       TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- Shareable board invite links (see migration 000018). Token = opaque random
+-- string; multi-use, time-expiring, revocable. Role granted on accept is always
+-- "member".
+CREATE TABLE board_invites (
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    board_id    UUID NOT NULL REFERENCES boards(id) ON DELETE CASCADE,
+    token       TEXT NOT NULL UNIQUE,
+    created_by  UUID REFERENCES users(id) ON DELETE SET NULL,
+    expires_at  TIMESTAMPTZ NOT NULL,
+    revoked_at  TIMESTAMPTZ,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_board_invites_active ON board_invites (board_id) WHERE revoked_at IS NULL;

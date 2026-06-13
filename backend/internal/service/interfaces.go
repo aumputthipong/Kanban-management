@@ -125,3 +125,11 @@ type AuthServicer interface {
 	RotateRefreshToken(ctx context.Context, rawToken, userAgent, ip string) (RefreshRotationResult, error)
 	RevokeRefreshToken(ctx context.Context, rawToken string) error
 }
+
+// InviteServicer is the seam the InviteHandler depends on (board invite links).
+type InviteServicer interface {
+	CreateInvite(ctx context.Context, boardID, creatorID string) (InviteLink, error)
+	GetActiveInvite(ctx context.Context, boardID string) (InviteLink, bool, error)
+	RevokeInvites(ctx context.Context, boardID string) error
+	AcceptInvite(ctx context.Context, token, userID string) (string, error)
+}

@@ -58,7 +58,14 @@ function LoginForm() {
         data: { email, password },
       });
 
-      router.push("/dashboard");
+      // Honour ?redirect= (set by apiClient's 401 bounce) — relative paths only,
+      // to avoid an open-redirect. Anything else falls back to the dashboard.
+      const redirect = searchParams.get("redirect");
+      const dest =
+        redirect && redirect.startsWith("/") && !redirect.startsWith("//")
+          ? redirect
+          : "/dashboard";
+      router.push(dest);
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed. Please try again.");

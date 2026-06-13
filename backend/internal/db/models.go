@@ -33,6 +33,16 @@ type Board struct {
 	DeletedAt   pgtype.Timestamptz
 }
 
+type BoardInvite struct {
+	ID        string
+	BoardID   string
+	Token     string
+	CreatedBy *string
+	ExpiresAt time.Time
+	RevokedAt *time.Time
+	CreatedAt time.Time
+}
+
 type BoardMember struct {
 	ID             string
 	BoardID        string

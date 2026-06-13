@@ -150,6 +150,36 @@ func (q *Queries) CreateBoard(ctx context.Context, arg CreateBoardParams) (Creat
 	return i, err
 }
 
+const createBoardInvite = `-- name: CreateBoardInvite :one
+INSERT INTO board_invites (board_id, token, created_by, expires_at)
+VALUES ($1, $2, $3, $4)
+RETURNING token, expires_at
+`
+
+type CreateBoardInviteParams struct {
+	BoardID   string
+	Token     string
+	CreatedBy *string
+	ExpiresAt time.Time
+}
+
+type CreateBoardInviteRow struct {
+	Token     string
+	ExpiresAt time.Time
+}
+
+func (q *Queries) CreateBoardInvite(ctx context.Context, arg CreateBoardInviteParams) (CreateBoardInviteRow, error) {
+	row := q.db.QueryRow(ctx, createBoardInvite,
+		arg.BoardID,
+		arg.Token,
+		arg.CreatedBy,
+		arg.ExpiresAt,
+	)
+	var i CreateBoardInviteRow
+	err := row.Scan(&i.Token, &i.ExpiresAt)
+	return i, err
+}
+
 const createCard = `-- name: CreateCard :one
 INSERT INTO cards (column_id, title, position, due_date, assignee_id, priority, created_by, acceptance_criteria, implementation_note, description)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
@@ -510,6 +540,27 @@ func (q *Queries) DeleteTag(ctx context.Context, arg DeleteTagParams) error {
 	return err
 }
 
+const getActiveBoardInvite = `-- name: GetActiveBoardInvite :one
+SELECT token, expires_at
+FROM board_invites
+WHERE board_id = $1 AND revoked_at IS NULL AND expires_at > now()
+ORDER BY created_at DESC
+LIMIT 1
+`
+
+type GetActiveBoardInviteRow struct {
+	Token     string
+	ExpiresAt time.Time
+}
+
+// The board's current usable link: not revoked and not past expiry.
+func (q *Queries) GetActiveBoardInvite(ctx context.Context, boardID string) (GetActiveBoardInviteRow, error) {
+	row := q.db.QueryRow(ctx, getActiveBoardInvite, boardID)
+	var i GetActiveBoardInviteRow
+	err := row.Scan(&i.Token, &i.ExpiresAt)
+	return i, err
+}
+
 const getActiveBoardsWithStats = `-- name: GetActiveBoardsWithStats :many
 SELECT
     b.id,
@@ -766,6 +817,27 @@ func (q *Queries) GetBoardIDByPlanningSession(ctx context.Context, id string) (s
 	var board_id string
 	err := row.Scan(&board_id)
 	return board_id, err
+}
+
+const getBoardInviteByToken = `-- name: GetBoardInviteByToken :one
+SELECT board_id, expires_at, revoked_at
+FROM board_invites
+WHERE token = $1
+`
+
+type GetBoardInviteByTokenRow struct {
+	BoardID   string
+	ExpiresAt time.Time
+	RevokedAt *time.Time
+}
+
+// Accept path — returns enough to validate (revoked / expired) and to know
+// which board to join.
+func (q *Queries) GetBoardInviteByToken(ctx context.Context, token string) (GetBoardInviteByTokenRow, error) {
+	row := q.db.QueryRow(ctx, getBoardInviteByToken, token)
+	var i GetBoardInviteByTokenRow
+	err := row.Scan(&i.BoardID, &i.ExpiresAt, &i.RevokedAt)
+	return i, err
 }
 
 const getBoardMemberRole = `-- name: GetBoardMemberRole :one
@@ -2166,6 +2238,22 @@ WHERE id = $1
 
 func (q *Queries) RestoreStashedBoard(ctx context.Context, id string) error {
 	_, err := q.db.Exec(ctx, restoreStashedBoard, id)
+	return err
+}
+
+const revokeActiveBoardInvites = `-- name: RevokeActiveBoardInvites :exec
+
+UPDATE board_invites
+SET revoked_at = now()
+WHERE board_id = $1 AND revoked_at IS NULL
+`
+
+// ─── Board invite links ─────────────────────────────────────────────────────
+// Turns off every still-active link for the board. Used both by "ปิดลิงก์" and
+// as the first half of regenerate (revoke-then-create) so a board has at most
+// one live link.
+func (q *Queries) RevokeActiveBoardInvites(ctx context.Context, boardID string) error {
+	_, err := q.db.Exec(ctx, revokeActiveBoardInvites, boardID)
 	return err
 }
 

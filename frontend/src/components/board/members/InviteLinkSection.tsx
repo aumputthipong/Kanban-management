@@ -1,27 +1,36 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Link2, Copy, Check, RefreshCw, X, Loader2 } from "lucide-react";
+import { Link2, Copy, Check, RefreshCw, Loader2 } from "lucide-react";
 import { inviteApi, type InviteLink } from "@/lib/inviteApi";
 import { useToastStore } from "@/store/useToastStore";
 
-// Manager-facing invite-link panel: shows the board's active shareable link (or
-// a "create" prompt), with copy / regenerate / turn-off. Anyone who opens the
-// link and is logged in joins as a member; the link expires and can be revoked.
+// Discord-style invite link: when a manager opens this, the link is already
+// there (auto-generated if the board has none) — no separate "create" step. The
+// only prominent action is Copy; "สร้างลิงก์ใหม่" quietly regenerates (which
+// invalidates the old link server-side), covering the "a link leaked" case
+// without a dedicated revoke button.
 export function InviteLinkSection({ boardId }: { boardId: string }) {
   const showToast = useToastStore((s) => s.show);
   const [link, setLink] = useState<InviteLink | null>(null);
   const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-    inviteApi
-      .getActive(boardId)
-      .then((l) => !cancelled && setLink(l))
-      .catch(() => !cancelled && setLink(null))
-      .finally(() => !cancelled && setLoading(false));
+    (async () => {
+      try {
+        const existing = await inviteApi.getActive(boardId);
+        const l = existing ?? (await inviteApi.create(boardId));
+        if (!cancelled) setLink(l);
+      } catch {
+        if (!cancelled) setFailed(true);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
     return () => {
       cancelled = true;
     };
@@ -32,24 +41,13 @@ export function InviteLinkSection({ boardId }: { boardId: string }) {
       ? `${window.location.origin}/invite/${link.token}`
       : "";
 
-  const generate = async () => {
+  const regenerate = async () => {
     setBusy(true);
+    setFailed(false);
     try {
       setLink(await inviteApi.create(boardId));
     } catch {
-      showToast({ message: "สร้างลิงก์เชิญไม่สำเร็จ", duration: 4000 });
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const revoke = async () => {
-    setBusy(true);
-    try {
-      await inviteApi.revoke(boardId);
-      setLink(null);
-    } catch {
-      showToast({ message: "ปิดลิงก์ไม่สำเร็จ", duration: 4000 });
+      showToast({ message: "สร้างลิงก์ใหม่ไม่สำเร็จ", duration: 4000 });
     } finally {
       setBusy(false);
     }
@@ -80,14 +78,24 @@ export function InviteLinkSection({ boardId }: { boardId: string }) {
         <div>
           <p className="text-[13px] font-bold text-slate-800">ลิงก์เชิญ</p>
           <p className="text-[11.5px] text-slate-400">
-            ใครมีลิงก์นี้และล็อกอินอยู่ เข้าร่วมเป็นสมาชิกได้
+            ส่งลิงก์นี้ให้เพื่อน — เปิดแล้วล็อกอินจะเข้าร่วมเป็นสมาชิกได้เลย
           </p>
         </div>
       </div>
 
       {loading ? (
         <div className="h-10 animate-pulse rounded-md bg-slate-100" />
-      ) : link ? (
+      ) : failed ? (
+        <button
+          type="button"
+          onClick={regenerate}
+          disabled={busy}
+          className="inline-flex h-10 items-center gap-2 text-sm font-semibold text-slate-500 hover:text-indigo-600 disabled:opacity-50"
+        >
+          {busy ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={15} />}
+          โหลดลิงก์ไม่สำเร็จ · ลองใหม่
+        </button>
+      ) : (
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-2">
             <input
@@ -105,36 +113,20 @@ export function InviteLinkSection({ boardId }: { boardId: string }) {
               {copied ? "คัดลอกแล้ว" : "คัดลอก"}
             </button>
           </div>
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11.5px] text-slate-400">
-            <span>หมดอายุ {expiryLabel}</span>
+          <p className="flex flex-wrap items-center gap-x-2 text-[11.5px] text-slate-400">
+            <span>ลิงก์หมดอายุ {expiryLabel}</span>
+            <span aria-hidden>·</span>
             <button
               type="button"
-              onClick={generate}
+              onClick={regenerate}
               disabled={busy}
               className="inline-flex items-center gap-1 font-semibold text-slate-500 hover:text-indigo-600 disabled:opacity-50"
             >
-              <RefreshCw size={12} /> สร้างลิงก์ใหม่
+              {busy ? <Loader2 size={11} className="animate-spin" /> : <RefreshCw size={11} />}
+              สร้างลิงก์ใหม่
             </button>
-            <button
-              type="button"
-              onClick={revoke}
-              disabled={busy}
-              className="inline-flex items-center gap-1 font-semibold text-slate-500 hover:text-red-600 disabled:opacity-50"
-            >
-              <X size={12} /> ปิดลิงก์
-            </button>
-          </div>
+          </p>
         </div>
-      ) : (
-        <button
-          type="button"
-          onClick={generate}
-          disabled={busy}
-          className="inline-flex h-10 items-center gap-2 rounded-md border border-dashed border-slate-300 px-4 text-sm font-semibold text-slate-600 transition hover:border-indigo-400 hover:text-indigo-600 disabled:opacity-50"
-        >
-          {busy ? <Loader2 size={16} className="animate-spin" /> : <Link2 size={16} />}
-          สร้างลิงก์เชิญ
-        </button>
       )}
     </div>
   );

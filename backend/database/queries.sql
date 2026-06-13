@@ -765,3 +765,33 @@ ON CONFLICT (user_id) DO UPDATE SET
     timezone        = COALESCE(sqlc.narg(timezone)::varchar,        user_settings.timezone),
     updated_at      = now()
 RETURNING user_id, default_landing, show_all_cards, timezone, updated_at;
+
+-- ─── Board invite links ─────────────────────────────────────────────────────
+
+-- name: RevokeActiveBoardInvites :exec
+-- Turns off every still-active link for the board. Used both by "ปิดลิงก์" and
+-- as the first half of regenerate (revoke-then-create) so a board has at most
+-- one live link.
+UPDATE board_invites
+SET revoked_at = now()
+WHERE board_id = $1 AND revoked_at IS NULL;
+
+-- name: CreateBoardInvite :one
+INSERT INTO board_invites (board_id, token, created_by, expires_at)
+VALUES ($1, $2, $3, $4)
+RETURNING token, expires_at;
+
+-- name: GetActiveBoardInvite :one
+-- The board's current usable link: not revoked and not past expiry.
+SELECT token, expires_at
+FROM board_invites
+WHERE board_id = $1 AND revoked_at IS NULL AND expires_at > now()
+ORDER BY created_at DESC
+LIMIT 1;
+
+-- name: GetBoardInviteByToken :one
+-- Accept path — returns enough to validate (revoked / expired) and to know
+-- which board to join.
+SELECT board_id, expires_at, revoked_at
+FROM board_invites
+WHERE token = $1;

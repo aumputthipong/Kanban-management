@@ -31,6 +31,7 @@ type routerDeps struct {
 	activityHandler *handler.ActivityHandler
 	planningHandler *handler.PlanningHandler
 	settingsHandler *handler.UserSettingsHandler
+	inviteHandler   *handler.InviteHandler
 	hub             *websocket.Hub
 	pool            *pgxpool.Pool
 	version         string
@@ -105,6 +106,10 @@ func setupRoutes(d routerDeps) http.Handler {
 		r.Get("/api/auth/me", httputil.MakeHandler(d.authHandler.Me))
 		r.Get("/api/users", httputil.MakeHandler(d.boardHandler.GetAllUsers))
 
+		// Accept an invite link — authenticated but NOT board-gated (the caller
+		// is joining, not yet a member). A valid token is the authorization.
+		r.Post("/api/invites/{token}/accept", httputil.MakeHandler(d.inviteHandler.AcceptInvite))
+
 		r.Route("/api/my-tasks", func(r chi.Router) {
 			r.Get("/", httputil.MakeHandler(d.boardHandler.GetMyTasks))
 			r.Post("/{cardID}/complete", httputil.MakeHandler(d.boardHandler.CompleteMyTask))
@@ -142,6 +147,15 @@ func setupRoutes(d routerDeps) http.Handler {
 						r.Patch("/{userID}", httputil.MakeHandler(d.boardHandler.UpdateMemberRole))
 					})
 				})
+
+				// Shareable invite link — manager+ only (managing who can join is
+				// a privileged action, like adding members directly).
+				r.With(middleware.RequireBoardRole(core.RoleManager)).
+					Route("/invites", func(r chi.Router) {
+						r.Get("/", httputil.MakeHandler(d.inviteHandler.GetActiveInvite))
+						r.Post("/", httputil.MakeHandler(d.inviteHandler.CreateInvite))
+						r.Delete("/", httputil.MakeHandler(d.inviteHandler.RevokeInvite))
+					})
 
 				r.Route("/tags", func(r chi.Router) {
 					r.Get("/", httputil.MakeHandler(d.tagHandler.GetBoardTags))

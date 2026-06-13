@@ -42,7 +42,12 @@ async function tryRefresh(): Promise<boolean> {
 function redirectToLogin() {
   if (typeof window === "undefined") return;
   if (window.location.pathname.startsWith("/login")) return;
-  window.location.assign("/login");
+  // Carry where we were so login can send the user back (e.g. clicking an
+  // invite link while logged out -> login -> land back on /invite/<token>).
+  const here = window.location.pathname + window.location.search;
+  const dest =
+    here && here !== "/" ? `/login?redirect=${encodeURIComponent(here)}` : "/login";
+  window.location.assign(dest);
 }
 
 /**

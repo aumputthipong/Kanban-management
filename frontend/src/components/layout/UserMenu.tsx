@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronDown, Loader2, LogOut } from "lucide-react";
 import { API_URL } from "@/lib/constants";
+import { getAvatarColor } from "@/utils/avatar";
 
 interface UserMe {
   user_id: string;
@@ -52,6 +53,7 @@ export function UserMenu({ fallbackEmail }: UserMenuProps) {
   const displayName = me?.full_name?.trim() || fallbackEmail;
   const email = me?.email ?? fallbackEmail;
   const initial = displayName.charAt(0).toUpperCase();
+  const avatarColor = me?.user_id ? getAvatarColor(me.user_id) : "bg-slate-400";
 
   const handleLogout = async () => {
     setLoggingOut(true);
@@ -69,7 +71,7 @@ export function UserMenu({ fallbackEmail }: UserMenuProps) {
         onClick={() => setOpen((v) => !v)}
         className="cursor-pointer flex items-center gap-2 rounded-full bg-slate-50 hover:bg-slate-100 border border-slate-200 px-2 py-1 transition-colors"
       >
-        <div className="w-7 h-7 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
+        <div className={`w-7 h-7 rounded-full ${avatarColor} flex items-center justify-center text-white text-xs font-bold shrink-0`}>
           {initial}
         </div>
         <span className="hidden md:inline text-sm font-medium text-slate-700 max-w-[180px] truncate">

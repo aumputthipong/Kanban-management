@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/dto"
@@ -46,7 +47,14 @@ func (h *TagHandler) CreateBoardTag(w http.ResponseWriter, r *http.Request) erro
 	}
 	tag, err := h.tagService.CreateTag(r.Context(), boardID, req.Name, req.Color)
 	if err != nil {
-		return httputil.NewAPIError(http.StatusUnprocessableEntity, err.Error(), err)
+		switch {
+		case errors.Is(err, service.ErrTagNameEmpty), errors.Is(err, service.ErrTagNameTooLong):
+			// Sentinel messages are safe to surface verbatim.
+			return httputil.NewAPIError(http.StatusUnprocessableEntity, err.Error(), err)
+		default:
+			// Don't leak raw DB errors (constraint names, etc.) to the client.
+			return httputil.NewAPIError(http.StatusInternalServerError, "Failed to create tag", err)
+		}
 	}
 	httputil.RespondJSON(w, http.StatusCreated, dto.TagResponse{
 		ID: tag.ID, BoardID: tag.BoardID, Name: tag.Name, Color: tag.Color,

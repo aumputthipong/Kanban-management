@@ -114,6 +114,32 @@ func TestRequireBoardMember_NonExistentBoard_Returns404(t *testing.T) {
 	assert.False(t, called)
 }
 
+// TestRequireBoardMember_MalformedBoardID_Returns404 is the regression for a
+// mistyped / malformed board ID (e.g. a UUID with an extra char). Before the
+// gate validated the UUID, the bad value reached the uuid column and Postgres
+// rejected it (22P02) as a non-ErrNoRows error -> 500 "Failed to check board
+// access", which both looked broken and leaked "this ID is shaped wrong" vs
+// "this board doesn't exist". Both must now be an indistinguishable 404.
+func TestRequireBoardMember_MalformedBoardID_Returns404(t *testing.T) {
+	svc := &mock.MockBoardService{
+		GetBoardMemberRoleFn: func(ctx context.Context, boardID, userID string) (string, error) {
+			t.Fatal("service must not be queried with a malformed board ID")
+			return "", nil
+		},
+	}
+
+	var role string
+	var called bool
+	h := RequireBoardMember(svc)(captureRole(&role, &called))
+
+	w := httptest.NewRecorder()
+	// testBoardID with an extra trailing char -> 13-char final group, invalid UUID.
+	h.ServeHTTP(w, buildRequest(testUserID, testBoardID+"f"))
+
+	assert.Equal(t, http.StatusNotFound, w.Code, "malformed board ID must 404, not 500")
+	assert.False(t, called, "next handler must not run for a malformed board ID")
+}
+
 func TestRequireBoardMember_MissingUserID_Returns401(t *testing.T) {
 	svc := &mock.MockBoardService{
 		GetBoardMemberRoleFn: func(ctx context.Context, boardID, userID string) (string, error) {

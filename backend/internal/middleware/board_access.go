@@ -8,6 +8,7 @@ import (
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/httputil"
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/service"
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -60,6 +61,16 @@ func boardMembershipGate(resolve roleResolver) func(http.Handler) http.Handler {
 			boardID := chi.URLParam(r, "boardID")
 			if boardID == "" {
 				httputil.RespondError(w, http.StatusBadRequest, "Missing board ID")
+				return
+			}
+
+			// A malformed board ID can't reference a real board. Treat it as
+			// not-found (404) rather than letting the bad value reach the UUID
+			// column, where Postgres would reject it with a 22P02 error that
+			// surfaces as a 500. This keeps malformed / nonexistent / not-a-member
+			// all indistinguishable — see the anti-enumeration note above.
+			if _, err := uuid.Parse(boardID); err != nil {
+				httputil.RespondError(w, http.StatusNotFound, "Not found")
 				return
 			}
 

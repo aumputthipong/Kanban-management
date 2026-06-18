@@ -3,29 +3,7 @@ import { formatDistanceToNow } from "date-fns";
 import { CheckSquare } from "lucide-react";
 import type { Board } from "@/types/board";
 import { boardColor, BoardGlyph } from "@/lib/boardAppearance";
-
-function getInitials(fullName: string): string {
-  return fullName
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
-}
-
-function getAvatarColor(name: string): string {
-  const colors = [
-    "bg-blue-500",
-    "bg-green-500",
-    "bg-purple-500",
-    "bg-rose-500",
-    "bg-amber-500",
-    "bg-teal-500",
-  ];
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) hash += name.charCodeAt(i);
-  return colors[hash % colors.length];
-}
+import { getAvatarColor } from "@/utils/avatar";
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -54,9 +32,9 @@ function Avatars({
         <div
           key={m.user_id}
           title={m.full_name}
-          className={`${dim} rounded-full flex items-center justify-center text-white text-xs font-bold ring-2 ring-white ${getAvatarColor(m.full_name)}`}
+          className={`${dim} rounded-full flex items-center justify-center text-white text-xs font-bold ring-2 ring-white ${getAvatarColor(m.user_id)}`}
         >
-          {getInitials(m.full_name)}
+          {(m.full_name?.charAt(0) ?? "?").toUpperCase()}
         </div>
       ))}
       {extra > 0 && (

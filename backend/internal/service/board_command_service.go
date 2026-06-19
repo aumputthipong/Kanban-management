@@ -313,33 +313,3 @@ func (s *BoardCommandService) UpdateColumn(ctx context.Context, p UpdateColumnPa
 	}
 	return nil
 }
-
-// -----------------------------
-// Subtask operations (WS write flow)
-// -----------------------------
-
-type UpdateSubtaskWSParams struct {
-	ID       string
-	Title    string
-	IsDone   bool
-	Position float64
-}
-
-func (s *BoardCommandService) UpdateSubtaskAll(ctx context.Context, p UpdateSubtaskWSParams) error {
-	if _, err := s.queries.UpdateSubtask(ctx, db.UpdateSubtaskParams{
-		ID:       p.ID,
-		Title:    p.Title,
-		IsDone:   p.IsDone,
-		Position: p.Position,
-	}); err != nil {
-		return fmt.Errorf("update subtask: %w", err)
-	}
-	return nil
-}
-
-func (s *BoardCommandService) ToggleSubtaskDone(ctx context.Context, subtaskID string, isDone bool) error {
-	return s.queries.UpdateSubtaskDone(ctx, db.UpdateSubtaskDoneParams{
-		ID:     subtaskID,
-		IsDone: isDone,
-	})
-}

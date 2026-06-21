@@ -2,6 +2,7 @@
 
 import { use } from "react";
 import { usePathname } from "next/navigation";
+import { AlertCircle } from "lucide-react";
 import { useBoardData } from "@/hooks/useBoardData";
 import { BoardHeader } from "@/components/board/task-board/BoardHeader";
 import { BoardBackground } from "@/components/board/task-board/BoardBackground";
@@ -45,8 +46,28 @@ export default function BoardLayout({ children, params }: BoardLayoutProps) {
 
   if (error) {
     return (
-      <main className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <p className="text-red-500">{error}</p>
+      <main className="min-h-screen bg-slate-50 flex flex-col items-center justify-center gap-3 px-6 text-center">
+        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-50 text-red-500">
+          <AlertCircle size={24} />
+        </div>
+        <h1 className="text-2xl font-semibold text-slate-700">เปิดบอร์ดไม่สำเร็จ</h1>
+        <p className="text-sm text-slate-500 max-w-md">
+          เกิดข้อผิดพลาดในการโหลดบอร์ดนี้ — ลองใหม่อีกครั้ง หากยังไม่ได้ให้กลับไปหน้าโปรเจกต์แล้วลองเข้าใหม่
+        </p>
+        <div className="mt-2 flex items-center gap-4">
+          <button
+            onClick={() => window.location.reload()}
+            className="text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md px-4 py-2 transition-colors"
+          >
+            ลองใหม่
+          </button>
+          <a
+            href="/dashboard"
+            className="text-sm font-medium text-blue-600 hover:text-blue-700"
+          >
+            ← Back to dashboard
+          </a>
+        </div>
       </main>
     );
   }

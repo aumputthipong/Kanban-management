@@ -20,8 +20,8 @@ export default function RouteError({
 
   return (
     <div className="min-h-[60vh] flex items-center justify-center p-6">
-      <div className="max-w-md w-full bg-white border border-rose-200 rounded-2xl shadow-sm p-6 text-center">
-        <div className="mx-auto w-12 h-12 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center mb-4">
+      <div className="max-w-md w-full bg-white border border-danger/20 rounded-2xl shadow-sm p-6 text-center">
+        <div className="mx-auto w-12 h-12 rounded-full bg-danger/10 text-danger flex items-center justify-center mb-4">
           <AlertTriangle size={22} />
         </div>
         <h1 className="text-lg font-bold text-slate-900 mb-1">

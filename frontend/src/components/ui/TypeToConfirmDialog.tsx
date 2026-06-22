@@ -83,7 +83,7 @@ export function TypeToConfirmDialog({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start gap-3">
-          <span className="shrink-0 w-9 h-9 rounded-lg bg-red-50 text-red-600 flex items-center justify-center">
+          <span className="shrink-0 w-9 h-9 rounded-lg bg-danger/10 text-danger flex items-center justify-center">
             <AlertTriangle size={18} />
           </span>
           <div className="flex flex-col gap-1 min-w-0">
@@ -125,7 +125,7 @@ export function TypeToConfirmDialog({
           <button
             onClick={onConfirm}
             disabled={!canConfirm}
-            className="px-4 py-2 text-sm rounded-lg font-semibold text-white bg-red-600 hover:bg-red-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center gap-2"
+            className="px-4 py-2 text-sm rounded-lg font-semibold text-white bg-danger hover:bg-danger-hover transition-colors disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center gap-2"
           >
             {loading && <Loader2 size={15} className="animate-spin" />}
             {confirmLabel}

@@ -18,6 +18,14 @@
      -primary utilities. */
   --color-primary: #1e40af;
   --color-primary-hover: #1e3a8a;
+
+  /* Danger / destructive (design.md → colors.danger). Use bg-danger /
+     text-danger for solids and bg-danger/10 for the light surface tint, so
+     error + destructive UI stops reaching for raw red-500/rose-600 utilities.
+     NOT for priority.high (#DC2626) or overdue (state-overdue) — those keep
+     their own reds. (success #047857 to be tokenised when done-chips migrate.) */
+  --color-danger: #b91c1c;
+  --color-danger-hover: #991b1b;
 }
 
 @media (prefers-color-scheme: dark) {

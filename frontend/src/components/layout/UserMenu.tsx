@@ -31,7 +31,10 @@ export function UserMenu({ fallbackEmail }: UserMenuProps) {
         if (cancelled || !data) return;
         setMe(data);
       })
-      .catch(() => {});
+      .catch(() => {
+        // /auth/me is best-effort: on failure `me` stays null and the menu
+        // falls back to `fallbackEmail` + its initial — just not personalized.
+      });
     return () => {
       cancelled = true;
     };

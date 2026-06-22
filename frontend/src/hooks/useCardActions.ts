@@ -172,7 +172,12 @@ export function useCardActions(boardId: string) {
       credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
-    }).catch(() => {});
+    }).catch(() => {
+      // Best-effort save of these free-text fields: the optimistic store update
+      // and the WS broadcast below already reflect the change. Raw fetch (no
+      // apiClient), so a transient PATCH failure is silently dropped — see PR
+      // note; arguably worth a retry/toast later.
+    });
 
     sendMessage({
       type: WS_EVENT.CardUpdated,

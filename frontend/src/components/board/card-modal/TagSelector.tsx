@@ -53,7 +53,10 @@ function TagSelectorImpl({ boardId, selected, onChange, onCommit, canEdit }: Tag
       .then((data: Tag[]) => {
         if (!cancelled) setBoardTags(Array.isArray(data) ? data : []);
       })
-      .catch(() => {})
+      .catch(() => {
+        // Best-effort: on failure the selector shows no existing tags (the user
+        // can still type a new one). `finally` clears the spinner either way.
+      })
       .finally(() => {
         if (!cancelled) setLoadingTags(false);
       });
@@ -129,7 +132,9 @@ function TagSelectorImpl({ boardId, selected, onChange, onCommit, canEdit }: Tag
       handleSelect(tag);
       setCreating(false);
       setNewColor(TAG_COLORS[0].key);
-    } catch {}
+    } catch {
+      // Network failure on create: leave the form open so the user can retry.
+    }
   };
 
   if (!canEdit) {

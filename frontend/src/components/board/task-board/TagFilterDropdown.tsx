@@ -22,7 +22,10 @@ export function TagFilterDropdown({ boardId }: TagFilterDropdownProps) {
     fetch(`${API_URL}/boards/${boardId}/tags`, { credentials: "include" })
       .then((r) => (r.ok ? r.json() : []))
       .then((data: Tag[]) => setTags(Array.isArray(data) ? data : []))
-      .catch(() => {});
+      .catch(() => {
+        // Non-critical: the tag filter is an affordance, not core data. On a
+        // failed load the dropdown simply shows no tags.
+      });
   }, [boardId]);
 
   useEffect(() => {

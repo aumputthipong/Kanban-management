@@ -97,7 +97,7 @@ export function CreateProjectModal({ onClose }: CreateProjectModalProps) {
           <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-slate-100">
             <div className="flex items-center gap-2.5">
               <div className="p-1.5 bg-blue-50 rounded-lg">
-                <FolderPlus size={16} className="text-blue-600" />
+                <FolderPlus size={16} className="text-primary" />
               </div>
               <h2 className="text-sm font-bold text-slate-800">New Project</h2>
             </div>
@@ -188,7 +188,7 @@ export function CreateProjectModal({ onClose }: CreateProjectModalProps) {
               <button
                 type="submit"
                 disabled={isCreating || !title.trim()}
-                className="flex items-center gap-2 px-4 py-2 text-sm rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                className="flex items-center gap-2 px-4 py-2 text-sm rounded-lg bg-primary text-white font-medium hover:bg-primary-hover disabled:opacity-40 disabled:cursor-not-allowed transition-all"
               >
                 {isCreating ? (
                   <>

@@ -61,14 +61,14 @@ export default function InviteAcceptPage() {
             <p className="mt-1.5 text-sm text-slate-500">{error}</p>
             <Link
               href="/dashboard"
-              className="mt-5 inline-flex items-center justify-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
+              className="mt-5 inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-hover"
             >
               ไปหน้าโปรเจกต์ของฉัน
             </Link>
           </>
         ) : (
           <>
-            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-indigo-50 text-indigo-600">
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-indigo-50 text-primary">
               <Link2 size={22} />
             </div>
             <h1 className="text-base font-bold text-slate-800">กำลังเข้าร่วมบอร์ด…</h1>

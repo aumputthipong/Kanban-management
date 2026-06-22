@@ -93,7 +93,7 @@ export function InviteLinkModal({
           {/* Header */}
           <div className="flex items-center justify-between border-b border-slate-100 px-5 pt-5 pb-4">
             <div className="flex items-center gap-2.5">
-              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
+              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-50 text-primary">
                 <Link2 size={16} />
               </span>
               <h2 className="text-sm font-bold text-slate-800">Invite Link</h2>
@@ -120,7 +120,7 @@ export function InviteLinkModal({
                 type="button"
                 onClick={regenerate}
                 disabled={busy}
-                className="inline-flex h-11 items-center gap-2 text-sm font-semibold text-slate-500 hover:text-indigo-600 disabled:opacity-50"
+                className="inline-flex h-11 items-center gap-2 text-sm font-semibold text-slate-500 hover:text-primary disabled:opacity-50"
               >
                 {busy ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={15} />}
                 โหลดลิงก์ไม่สำเร็จ · ลองใหม่
@@ -150,7 +150,7 @@ export function InviteLinkModal({
                     type="button"
                     onClick={regenerate}
                     disabled={busy}
-                    className="inline-flex items-center gap-1 font-semibold text-slate-500 hover:text-indigo-600 disabled:opacity-50"
+                    className="inline-flex items-center gap-1 font-semibold text-slate-500 hover:text-primary disabled:opacity-50"
                   >
                     {busy ? <Loader2 size={11} className="animate-spin" /> : <RefreshCw size={11} />}
                     สร้างลิงก์ใหม่

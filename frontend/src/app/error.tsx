@@ -39,7 +39,7 @@ export default function RouteError({
           <button
             type="button"
             onClick={reset}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-colors"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary hover:bg-primary-hover text-white text-sm font-semibold rounded-lg transition-colors"
           >
             <RotateCcw size={14} />
             ลองอีกครั้ง

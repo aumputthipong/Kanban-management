@@ -164,7 +164,7 @@ function ChipToggle({
       }`}
     >
       <span
-        className={`h-1.5 w-1.5 rounded-full ${active ? "bg-indigo-600" : "bg-slate-300"}`}
+        className={`h-1.5 w-1.5 rounded-full ${active ? "bg-primary" : "bg-slate-300"}`}
       />
       {label}
     </button>
@@ -208,7 +208,7 @@ function ChipDropdown({
       >
         {label}
         {active && (
-          <span className="rounded-full bg-indigo-600 px-1.5 text-[10px] font-bold text-white">
+          <span className="rounded-full bg-primary px-1.5 text-[10px] font-bold text-white">
             {activeCount}
           </span>
         )}
@@ -219,7 +219,7 @@ function ChipDropdown({
               e.stopPropagation();
               onClear();
             }}
-            className="text-indigo-600 hover:text-indigo-800"
+            className="text-primary hover:text-primary-hover"
           />
         ) : (
           <ChevronDown size={12} className="text-slate-400" />
@@ -250,7 +250,7 @@ function DropdownItem({
       className={`flex w-full items-center justify-between px-3 py-1.5 text-left text-xs transition-colors hover:bg-slate-50 ${active ? "font-semibold text-indigo-800" : "text-slate-700"}`}
     >
       <span className="capitalize">{label}</span>
-      {active && <span className="text-indigo-600">✓</span>}
+      {active && <span className="text-primary">✓</span>}
     </button>
   );
 }

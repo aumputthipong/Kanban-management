@@ -198,7 +198,7 @@ export function UpcomingRow({
     >
       <span aria-hidden className={`self-stretch w-[3px] rounded-r ${RAIL[card.priority ?? "none"]}`} />
       <div className="flex flex-col items-center justify-center leading-none">
-        <span className="text-xs font-bold text-blue-600 text-center">{whenLabel}</span>
+        <span className="text-xs font-bold text-primary text-center">{whenLabel}</span>
       </div>
       <div className="min-w-0">
         <p className="text-sm font-semibold text-slate-900 truncate">{card.title}</p>

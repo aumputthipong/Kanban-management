@@ -29,7 +29,7 @@ function AddColumnButton({
     <>
       <button
         onClick={() => setOpen(true)}
-        className="cursor-pointer flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 hover:text-blue-600 transition-colors shadow-sm"
+        className="cursor-pointer flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 hover:text-primary transition-colors shadow-sm"
       >
         <Plus size={14} /> Add column
       </button>
@@ -68,7 +68,7 @@ function BoardToolbar({ boardId }: { boardId: string }) {
       )}
       <button
         onClick={() => setCreating(true)}
-        className="ml-auto cursor-pointer inline-flex items-center gap-1.5 px-3.5 py-1.5 text-sm font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
+        className="ml-auto cursor-pointer inline-flex items-center gap-1.5 px-3.5 py-1.5 text-sm font-semibold text-white bg-primary rounded-lg hover:bg-primary-hover transition-colors shadow-sm"
       >
         <Plus size={15} /> New Task
       </button>

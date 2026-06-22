@@ -136,7 +136,7 @@ export function CardFormFields({ form, members, assigneeName, boardId, onChange,
               <button
                 type="button"
                 onClick={() => setShowQuickDates((v) => !v)}
-                className="text-[10px] text-slate-400 hover:text-blue-600 px-1.5 py-1 rounded border border-slate-200 hover:border-blue-300 transition-colors shrink-0"
+                className="text-[10px] text-slate-400 hover:text-primary px-1.5 py-1 rounded border border-slate-200 hover:border-blue-300 transition-colors shrink-0"
               >
                 Quick
               </button>
@@ -201,7 +201,7 @@ export function CardFormFields({ form, members, assigneeName, boardId, onChange,
               <button
                 type="button"
                 onClick={() => setShowQuickHours((v) => !v)}
-                className="text-[10px] text-slate-400 hover:text-blue-600 px-1.5 py-1 rounded border border-slate-200 hover:border-blue-300 transition-colors shrink-0"
+                className="text-[10px] text-slate-400 hover:text-primary px-1.5 py-1 rounded border border-slate-200 hover:border-blue-300 transition-colors shrink-0"
               >
                 Quick
               </button>

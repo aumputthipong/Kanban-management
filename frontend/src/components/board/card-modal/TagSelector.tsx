@@ -183,7 +183,7 @@ function TagSelectorImpl({ boardId, selected, onChange, onCommit, canEdit }: Tag
           type="button"
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => setCreating(true)}
-          className="w-full text-left px-3 py-1.5 hover:bg-slate-50 flex items-center gap-1.5 text-xs text-blue-600 font-semibold"
+          className="w-full text-left px-3 py-1.5 hover:bg-slate-50 flex items-center gap-1.5 text-xs text-primary font-semibold"
         >
           <Plus size={12} />
           Create &ldquo;{query.trim()}&rdquo;
@@ -215,7 +215,7 @@ function TagSelectorImpl({ boardId, selected, onChange, onCommit, canEdit }: Tag
             type="button"
             onMouseDown={(e) => e.preventDefault()}
             onClick={handleCreate}
-            className="text-xs bg-blue-500 hover:bg-blue-600 text-white font-semibold py-1 rounded-md transition-colors cursor-pointer"
+            className="text-xs bg-primary hover:bg-primary-hover text-white font-semibold py-1 rounded-md transition-colors cursor-pointer"
           >
             Create
           </button>

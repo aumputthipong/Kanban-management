@@ -56,7 +56,7 @@ export function BoardHeader({ title = "Project Board" }: BoardHeaderProps) {
               href={`${basePath}/overview`}
               className={`flex items-center gap-2 px-3 py-2 text-sm font-medium border-b-2 transition-colors ${
                 pathname.includes("/overview")
-                  ? "border-indigo-600 text-indigo-700"
+                  ? "border-primary text-primary"
                   : "border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300"
               }`}
             >
@@ -68,7 +68,7 @@ export function BoardHeader({ title = "Project Board" }: BoardHeaderProps) {
               href={`${basePath}/planning`}
               className={`flex items-center gap-2 px-3 py-2 text-sm font-medium border-b-2 transition-colors ${
                 pathname.includes("/planning")
-                  ? "border-indigo-600 text-indigo-700"
+                  ? "border-primary text-primary"
                   : "border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300"
               }`}
             >
@@ -80,7 +80,7 @@ export function BoardHeader({ title = "Project Board" }: BoardHeaderProps) {
               href={`${basePath}/tasks`}
               className={`flex items-center gap-2 px-3 py-2 text-sm font-medium border-b-2 transition-colors ${
                 pathname.includes("/tasks")
-                  ? "border-indigo-600 text-indigo-700"
+                  ? "border-primary text-primary"
                   : "border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300"
               }`}
             >
@@ -91,7 +91,7 @@ export function BoardHeader({ title = "Project Board" }: BoardHeaderProps) {
               href={`${basePath}/members`}
               className={`flex items-center gap-2 px-3 py-2 text-sm font-medium border-b-2 transition-colors ${
                 pathname.includes("/members")
-                  ? "border-indigo-600 text-indigo-700"
+                  ? "border-primary text-primary"
                   : "border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300"
               }`}
             >
@@ -103,7 +103,7 @@ export function BoardHeader({ title = "Project Board" }: BoardHeaderProps) {
               href={`${basePath}/calendar`}
               className={`flex items-center gap-2 px-3 py-2 text-sm font-medium border-b-2 transition-colors ${
                 pathname.includes("/calendar")
-                  ? "border-indigo-600 text-indigo-700"
+                  ? "border-primary text-primary"
                   : "border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300"
               }`}
             >

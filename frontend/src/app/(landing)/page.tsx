@@ -18,7 +18,7 @@ export const metadata: Metadata = {
 
 function Avatar({
   initial,
-  className = "bg-blue-600",
+  className = "bg-primary",
   size = 24,
 }: {
   initial: string;
@@ -62,7 +62,7 @@ function TaskCard({
   date = "Apr 18",
   hours = "4h",
   avatarInitial = "A",
-  avatarClass = "bg-blue-600",
+  avatarClass = "bg-primary",
   strike = false,
   progress = 0.66,
 }: TaskCardProps) {
@@ -105,7 +105,7 @@ function TaskCard({
                 <span
                   className={`w-3 h-3 rounded-sm border grid place-items-center shrink-0 ${
                     done[i]
-                      ? "bg-blue-600 border-blue-600"
+                      ? "bg-primary border-primary"
                       : "bg-white border-slate-300"
                   }`}
                 >
@@ -203,7 +203,7 @@ export default async function LandingPage() {
             <h1 className="text-5xl md:text-7xl font-bold tracking-tight leading-[1.05]">
               Less standup.
               <br />
-              More <span className="text-blue-600">shipping.</span>
+              More <span className="text-primary">shipping.</span>
             </h1>
 
             <p className="mt-8 text-base md:text-lg text-slate-500 leading-relaxed max-w-md">
@@ -214,7 +214,7 @@ export default async function LandingPage() {
 
             <Link
               href="/dashboard"
-              className="mt-10 inline-flex items-center gap-2 bg-blue-600 text-white px-7 py-3.5 font-semibold text-sm hover:bg-blue-700 active:scale-95 shadow-sm rounded-full transition-colors"
+              className="mt-10 inline-flex items-center gap-2 bg-primary text-white px-7 py-3.5 font-semibold text-sm hover:bg-primary-hover active:scale-95 shadow-sm rounded-full transition-colors"
             >
               Open Workspace
               <ArrowRight size={16} />
@@ -254,11 +254,11 @@ export default async function LandingPage() {
         <div className="max-w-6xl mx-auto">
           <div className="flex items-end justify-between mb-10">
             <div>
-              <div className="text-[11px] font-semibold uppercase tracking-widest text-blue-600 mb-2">
+              <div className="text-[11px] font-semibold uppercase tracking-widest text-primary mb-2">
                 In view
               </div>
               <h2 className="text-3xl md:text-5xl font-bold tracking-tight leading-tight">
-                The board, <span className="text-blue-600">at a glance.</span>
+                The board, <span className="text-primary">at a glance.</span>
               </h2>
             </div>
             <span className="hidden md:inline text-xs text-slate-400 font-medium">
@@ -270,13 +270,13 @@ export default async function LandingPage() {
             {/* App bar */}
             <div className="flex items-center gap-6 px-5 py-3 border-b border-slate-200 bg-slate-50">
               <div className="flex items-center gap-2 text-sm font-bold text-slate-800">
-                <span className="w-5 h-5 rounded bg-blue-600 grid place-items-center text-white text-[10px] font-black">
+                <span className="w-5 h-5 rounded bg-primary grid place-items-center text-white text-[10px] font-black">
                   K
                 </span>
                 Project Board
               </div>
               <span className="text-sm text-slate-500">Overview</span>
-              <span className="text-sm font-semibold text-blue-600 border-b-2 border-blue-600 pb-1">
+              <span className="text-sm font-semibold text-primary border-b-2 border-primary pb-1">
                 Board
               </span>
               <span className="text-sm text-slate-500">Members</span>
@@ -286,7 +286,7 @@ export default async function LandingPage() {
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                   Live
                 </span>
-                <Avatar initial="A" className="bg-blue-600" />
+                <Avatar initial="A" className="bg-primary" />
                 <Avatar initial="J" className="bg-rose-500" />
                 <Avatar initial="M" className="bg-emerald-500" />
               </div>
@@ -326,7 +326,7 @@ export default async function LandingPage() {
                   >
                     All
                   </button>
-                  <Avatar initial="A" className="bg-blue-600" size={22} />
+                  <Avatar initial="A" className="bg-primary" size={22} />
                   <Avatar initial="J" className="bg-rose-500" size={22} />
                   <Avatar initial="M" className="bg-emerald-500" size={22} />
                   <span className="ml-auto text-xs text-slate-500">
@@ -368,7 +368,7 @@ export default async function LandingPage() {
                       <span className="text-sm font-semibold text-blue-700">
                         In Progress
                       </span>
-                      <span className="text-[10px] font-bold bg-blue-600 text-white px-2 py-0.5 rounded-full">
+                      <span className="text-[10px] font-bold bg-primary text-white px-2 py-0.5 rounded-full">
                         1
                       </span>
                     </div>
@@ -381,7 +381,7 @@ export default async function LandingPage() {
                         progress={0.75}
                         avatarInitial="A"
                       />
-                      <div className="h-20 border-2 border-dashed border-blue-400 rounded-lg grid place-items-center text-blue-600 text-xs font-semibold">
+                      <div className="h-20 border-2 border-dashed border-blue-400 rounded-lg grid place-items-center text-primary text-xs font-semibold">
                         ↓ Drop here
                       </div>
                     </div>
@@ -447,11 +447,11 @@ export default async function LandingPage() {
         <div className="max-w-6xl mx-auto">
           <div className="flex items-end justify-between mb-12">
             <div>
-              <div className="text-[11px] font-semibold uppercase tracking-widest text-blue-600 mb-2">
+              <div className="text-[11px] font-semibold uppercase tracking-widest text-primary mb-2">
                 Method
               </div>
               <h2 className="text-3xl md:text-5xl font-bold tracking-tight leading-tight">
-                Three motions. <span className="text-blue-600">That&apos;s it.</span>
+                Three motions. <span className="text-primary">That&apos;s it.</span>
               </h2>
             </div>
             <span className="hidden md:inline text-xs text-slate-400 font-medium">
@@ -465,7 +465,7 @@ export default async function LandingPage() {
                 key={x.n}
                 className="grid grid-cols-1 md:grid-cols-[100px_1.2fr_1.8fr_1fr] gap-6 md:gap-10 py-10 border-b border-slate-200 items-center"
               >
-                <div className="text-xs font-semibold text-blue-600 uppercase tracking-widest">
+                <div className="text-xs font-semibold text-primary uppercase tracking-widest">
                   {x.n}
                 </div>
                 <h3 className="text-2xl font-bold text-slate-800 tracking-tight leading-tight">
@@ -488,7 +488,7 @@ export default async function LandingPage() {
                       <div className="w-14 h-10 bg-white border border-slate-200 rounded grid place-items-center">
                         <div className="w-8 h-1 bg-slate-200 rounded" />
                       </div>
-                      <span className="text-blue-600 text-xl">→</span>
+                      <span className="text-primary text-xl">→</span>
                       <div className="w-14 h-10 bg-blue-50 border border-blue-400 rounded grid place-items-center">
                         <div className="w-8 h-1 bg-blue-500 rounded" />
                       </div>

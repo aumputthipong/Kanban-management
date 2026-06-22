@@ -17,7 +17,7 @@ export function InviteLinkButton({ boardId }: { boardId: string }) {
         onClick={() => setOpen(true)}
         className="flex w-full items-center gap-2.5 p-3 text-left transition-colors hover:bg-slate-50"
       >
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-indigo-50 text-indigo-600">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-indigo-50 text-primary">
           <Link2 size={16} />
         </span>
         <div className="min-w-0 flex-1">

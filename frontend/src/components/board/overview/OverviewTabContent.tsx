@@ -168,7 +168,7 @@ export function OverviewTabContent({
                 >
                   <span
                     className={`w-[26px] h-[26px] rounded-lg flex items-center justify-center shrink-0 ${
-                      isRisk ? "bg-rose-50 text-rose-600" : "bg-blue-50 text-blue-600"
+                      isRisk ? "bg-rose-50 text-rose-600" : "bg-blue-50 text-primary"
                     }`}
                   >
                     {isRisk ? <AlertTriangle size={14} /> : <Users size={14} />}

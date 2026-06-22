@@ -93,7 +93,7 @@ export function SessionListView({ boardId }: Props) {
       <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
-            <FileText size={20} className="text-indigo-600" />
+            <FileText size={20} className="text-primary" />
             <h1 className="text-2xl font-bold tracking-tight text-slate-900">
               Planning
             </h1>
@@ -106,7 +106,7 @@ export function SessionListView({ boardId }: Props) {
           type="button"
           onClick={createSession}
           disabled={creating}
-          className="inline-flex items-center gap-1.5 rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-2 text-sm font-semibold text-white hover:bg-primary-hover disabled:opacity-50"
         >
           <Plus size={14} />
           บันทึกใหม่
@@ -176,7 +176,7 @@ const STATE_THEME: Record<
   },
   active: {
     accent: "bg-indigo-400",
-    tile: "bg-indigo-50 text-indigo-600",
+    tile: "bg-indigo-50 text-primary",
     Icon: FileText,
   },
   done: {
@@ -286,7 +286,7 @@ function SessionRow({
               className={`truncate text-sm ${
                 isAuto
                   ? "font-medium italic text-slate-500"
-                  : "font-semibold text-slate-800 group-hover:text-indigo-700"
+                  : "font-semibold text-slate-800 group-hover:text-primary-hover"
               }`}
             >
               {session.title}
@@ -298,7 +298,7 @@ function SessionRow({
               type="button"
               onClick={startEdit}
               title="ตั้งชื่อบันทึกนี้"
-              className={`inline-flex shrink-0 items-center gap-1 rounded px-1 py-0.5 text-[11px] font-semibold text-indigo-500 transition-opacity hover:text-indigo-700 ${
+              className={`inline-flex shrink-0 items-center gap-1 rounded px-1 py-0.5 text-[11px] font-semibold text-indigo-500 transition-opacity hover:text-primary-hover ${
                 isAuto ? "" : "opacity-0 group-hover:opacity-100"
               }`}
             >
@@ -434,7 +434,7 @@ function EmptyState({ onCreate, creating }: { onCreate: () => void; creating: bo
         type="button"
         onClick={onCreate}
         disabled={creating}
-        className="inline-flex items-center gap-1.5 rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
+        className="inline-flex items-center gap-1.5 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-hover disabled:opacity-50"
       >
         <Plus size={14} />
         บันทึกใหม่

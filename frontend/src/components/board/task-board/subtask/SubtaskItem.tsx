@@ -55,7 +55,7 @@ export const SubtaskItem = memo(function SubtaskItem({
         type="checkbox"
         checked={subtask.is_done}
         onChange={() => onToggle(cardId, subtask.id, subtask.is_done)}
-        className="shrink-0 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+        className="shrink-0 rounded border-slate-300 text-primary focus:ring-blue-500 cursor-pointer"
       />
 
       {isEditing ? (

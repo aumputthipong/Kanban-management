@@ -101,7 +101,7 @@ export function ProjectCard({ board, viewMode, now }: ProjectCardProps) {
           </div>
 
           <div className="min-w-0">
-            <h2 className="text-sm font-bold text-slate-700 group-hover:text-blue-600 transition-colors truncate">
+            <h2 className="text-sm font-bold text-slate-700 group-hover:text-primary transition-colors truncate">
               {board.title}
             </h2>
             <p
@@ -151,7 +151,7 @@ export function ProjectCard({ board, viewMode, now }: ProjectCardProps) {
             <BoardGlyph icon={board.icon} size={20} />
           </div>
           <div className="min-w-0 flex-1">
-            <h2 className="text-base font-bold text-slate-800 group-hover:text-blue-600 transition-colors truncate leading-tight">
+            <h2 className="text-base font-bold text-slate-800 group-hover:text-primary transition-colors truncate leading-tight">
               {board.title}
             </h2>
             <div className="flex items-center gap-2 mt-1">

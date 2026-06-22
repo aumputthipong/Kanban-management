@@ -95,7 +95,7 @@ function CardSubtaskSectionImpl({
           <button
             type="submit"
             disabled={!newSubtaskTitle.trim()}
-            className="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="p-2 bg-blue-50 text-primary rounded-lg hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             <Plus size={16} />
           </button>

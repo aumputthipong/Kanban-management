@@ -151,7 +151,7 @@ export function ItemRow({
     : dropped
       ? { Icon: Circle, label: "พักไว้ก่อน", cls: "text-slate-400" }
       : selected
-        ? { Icon: ArrowRight, label: "เลือกไว้ส่งเข้า Board", cls: "text-indigo-600" }
+        ? { Icon: ArrowRight, label: "เลือกไว้ส่งเข้า Board", cls: "text-primary" }
         : item.type === "Q"
           ? { Icon: Clock, label: "รอคำตอบ", cls: "text-amber-600" }
           : { Icon: Circle, label: "ยังอยู่ในบันทึก", cls: "text-slate-400" };
@@ -181,7 +181,7 @@ export function ItemRow({
             {promoted ? (
               <Square size={16} className="text-slate-200" />
             ) : isSelected ? (
-              <CheckSquare size={16} className="text-indigo-600" />
+              <CheckSquare size={16} className="text-primary" />
             ) : (
               <Square size={16} className="text-slate-400" />
             )}

@@ -272,7 +272,7 @@ export const KanbanColumn = memo(function KanbanColumn({
                 <button
                   onClick={() => setTopAddOpen(true)}
                   title="Add card"
-                  className="cursor-pointer text-slate-400 hover:text-blue-600 p-1 rounded-md hover:bg-slate-200 transition-colors"
+                  className="cursor-pointer text-slate-400 hover:text-primary p-1 rounded-md hover:bg-slate-200 transition-colors"
                 >
                   <Plus size={16} />
                 </button>

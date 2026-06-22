@@ -149,7 +149,7 @@ export function BoardsClient({ boards }: BoardsClientProps) {
             onClick={() => setViewMode("grid")}
             className={`px-3 py-2 transition-colors ${
               viewMode === "grid"
-                ? "bg-blue-50 text-blue-600"
+                ? "bg-blue-50 text-primary"
                 : "text-slate-400 hover:text-slate-600"
             }`}
             title="มุมมองตาราง"
@@ -160,7 +160,7 @@ export function BoardsClient({ boards }: BoardsClientProps) {
             onClick={() => setViewMode("list")}
             className={`px-3 py-2 border-l border-slate-200 transition-colors ${
               viewMode === "list"
-                ? "bg-blue-50 text-blue-600"
+                ? "bg-blue-50 text-primary"
                 : "text-slate-400 hover:text-slate-600"
             }`}
             title="มุมมองรายการ"

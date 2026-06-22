@@ -85,7 +85,7 @@ export function BoardDashboard({ boardId }: BoardDashboardProps) {
         <p className="text-sm">No data to analyze. Add some tasks to your board.</p>
         <button
           onClick={() => router.push(`/board/${boardId}/tasks`)}
-          className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-semibold rounded-lg hover:bg-indigo-700 transition-colors"
+          className="flex items-center gap-2 px-4 py-2 bg-primary text-white text-sm font-semibold rounded-lg hover:bg-primary-hover transition-colors"
         >
           <Plus size={16} />
           Add Your First Task
@@ -134,7 +134,7 @@ export function BoardDashboard({ boardId }: BoardDashboardProps) {
                 onClick={() => setActiveTab(tab)}
                 className={`relative px-4 py-2.5 text-sm font-semibold transition-colors flex items-center gap-1.5 ${
                   isActive
-                    ? "text-blue-600 after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-blue-600 after:rounded-t"
+                    ? "text-primary after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-primary after:rounded-t"
                     : "text-slate-500 hover:text-slate-700"
                 }`}
               >

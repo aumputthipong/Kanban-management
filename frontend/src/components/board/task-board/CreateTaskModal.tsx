@@ -60,7 +60,7 @@ function AssigneeChip({
       title={label}
       className={`inline-flex items-center gap-1.5 h-8 pl-1 pr-2.5 rounded-full border text-xs font-semibold transition-colors max-w-[150px] ${
         active
-          ? "bg-blue-600 text-white border-blue-600"
+          ? "bg-primary text-white border-primary"
           : "bg-white text-slate-700 border-slate-200 hover:border-blue-400"
       }`}
     >
@@ -182,7 +182,7 @@ export function CreateTaskModal({ onClose, onCreate, defaultColumnId }: Props) {
                 <button
                   type="button"
                   onClick={addSubtask}
-                  className="w-full inline-flex items-center justify-center gap-1.5 rounded-md border border-dashed border-slate-300 px-2.5 py-1.5 text-xs font-semibold text-slate-500 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50/40 transition-colors"
+                  className="w-full inline-flex items-center justify-center gap-1.5 rounded-md border border-dashed border-slate-300 px-2.5 py-1.5 text-xs font-semibold text-slate-500 hover:border-blue-400 hover:text-primary hover:bg-blue-50/40 transition-colors"
                 >
                   <Plus size={14} /> เพิ่ม subtask
                 </button>
@@ -223,7 +223,7 @@ export function CreateTaskModal({ onClose, onCreate, defaultColumnId }: Props) {
                   <button
                     type="button"
                     onClick={addSubtask}
-                    className="inline-flex items-center gap-1 text-xs font-semibold text-slate-500 hover:text-blue-600 transition-colors w-fit"
+                    className="inline-flex items-center gap-1 text-xs font-semibold text-slate-500 hover:text-primary transition-colors w-fit"
                   >
                     <Plus size={13} /> เพิ่มรายการ
                   </button>
@@ -375,7 +375,7 @@ export function CreateTaskModal({ onClose, onCreate, defaultColumnId }: Props) {
               type="button"
               onClick={submit}
               disabled={!canSubmit}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               <Check size={15} strokeWidth={2.5} /> สร้าง Task
             </button>

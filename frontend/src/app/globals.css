@@ -10,6 +10,14 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+
+  /* Single brand accent (design.md → colors.primary). Replaces the two
+     de-facto primaries that had drifted across the app (blue-600 on the
+     board side, indigo-600 on the planning side). `primary-hover` is one
+     step darker for the hover/active state. Generates bg/text/border/ring
+     -primary utilities. */
+  --color-primary: #1e40af;
+  --color-primary-hover: #1e3a8a;
 }
 
 @media (prefers-color-scheme: dark) {

@@ -86,7 +86,7 @@ function CardSourceSectionImpl({ cardId, boardId }: Props) {
 
       <Link
         href={sessionHref}
-        className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-800"
+        className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-primary hover:text-primary-hover"
       >
         ดู session เต็ม
         <ArrowUpRight size={12} />

@@ -117,7 +117,7 @@ export function ExportDialog({ session, items, onClose }: Props) {
               key={p.label}
               type="button"
               onClick={() => setTask(p.prompt)}
-              className="rounded border border-slate-200 bg-white px-2 py-1 text-xs text-slate-600 hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700"
+              className="rounded border border-slate-200 bg-white px-2 py-1 text-xs text-slate-600 hover:border-indigo-300 hover:bg-indigo-50 hover:text-primary-hover"
             >
               {p.label}
             </button>
@@ -176,7 +176,7 @@ export function ExportDialog({ session, items, onClose }: Props) {
           <button
             type="button"
             onClick={copyToClipboard}
-            className="inline-flex items-center gap-1.5 rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700"
+            className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-white hover:bg-primary-hover"
           >
             {copied ? <Check size={14} /> : <Clipboard size={14} />}
             {copied ? "คัดลอกแล้ว" : "คัดลอก"}

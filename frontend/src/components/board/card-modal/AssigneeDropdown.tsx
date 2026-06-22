@@ -182,7 +182,7 @@ function MemberRow({
         </span>
         <span className="block truncate text-[11px] text-slate-400">{m.email}</span>
       </span>
-      {selected && <Check size={14} className="shrink-0 text-blue-600" />}
+      {selected && <Check size={14} className="shrink-0 text-primary" />}
     </Row>
   );
 }

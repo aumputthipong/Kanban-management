@@ -36,7 +36,7 @@ export default function BoardLayout({ children, params }: BoardLayoutProps) {
         </p>
         <a
           href="/dashboard"
-          className="mt-2 text-sm font-medium text-blue-600 hover:text-blue-700"
+          className="mt-2 text-sm font-medium text-primary hover:text-primary-hover"
         >
           ← Back to dashboard
         </a>
@@ -57,13 +57,13 @@ export default function BoardLayout({ children, params }: BoardLayoutProps) {
         <div className="mt-2 flex items-center gap-4">
           <button
             onClick={() => window.location.reload()}
-            className="text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md px-4 py-2 transition-colors"
+            className="text-sm font-medium text-white bg-primary hover:bg-primary-hover rounded-md px-4 py-2 transition-colors"
           >
             ลองใหม่
           </button>
           <a
             href="/dashboard"
-            className="text-sm font-medium text-blue-600 hover:text-blue-700"
+            className="text-sm font-medium text-primary hover:text-primary-hover"
           >
             ← Back to dashboard
           </a>

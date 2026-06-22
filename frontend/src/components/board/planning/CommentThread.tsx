@@ -88,7 +88,7 @@ export function CommentThread({
             type="button"
             onClick={handleSubmit}
             disabled={draft.trim().length === 0}
-            className="rounded-md bg-indigo-600 px-3 py-1 text-xs font-semibold text-white hover:bg-indigo-700 disabled:opacity-40"
+            className="rounded-md bg-primary px-3 py-1 text-xs font-semibold text-white hover:bg-primary-hover disabled:opacity-40"
           >
             ส่ง
           </button>
@@ -189,7 +189,7 @@ function CommentRow({ comment, isOwn, onEdit, onDelete }: RowProps) {
                 setEditing(false);
               }}
               disabled={draft.trim().length === 0 || draft === comment.body}
-              className="rounded bg-indigo-600 px-2 py-0.5 text-xs font-semibold text-white hover:bg-indigo-700 disabled:opacity-40"
+              className="rounded bg-primary px-2 py-0.5 text-xs font-semibold text-white hover:bg-primary-hover disabled:opacity-40"
             >
               บันทึก
             </button>

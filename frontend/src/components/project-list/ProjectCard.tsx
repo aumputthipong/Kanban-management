@@ -136,7 +136,7 @@ export function ProjectCard({ board, viewMode, now }: ProjectCardProps) {
   // grid view
   return (
     <Link href={`/board/${board.id}/tasks`}>
-      <div className="group relative bg-white p-4 pt-5 rounded-xl shadow-sm border border-slate-200 hover:shadow-md hover:-translate-y-1 hover:border-blue-300 transition-all duration-200 cursor-pointer flex flex-col h-full overflow-hidden">
+      <div className="group relative bg-white p-4 pt-5 rounded-xl shadow-sm border border-slate-200 hover:shadow-md hover:border-blue-300 transition-all duration-200 cursor-pointer flex flex-col h-full overflow-hidden">
         <span
           className="absolute left-0 right-0 top-0 h-[3px]"
           style={{ background: accent }}

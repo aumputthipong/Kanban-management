@@ -30,7 +30,7 @@ export default function DashboardLoading() {
               className="bg-white rounded-xl border border-slate-200 p-4 pt-5 flex flex-col gap-3"
             >
               <div className="flex items-start gap-3">
-                <Skeleton className="h-[38px] w-[38px] rounded-[10px]" />
+                <Skeleton className="h-[38px] w-[38px] rounded-lg" />
                 <div className="flex-1 flex flex-col gap-2">
                   <Skeleton className="h-4 w-3/4" />
                   <Skeleton className="h-3 w-1/2" />

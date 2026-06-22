@@ -35,7 +35,7 @@ Working agreement สำหรับ AI coding agents ที่เข้าม�
 2. **ใช้ token ที่มีอยู่เท่านั้น** — เช่น `{colors.primary}`, `{spacing.md}`, `{rounded.sm}`. ห้ามฮาร์ดโค้ดสี/ขนาดใหม่.
 3. **ถ้า token ที่ต้องการไม่มี** — **อย่าเพิ่งเขียนค่า inline**. หยุดก่อน, ถามผู้ใช้ว่าจะเพิ่ม token ใหม่ใน `frontend/design.md` หรือ map ไปใช้ token ที่ใกล้เคียงที่สุด.
 4. **ถ้าแก้ `frontend/design.md`** — รัน `npm run design:link` ต้องผ่าน **0 errors, 0 warnings** ก่อน commit. info findings (token summary) ยอมรับได้.
-5. **เคารพ Do's & Don'ts** ใน `frontend/design.md` — เช่น "หนึ่ง `button-primary` ต่อ view", "status colors ใช้บน chip/toast เท่านั้น", "ไม่เพิ่ม corner radius ที่สาม".
+5. **เคารพ Do's & Don'ts** ใน `frontend/design.md` — เช่น "หนึ่ง `button-primary` ต่อ view", "status colors ใช้บน chip/toast เท่านั้น", "ใช้ named radius step ห้าม `rounded-[Npx]` ลอย ๆ".
 
 ### Anti-patterns ที่ห้าม
 

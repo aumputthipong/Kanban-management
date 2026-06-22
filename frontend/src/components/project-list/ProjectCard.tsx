@@ -145,7 +145,7 @@ export function ProjectCard({ board, viewMode, now }: ProjectCardProps) {
         {/* header */}
         <div className="flex items-start gap-3">
           <div
-            className="h-[38px] w-[38px] rounded-[10px] flex items-center justify-center text-white shrink-0"
+            className="h-[38px] w-[38px] rounded-lg flex items-center justify-center text-white shrink-0"
             style={{ background: accent }}
           >
             <BoardGlyph icon={board.icon} size={20} />

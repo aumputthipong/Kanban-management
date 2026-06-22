@@ -47,7 +47,7 @@ export default function BoardLayout({ children, params }: BoardLayoutProps) {
   if (error) {
     return (
       <main className="min-h-screen bg-slate-50 flex flex-col items-center justify-center gap-3 px-6 text-center">
-        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-50 text-red-500">
+        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-danger/10 text-danger">
           <AlertCircle size={24} />
         </div>
         <h1 className="text-2xl font-semibold text-slate-700">เปิดบอร์ดไม่สำเร็จ</h1>

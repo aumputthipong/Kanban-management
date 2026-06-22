@@ -54,7 +54,7 @@ export default function InviteAcceptPage() {
       <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
         {error ? (
           <>
-            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-red-50 text-red-500">
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-danger/10 text-danger">
               <AlertCircle size={24} />
             </div>
             <h1 className="text-base font-bold text-slate-800">เข้าร่วมบอร์ดไม่ได้</h1>

@@ -71,7 +71,7 @@ export function ConfirmDialog({
             onClick={onConfirm}
             className={`px-4 py-2 text-sm rounded-lg font-medium text-white transition-colors ${
               destructive
-                ? "bg-red-500 hover:bg-red-600"
+                ? "bg-danger hover:bg-danger-hover"
                 : "bg-primary hover:bg-primary-hover"
             }`}
           >

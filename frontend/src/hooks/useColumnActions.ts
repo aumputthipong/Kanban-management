@@ -1,5 +1,6 @@
 import { useBoardStore } from "@/store/useBoardStore";
 import { useBoardWebSocket } from "@/contexts/BoardWebSocketContext";
+import { WS_EVENT } from "@/types/wsEvents";
 
 export function useColumnActions() {
   const { sendMessage } = useBoardWebSocket();
@@ -7,7 +8,7 @@ export function useColumnActions() {
   const handleRenameColumn = (columnId: string, title: string) => {
     useBoardStore.getState().renameColumnInStore(columnId, title);
     sendMessage({
-      type: "COLUMN_RENAMED",
+      type: WS_EVENT.ColumnRenamed,
       payload: { column_id: columnId, title },
     });
   };
@@ -15,7 +16,7 @@ export function useColumnActions() {
   const handleDeleteColumn = (columnId: string) => {
     useBoardStore.getState().removeColumnFromStore(columnId);
     sendMessage({
-      type: "COLUMN_DELETED",
+      type: WS_EVENT.ColumnDeleted,
       payload: { column_id: columnId },
     });
   };
@@ -28,7 +29,7 @@ export function useColumnActions() {
   ) => {
     useBoardStore.getState().updateColumnInStore(columnId, { title, category, color });
     sendMessage({
-      type: "COLUMN_UPDATED",
+      type: WS_EVENT.ColumnUpdated,
       payload: { column_id: columnId, title, category, color: color ?? "" },
     });
   };
@@ -40,7 +41,7 @@ export function useColumnActions() {
   ) => {
     if (!title.trim()) return;
     sendMessage({
-      type: "COLUMN_CREATED",
+      type: WS_EVENT.ColumnCreated,
       payload: {
         title: title.trim(),
         category,

@@ -3,6 +3,7 @@
 import { useBoardStore } from "@/store/useBoardStore";
 import { useActivityStore } from "@/store/useActivityStore";
 import { logger } from "@/lib/logger";
+import { WS_EVENT } from "@/types/wsEvents";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 /**
@@ -73,11 +74,11 @@ export const useWebSocket = (url: string) => {
       try {
         const parsedData = JSON.parse(event.data);
 
-        if (parsedData.type === "CARD_MOVED") {
+        if (parsedData.type === WS_EVENT.CardMoved) {
           const { card_id, new_column_id, position, is_done, completed_at } = parsedData.payload;
           useBoardStore.getState().moveCard(card_id, new_column_id, position, is_done, completed_at);
         }
-        if (parsedData.type === "CARD_CREATED") {
+        if (parsedData.type === WS_EVENT.CardCreated) {
           // The broadcast carries assignee_id but not the name — resolve it from
           // boardMembers (every client has them) so the avatar renders without a
           // round-trip. Quick-add cards have assignee_id null → name null.
@@ -88,10 +89,10 @@ export const useWebSocket = (url: string) => {
             : null;
           useBoardStore.getState().addCardToStore({ ...payload, assignee_name });
         }
-        if (parsedData.type === "CARD_DELETED") {
+        if (parsedData.type === WS_EVENT.CardDeleted) {
           useBoardStore.getState().removeCardFromStore(parsedData.payload.card_id);
         }
-        if (parsedData.type === "CARD_UPDATED") {
+        if (parsedData.type === WS_EVENT.CardUpdated) {
           const { card_id, assignee_name, ...rest } = parsedData.payload;
           useBoardStore.getState().updateCard({
             id: card_id,
@@ -99,24 +100,24 @@ export const useWebSocket = (url: string) => {
             ...rest,
           });
         }
-        if (parsedData.type === "COLUMN_CREATED") {
+        if (parsedData.type === WS_EVENT.ColumnCreated) {
           const { id, title, position, category, color } = parsedData.payload;
           useBoardStore
             .getState()
             .addColumnToStore({ id, title, position, category, color: color ?? null, cards: [] });
         }
-        if (parsedData.type === "COLUMN_RENAMED") {
+        if (parsedData.type === WS_EVENT.ColumnRenamed) {
           const { column_id, title } = parsedData.payload;
           useBoardStore.getState().renameColumnInStore(column_id, title);
         }
-        if (parsedData.type === "COLUMN_DELETED") {
+        if (parsedData.type === WS_EVENT.ColumnDeleted) {
           useBoardStore.getState().removeColumnFromStore(parsedData.payload.column_id);
         }
-        if (parsedData.type === "ACTIVITY_CREATED") {
+        if (parsedData.type === WS_EVENT.ActivityCreated) {
           useActivityStore.getState().prependActivity(parsedData.payload);
           return;
         }
-        if (parsedData.type === "COLUMN_UPDATED") {
+        if (parsedData.type === WS_EVENT.ColumnUpdated) {
           const { column_id, title, category, color } = parsedData.payload;
           useBoardStore.getState().updateColumnInStore(column_id, {
             title,

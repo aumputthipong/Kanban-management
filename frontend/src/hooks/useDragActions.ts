@@ -2,6 +2,7 @@ import { DragEndEvent, DragOverEvent } from "@dnd-kit/core";
 import { useRef } from "react";
 import { useBoardStore } from "@/store/useBoardStore";
 import { useBoardWebSocket } from "@/contexts/BoardWebSocketContext";
+import { WS_EVENT } from "@/types/wsEvents";
 import {
   POSITION_GAP,
   resolveOverFromColumns,
@@ -111,7 +112,7 @@ export function useDragActions() {
     moveCard(activeCardId, overColumnId, newPosition);
 
     sendMessage({
-      type: "CARD_MOVED",
+      type: WS_EVENT.CardMoved,
       payload: {
         card_id: activeCardId,
         old_column_id: originalColumnId,

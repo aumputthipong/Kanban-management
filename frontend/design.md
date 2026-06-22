@@ -55,9 +55,11 @@ spacing:
   lg: 24px
   xl: 32px
 rounded:
-  sm: 4px
-  md: 8px
-  lg: 12px
+  sm: 2px
+  md: 6px
+  lg: 8px
+  xl: 12px
+  2xl: 16px
   full: 9999px
 size:
   pill-h: 24px
@@ -79,17 +81,17 @@ components:
   card:
     backgroundColor: "{colors.surface}"
     textColor: "{colors.on-surface}"
-    rounded: "{rounded.md}"
+    rounded: "{rounded.lg}"
     padding: 16px
   button-primary:
     backgroundColor: "{colors.primary}"
     textColor: "{colors.on-primary}"
-    rounded: "{rounded.sm}"
+    rounded: "{rounded.md}"
     padding: 12px
   button-secondary:
     backgroundColor: "{colors.secondary}"
     textColor: "{colors.on-primary}"
-    rounded: "{rounded.sm}"
+    rounded: "{rounded.md}"
     padding: 12px
   tag-success:
     backgroundColor: "{colors.success}"
@@ -145,18 +147,29 @@ Layout uses a 4-pixel base scale. Cards sit on the board canvas with `md` paddin
 
 ## Shapes
 
-Two corner radii cover the whole product. Buttons and chips use `sm` for a crisp action feel; cards and panels use `md` for a softer container feel; modals use `lg`.
+The radius scale is named to match Tailwind's steps, so a `rounded-*` class in
+code maps 1:1 to a token here. `lg` (8px) is the workhorse container radius;
+larger surfaces step up, chips step down. Larger surface ⇒ larger radius.
 
-- **`{rounded.sm}` (4px):** Buttons, chips, badges, inputs.
-- **`{rounded.md}` (8px):** Cards, columns, dropdown panels.
-- **`{rounded.lg}` (12px):** Modals, large surfaces, toast container.
+- **`{rounded.sm}` (2px):** Chips, tags, tiny toggles.
+- **`{rounded.md}` (6px):** Inputs, compact buttons, small menu items.
+- **`{rounded.lg}` (8px):** Cards, dropdown panels, most controls — the default container radius.
+- **`{rounded.xl}` (12px):** Large cards, board sub-page panels, the calendar.
+- **`{rounded.2xl}` (16px):** Modals and hero panels — the largest surfaces.
+- **`{rounded.full}`:** Pills, avatars, status dots, filter chips.
+
+> **Honesty note:** this system started life with a "two radii" ideal; in
+> practice it settled into the five-step scale above. `sm` (2px) and `md` (6px)
+> sit close together and are a candidate for future consolidation, but both are
+> in active use today. Pick the step that matches the surface size — and don't
+> reach for arbitrary `rounded-[Npx]` values; extend this named scale instead.
 
 ## Components
 
 - **board:** Full-bleed canvas, `background` surface with `on-surface` ink, `lg` padding. Hosts the column list horizontally.
-- **card:** White `surface` with `on-surface` ink, `md` rounded, `md` padding. The atomic unit of work — title, optional description, assignee, due date, tags.
-- **button-primary:** `primary` indigo with `on-primary` text, `sm` rounded, `md` padding. Used once per view max for the dominant action.
-- **button-secondary:** `secondary` slate with `on-primary` text, `sm` rounded, `md` padding. For "Cancel", "Back", non-destructive secondary flows.
+- **card:** White `surface` with `on-surface` ink, `lg` rounded, `md` padding. The atomic unit of work — title, optional description, assignee, due date, tags.
+- **button-primary:** `primary` indigo with `on-primary` text, `md` rounded, `md` padding. Used once per view max for the dominant action.
+- **button-secondary:** `secondary` slate with `on-primary` text, `md` rounded, `md` padding. For "Cancel", "Back", non-destructive secondary flows.
 - **tag-success:** `success` green chip with `on-primary` text. Marks "Done" status, completed milestones.
 - **tag-danger:** `danger` red chip with `on-primary` text. Marks overdue cards, blocked items, destructive confirmations.
 - **pill-task:** Calendar task pill — `pill-h` (24px) tall, `priority-bar-w` (3px) vertical bar on the left in `priority.*`, `status-icon` on the inside, title in `body-md`, optional duration (`secondary` slate), `tag-dot` (5px), `avatar-sm` (18px). Background by state: todo = `surface`, in-progress = `state-progress-bg` + 2px progress bar in `state-progress-fg` at bottom, done = `state-done-bg` with check icon in `state-done-fg` (never strikethrough), overdue = `state-overdue-bg` with bold title and red duration. Hover → `surface-tint`.
@@ -203,7 +216,7 @@ Turtask รองรับ **viewport ≥ 768px** (tablet ขึ้นไป). �
 
 - Don't use `primary` indigo for prose, links inside cards, or icon defaults — it loses its meaning as the "act now" color.
 - Don't tint `danger` red into prose or pink alerts. Status colors are component-scoped.
-- Don't introduce a third corner radius. Two radii cover every container in the product.
+- Don't reach for an arbitrary `rounded-[Npx]` value — use a named step from the scale. Adding a *new* step is a spec change, not an inline override.
 - Don't pair saturated colors against each other (e.g. `primary` text on `danger` background) — every paired surface in this system uses `on-primary` (white) for text on saturation.
 - Don't use `priority.*` colors as a background — they live **only** on the 3px left bar of `pill-task` (and as a small disc inside the priority chip in a popover). Priority is signal, not fill.
 - Don't use strikethrough to indicate "done" — that pattern leaked from the old calendar where both completed and past-due cards were struck out, making the two indistinguishable. Use the check icon + `state-done-bg` instead.

@@ -2,6 +2,7 @@ import { useBoardStore } from "@/store/useBoardStore";
 import { useBoardWebSocket } from "@/contexts/BoardWebSocketContext";
 import { POSITION_GAP } from "@/utils/boardPosition";
 import { API_URL } from "@/lib/constants";
+import { WS_EVENT } from "@/types/wsEvents";
 import type { Card, CardUpdateForm } from "@/types/board";
 
 export function useCardActions(boardId: string) {
@@ -9,7 +10,7 @@ export function useCardActions(boardId: string) {
 
   const handleToggleDone = (card: Card) => {
     sendMessage({
-      type: "CARD_DONE_TOGGLED",
+      type: WS_EVENT.CardDoneToggled,
       payload: {
         card_id: card.id,
         board_id: boardId,
@@ -41,7 +42,7 @@ export function useCardActions(boardId: string) {
     const newPosition = lastCard ? lastCard.position + POSITION_GAP : POSITION_GAP;
 
     sendMessage({
-      type: "CARD_CREATED",
+      type: WS_EVENT.CardCreated,
       payload: {
         column_id: columnId,
         title,
@@ -72,7 +73,7 @@ export function useCardActions(boardId: string) {
     useBoardStore.getState().moveCard(cardId, toColumnId, newPosition);
 
     sendMessage({
-      type: "CARD_MOVED",
+      type: WS_EVENT.CardMoved,
       payload: {
         card_id: cardId,
         old_column_id: currentCol.id,
@@ -84,7 +85,7 @@ export function useCardActions(boardId: string) {
 
   const handleDeleteCard = (cardId: string) => {
     sendMessage({
-      type: "CARD_DELETED",
+      type: WS_EVENT.CardDeleted,
       payload: { card_id: cardId },
     });
   };
@@ -174,7 +175,7 @@ export function useCardActions(boardId: string) {
     }).catch(() => {});
 
     sendMessage({
-      type: "CARD_UPDATED",
+      type: WS_EVENT.CardUpdated,
       payload: {
         card_id: cardId,
         title: form.title,

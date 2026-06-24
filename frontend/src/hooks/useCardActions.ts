@@ -1,7 +1,8 @@
 import { useBoardStore } from "@/store/useBoardStore";
 import { useBoardWebSocket } from "@/contexts/BoardWebSocketContext";
 import { POSITION_GAP } from "@/utils/boardPosition";
-import { API_URL } from "@/lib/constants";
+import { apiClient, ApiError } from "@/lib/apiClient";
+import { useToastStore } from "@/store/useToastStore";
 import { WS_EVENT } from "@/types/wsEvents";
 import type { Card, CardUpdateForm } from "@/types/board";
 
@@ -167,16 +168,18 @@ export function useCardActions(boardId: string) {
         changedFields.push("implementation_note");
       }
     }
-    fetch(`${API_URL}/cards/${cardId}`, {
-      method: "PATCH",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    }).catch(() => {
-      // Best-effort save of these free-text fields: the optimistic store update
-      // and the WS broadcast below already reflect the change. Raw fetch (no
-      // apiClient), so a transient PATCH failure is silently dropped — see PR
-      // note; arguably worth a retry/toast later.
+    // The optimistic store update + WS broadcast below already reflect the
+    // change. Persist through apiClient (not raw fetch): a raw fetch only
+    // rejects on a network error, so a 4xx/5xx response used to be swallowed
+    // and the edit silently vanished on next reload. apiClient throws on any
+    // non-2xx (and toasts on 403); surface a toast for the rest so a failed
+    // save is visible and the user can retry.
+    apiClient(`/cards/${cardId}`, { method: "PATCH", data: body }).catch((err) => {
+      if (err instanceof ApiError && err.status === 403) return; // apiClient already toasted
+      useToastStore.getState().show({
+        message: "บันทึกการ์ดไม่สำเร็จ — ลองอีกครั้ง",
+        duration: 4000,
+      });
     });
 
     sendMessage({

@@ -14,7 +14,7 @@ export function CreateBoardButton() {
         className="flex items-center gap-1.5 bg-primary hover:bg-primary-hover active:scale-95 text-white px-4 py-2 rounded-lg font-medium transition-all shadow-sm text-sm"
       >
         <Plus size={16} />
-        โปรเจกต์ใหม่
+        New Project
       </button>
 
       {isOpen && <CreateProjectModal onClose={() => setIsOpen(false)} />}

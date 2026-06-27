@@ -29,7 +29,7 @@ const COPY: Record<MyWorkFilter, { title: string; body: string }> = {
 export function MyWorkEmptyState({ filter }: { filter: MyWorkFilter }) {
   const copy = COPY[filter];
   return (
-    <div className="text-center py-16 border border-dashed border-slate-200 rounded-xl bg-white">
+    <div className="text-center py-16 px-8 border border-dashed border-slate-200 rounded-xl bg-white">
       <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-slate-100 text-slate-400 mb-3">
         <Inbox size={18} />
       </div>

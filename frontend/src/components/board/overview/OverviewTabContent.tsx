@@ -47,10 +47,10 @@ function classifyInsight(text: string): {
 } {
   const lower = text.toLowerCase();
   if (lower.includes("risk") || lower.includes("overdue")) {
-    return { tone: "risk", cta: { label: "เปิดรายการ Tasks →", tab: "Tasks" } };
+    return { tone: "risk", cta: { label: "Open Tasks →", tab: "Tasks" } };
   }
   if (lower.includes("bottleneck") || lower.includes("holding") || lower.includes("movement")) {
-    return { tone: "info", cta: { label: "ดู Team →", tab: "Team" } };
+    return { tone: "info", cta: { label: "View Team →", tab: "Team" } };
   }
   return { tone: "info" };
 }

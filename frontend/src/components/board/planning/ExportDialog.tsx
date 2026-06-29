@@ -95,7 +95,7 @@ export function ExportDialog({ session, items, onClose }: Props) {
     >
       <div className="w-full max-w-2xl rounded-xl bg-white p-6 shadow-xl">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-slate-900">ส่งออกบันทึก</h2>
+          <h2 className="text-lg font-semibold text-slate-900">Export</h2>
           <button
             type="button"
             onClick={onClose}

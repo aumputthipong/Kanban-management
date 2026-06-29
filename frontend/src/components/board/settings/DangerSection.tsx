@@ -63,7 +63,7 @@ export function DangerSection({ onArchive, isArchiving }: DangerSectionProps) {
             className="inline-flex items-center gap-2 h-10 px-4 rounded-lg border border-slate-200 text-[13.5px] font-bold text-slate-700 hover:bg-slate-50 hover:border-slate-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {isArchiving ? <Loader2 size={16} className="animate-spin" /> : <Archive size={16} />}
-            เก็บเข้าคลัง
+            Stash
           </button>
         </DangerRow>
       </SectionCard>
@@ -72,8 +72,8 @@ export function DangerSection({ onArchive, isArchiving }: DangerSectionProps) {
         open={confirmArchive}
         title="เก็บบอร์ดนี้เข้าคลัง?"
         description="บอร์ดจะถูกเก็บเข้าคลังและซ่อนจากรายการที่ใช้งาน — คุณกู้คืนได้ทุกเมื่อ"
-        confirmLabel="เก็บเข้าคลัง"
-        cancelLabel="ยกเลิก"
+        confirmLabel="Stash"
+        cancelLabel="Cancel"
         destructive
         onConfirm={() => {
           setConfirmArchive(false);

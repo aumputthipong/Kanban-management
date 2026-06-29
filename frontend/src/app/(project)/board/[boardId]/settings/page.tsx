@@ -10,7 +10,7 @@ interface PageProps {
   params: Promise<{ boardId: string }>;
 }
 
-export const metadata: Metadata = { title: "Board Settings" };
+export const metadata: Metadata = { title: "Project Settings" };
 
 export default async function BoardSettingsPage({ params }: PageProps) {
   const { boardId } = await params;

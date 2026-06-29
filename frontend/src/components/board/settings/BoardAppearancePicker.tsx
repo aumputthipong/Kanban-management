@@ -50,10 +50,10 @@ export function BoardAppearancePicker({
         </div>
         <div>
           <div className="text-[15px] font-bold tracking-tight text-slate-900">
-            {name || "บอร์ดไม่มีชื่อ"}
+            {name || "Project ไม่มีชื่อ"}
           </div>
           <div className="text-xs text-slate-400 mt-0.5">
-            ตัวอย่างที่แสดงในรายการโปรเจกต์และแถบด้านข้าง
+            ตัวอย่างที่แสดงในรายการ Project และแถบด้านข้าง
           </div>
         </div>
       </div>

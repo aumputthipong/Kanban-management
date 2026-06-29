@@ -110,7 +110,7 @@ export function Sidebar({ boards }: SidebarProps) {
               </p>
               <button
                 className="text-slate-400 hover:text-slate-700 transition-colors p-1"
-                title="Create Board"
+                title="New Project"
               >
                 <Plus size={14} />
               </button>

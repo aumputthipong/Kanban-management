@@ -315,7 +315,7 @@ export function MyWorkTaskModal({ card, boardMeta, onClose, onComplete, onSnooze
               href={`/board/${card.board_id}/tasks?card=${card.id}`}
               className="ml-auto inline-flex items-center gap-1.5 text-sm font-semibold text-blue-700 hover:gap-2 transition-all"
             >
-              เปิดในบอร์ด
+              เปิดใน Board
               <ArrowRight size={15} />
             </Link>
           </div>

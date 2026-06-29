@@ -83,9 +83,9 @@ export function BoardSettingsForm({ boardId, board }: BoardSettingsFormProps) {
       {/* page header */}
       <div className="flex items-start justify-between gap-5 mb-6">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">ตั้งค่าบอร์ด</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">ตั้งค่า Project</h1>
           <p className="text-sm text-slate-500 mt-1.5 max-w-[560px] leading-relaxed">
-            จัดการชื่อ คำอธิบาย และรูปลักษณ์ของบอร์ด <b>{board.title}</b> —
+            จัดการชื่อ คำอธิบาย และรูปลักษณ์ของ Project <b>{board.title}</b> —
             การเปลี่ยนแปลงมีผลกับสมาชิกทุกคน
           </p>
         </div>
@@ -117,7 +117,7 @@ export function BoardSettingsForm({ boardId, board }: BoardSettingsFormProps) {
           {canDelete && <DangerSection onArchive={deleteBoard} isArchiving={isDeleting} />}
 
           <p className="text-[12.5px] text-slate-400 text-center pt-2">
-            การตั้งค่าทั้งหมดมีผลกับบอร์ด {board.title} เท่านั้น
+            การตั้งค่าทั้งหมดมีผลกับ Project {board.title} เท่านั้น
           </p>
         </div>
       </div>

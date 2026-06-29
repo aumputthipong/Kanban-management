@@ -40,12 +40,12 @@ export default async function StashPage() {
           Stash
         </h1>
         <p className="text-sm text-slate-500 mb-8">
-          บอร์ดที่เก็บเข้าคลัง — ซ่อนจากรายการที่ใช้งาน กู้คืนได้ทุกเมื่อ
+          Project ที่เก็บเข้า Stash — ซ่อนจากรายการที่ใช้งาน กู้คืนได้ทุกเมื่อ
         </p>
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
           {stashedBoards.length === 0 ? (
             <div className="p-20 text-center text-slate-400">
-              ยังไม่มีบอร์ดในคลัง
+              ยังไม่มี Project ใน Stash
             </div>
           ) : (
             <StashTable boards={stashedBoards} />

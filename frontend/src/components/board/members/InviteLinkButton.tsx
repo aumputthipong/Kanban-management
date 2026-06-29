@@ -23,7 +23,7 @@ export function InviteLinkButton({ boardId }: { boardId: string }) {
         <div className="min-w-0 flex-1">
           <p className="text-[13px] font-bold text-slate-800">เชิญด้วยลิงก์</p>
           <p className="text-[11.5px] text-slate-400">
-            แชร์ลิงก์ให้คนเข้าร่วมบอร์ดเอง
+            แชร์ลิงก์ให้คนเข้าร่วม Project เอง
           </p>
         </div>
         <ChevronRight size={16} className="shrink-0 text-slate-300" />

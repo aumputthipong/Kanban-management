@@ -49,12 +49,12 @@ export function DangerSection({ onArchive, isArchiving }: DangerSectionProps) {
         danger
         icon={<AlertTriangle size={15} />}
         title="พื้นที่อันตราย"
-        description="การกระทำต่อไปนี้ส่งผลกับทั้งบอร์ด โปรดดำเนินการอย่างระมัดระวัง"
+        description="การกระทำต่อไปนี้ส่งผลกับทั้ง Project โปรดดำเนินการอย่างระมัดระวัง"
       >
         {/* Stash — REAL (recoverable soft-delete → คลังบอร์ด) */}
         <DangerRow
-          title="เก็บบอร์ดเข้าคลัง"
-          help="ซ่อนบอร์ดจากรายการที่ใช้งาน — กู้คืนได้ทุกเมื่อจากคลังบอร์ด ข้อมูลทั้งหมดยังอยู่ครบ"
+          title="เก็บ Project เข้า Stash"
+          help="ซ่อน Project จากรายการที่ใช้งาน — กู้คืนได้ทุกเมื่อจาก Stash ข้อมูลทั้งหมดยังอยู่ครบ"
         >
           <button
             type="button"
@@ -70,8 +70,8 @@ export function DangerSection({ onArchive, isArchiving }: DangerSectionProps) {
 
       <ConfirmDialog
         open={confirmArchive}
-        title="เก็บบอร์ดนี้เข้าคลัง?"
-        description="บอร์ดจะถูกเก็บเข้าคลังและซ่อนจากรายการที่ใช้งาน — คุณกู้คืนได้ทุกเมื่อ"
+        title="เก็บ Project นี้เข้า Stash?"
+        description="Project จะถูกเก็บเข้า Stash และซ่อนจากรายการที่ใช้งาน — คุณกู้คืนได้ทุกเมื่อ"
         confirmLabel="Stash"
         cancelLabel="Cancel"
         destructive

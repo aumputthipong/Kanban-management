@@ -123,7 +123,7 @@ export function BoardsClient({ boards }: BoardsClientProps) {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
           <input
             type="text"
-            placeholder="ค้นหาโปรเจกต์..."
+            placeholder="ค้นหา Project..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-9 pr-4 py-2 text-sm rounded-lg border border-slate-200 bg-white text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-transparent"
@@ -173,7 +173,7 @@ export function BoardsClient({ boards }: BoardsClientProps) {
       {/* Empty state */}
       {filtered.length === 0 && (
         <div className="text-center py-16 text-slate-400">
-          <p className="text-sm">ไม่พบโปรเจกต์</p>
+          <p className="text-sm">ไม่พบ Project</p>
         </div>
       )}
 

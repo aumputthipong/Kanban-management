@@ -60,7 +60,7 @@ export function GeneralSection({
   const handleSaveName = async () => {
     const clean = name.trim();
     if (!clean) {
-      setNameError("ชื่อบอร์ดต้องไม่ว่าง");
+      setNameError("ชื่อ Project ต้องไม่ว่าง");
       return;
     }
     setSavingName(true);
@@ -121,12 +121,12 @@ export function GeneralSection({
       id="sec-general"
       icon={<Clock size={15} />}
       title="ทั่วไป"
-      description="ชื่อ คำอธิบาย และรูปลักษณ์ของบอร์ดที่สมาชิกทุกคนมองเห็น"
+      description="ชื่อ คำอธิบาย และรูปลักษณ์ของ Project ที่สมาชิกทุกคนมองเห็น"
     >
       {/* Board name */}
       <SettingRow
-        label="ชื่อบอร์ด"
-        help="ชื่อที่แสดงบนหัวบอร์ดและในรายการโปรเจกต์"
+        label="Project Name"
+        help="ชื่อที่แสดงบนหัว Board และในรายการ Project"
         control={
           <div className="flex flex-col items-end gap-1.5">
             <div className="flex items-center gap-2.5">
@@ -171,8 +171,8 @@ export function GeneralSection({
       {/* Description */}
       <SettingRow
         stacked
-        label="คำอธิบาย"
-        help="บอกเป้าหมายหรือขอบเขตของบอร์ดสั้น ๆ ช่วยให้สมาชิกใหม่เข้าใจบริบท"
+        label="Description"
+        help="บอกเป้าหมายหรือขอบเขตของ Project สั้น ๆ ช่วยให้สมาชิกใหม่เข้าใจบริบท"
         control={
           <div className="flex flex-col gap-2">
             <textarea
@@ -180,7 +180,7 @@ export function GeneralSection({
               maxLength={DESC_MAX}
               disabled={!canManage}
               onChange={(e) => setDesc(e.target.value)}
-              placeholder="เช่น บอร์ดติดตามงานพัฒนา Sprint ของทีม Engineering…"
+              placeholder="เช่น Project ติดตามงานพัฒนา Sprint ของทีม Engineering…"
               className="w-full min-h-[78px] px-3.5 py-2.5 rounded-lg border border-slate-200 bg-[#FBFCFE] text-sm text-slate-900 leading-relaxed outline-none resize-y transition focus:bg-white focus:border-blue-300 focus:ring-2 focus:ring-blue-800/10 disabled:opacity-60"
             />
             <div className="flex items-center justify-between">
@@ -216,8 +216,8 @@ export function GeneralSection({
       {/* Icon & colour */}
       <SettingRow
         stacked
-        label="ไอคอน & สีประจำบอร์ด"
-        help="ใช้แยกบอร์ดนี้จากบอร์ดอื่นในรายการโปรเจกต์และแถบด้านข้าง บันทึกทันทีเมื่อเลือก"
+        label="Icon & Color"
+        help="ใช้แยก Project นี้จาก Project อื่นในรายการ Project และแถบด้านข้าง บันทึกทันทีเมื่อเลือก"
         control={
           <BoardAppearancePicker
             name={name}

@@ -37,7 +37,7 @@ export default async function StashPage() {
       <div className="max-w-4xl mx-auto">
         <h1 className="text-3xl font-bold text-slate-800 mb-2 flex items-center gap-3">
           <Archive className="text-slate-400" />
-          คลังบอร์ด
+          Stash
         </h1>
         <p className="text-sm text-slate-500 mb-8">
           บอร์ดที่เก็บเข้าคลัง — ซ่อนจากรายการที่ใช้งาน กู้คืนได้ทุกเมื่อ

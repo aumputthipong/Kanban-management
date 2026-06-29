@@ -78,7 +78,7 @@ export function AddMemberForm({ isAdding, onAdd }: AddMemberFormProps) {
           className="inline-flex h-10 shrink-0 cursor-pointer items-center gap-2 whitespace-nowrap rounded-md bg-blue-800 px-4 text-[14px] font-bold text-white shadow-sm transition hover:bg-blue-900 disabled:opacity-40"
         >
           {isAdding ? <Loader2 size={17} className="animate-spin" /> : <UserPlus size={17} />}
-          เชิญ
+          Invite
         </button>
       </div>
 

@@ -184,7 +184,7 @@ export function CreateTaskModal({ onClose, onCreate, defaultColumnId }: Props) {
                   onClick={addSubtask}
                   className="w-full inline-flex items-center justify-center gap-1.5 rounded-md border border-dashed border-slate-300 px-2.5 py-1.5 text-xs font-semibold text-slate-500 hover:border-blue-400 hover:text-primary hover:bg-blue-50/40 transition-colors"
                 >
-                  <Plus size={14} /> เพิ่ม subtask
+                  <Plus size={14} /> Add subtask
                 </button>
               ) : (
                 <div className="flex flex-col gap-1.5">
@@ -225,7 +225,7 @@ export function CreateTaskModal({ onClose, onCreate, defaultColumnId }: Props) {
                     onClick={addSubtask}
                     className="inline-flex items-center gap-1 text-xs font-semibold text-slate-500 hover:text-primary transition-colors w-fit"
                   >
-                    <Plus size={13} /> เพิ่มรายการ
+                    <Plus size={13} /> Add item
                   </button>
                 </div>
               )}
@@ -369,7 +369,7 @@ export function CreateTaskModal({ onClose, onCreate, defaultColumnId }: Props) {
               onClick={onClose}
               className="px-3.5 py-2 text-sm font-semibold text-slate-600 rounded-lg hover:bg-slate-100 transition-colors"
             >
-              ยกเลิก
+              Cancel
             </button>
             <button
               type="button"
@@ -377,7 +377,7 @@ export function CreateTaskModal({ onClose, onCreate, defaultColumnId }: Props) {
               disabled={!canSubmit}
               className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              <Check size={15} strokeWidth={2.5} /> สร้าง Task
+              <Check size={15} strokeWidth={2.5} /> Create Task
             </button>
           </div>
         </div>

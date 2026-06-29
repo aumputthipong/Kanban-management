@@ -109,7 +109,7 @@ export function SessionListView({ boardId }: Props) {
           className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-2 text-sm font-semibold text-white hover:bg-primary-hover disabled:opacity-50"
         >
           <Plus size={14} />
-          บันทึกใหม่
+          New Note
         </button>
       </div>
 
@@ -122,7 +122,7 @@ export function SessionListView({ boardId }: Props) {
               <strong className="font-bold text-slate-800">
                 {sessions.length}
               </strong>{" "}
-              บันทึก
+              Notes
             </StatPill>
             <StatPill
               icon={<HelpCircle size={14} />}
@@ -277,7 +277,7 @@ function SessionRow({
               }
             }}
             onBlur={commit}
-            placeholder="ตั้งชื่อบันทึกนี้..."
+            placeholder="Name this note…"
             className="w-full max-w-md rounded-md border border-indigo-300 bg-white px-2 py-1 text-sm font-semibold text-slate-800 shadow-sm outline-none focus:ring-2 focus:ring-indigo-400"
           />
         ) : (
@@ -297,13 +297,13 @@ function SessionRow({
             <button
               type="button"
               onClick={startEdit}
-              title="ตั้งชื่อบันทึกนี้"
+              title="Name this note"
               className={`inline-flex shrink-0 items-center gap-1 rounded px-1 py-0.5 text-[11px] font-semibold text-indigo-500 transition-opacity hover:text-primary-hover ${
                 isAuto ? "" : "opacity-0 group-hover:opacity-100"
               }`}
             >
               <Pencil size={12} />
-              {isAuto && <span>ตั้งชื่อ</span>}
+              {isAuto && <span>Name</span>}
             </button>
           </div>
         )}
@@ -423,7 +423,7 @@ function EmptyState({ onCreate, creating }: { onCreate: () => void; creating: bo
     <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50/50 p-12 text-center">
       <FileText size={32} className="mx-auto mb-3 text-slate-400" />
       <h3 className="text-base font-semibold text-slate-800">
-        ยังไม่มีบันทึก
+        No notes yet
       </h3>
       <p className="mt-1 mb-4 text-sm text-slate-500">
         เริ่มจดไอเดียแรก · สิ่งที่ตกลงกัน · คำถามที่ค้างใจ
@@ -437,7 +437,7 @@ function EmptyState({ onCreate, creating }: { onCreate: () => void; creating: bo
         className="inline-flex items-center gap-1.5 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-hover disabled:opacity-50"
       >
         <Plus size={14} />
-        บันทึกใหม่
+        New Note
       </button>
     </div>
   );
@@ -459,7 +459,7 @@ function ListSkeleton() {
 
 function defaultSessionTitle() {
   const d = new Date();
-  return `บันทึก ${d.toLocaleDateString("th-TH", {
+  return `Note ${d.toLocaleDateString("en-GB", {
     day: "numeric",
     month: "short",
     year: "numeric",
@@ -467,10 +467,12 @@ function defaultSessionTitle() {
 }
 
 // A session is "not yet named" while it still carries the date-based title
-// minted by defaultSessionTitle ("บันทึก <date>") — the row uses this to nudge
+// minted by defaultSessionTitle ("Note <date>") — the row uses this to nudge
 // the user to give it a real name instead of just showing a quiet pencil.
+// The legacy Thai prefix ("บันทึก <date>") is still matched so notes created
+// before the rename keep behaving as auto-titled.
 function isAutoTitle(title: string) {
-  return /^บันทึก\s+\d/.test(title.trim());
+  return /^(Note|บันทึก)\s+\d/.test(title.trim());
 }
 
 // Group by "this week / earlier this month / older". Sessions list is small

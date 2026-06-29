@@ -146,11 +146,11 @@ export function ItemActionMenu({
             onClick={run(onToggleExpanded)}
             active={hasDetails}
           >
-            {expanded ? "ซ่อนรายละเอียด" : "เปิดรายละเอียด"}
+            {expanded ? "Hide details" : "Show details"}
           </MenuItem>
           <div className="my-1 border-t border-slate-100" />
           <MenuItem icon={Trash2} onClick={run(onDelete)} danger>
-            ลบรายการ
+            Delete item
           </MenuItem>
         </div>
       )}

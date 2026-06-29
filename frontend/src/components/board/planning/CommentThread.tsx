@@ -144,8 +144,8 @@ function CommentRow({ comment, isOwn, onEdit, onDelete }: RowProps) {
                 setDraft(comment.body ?? "");
                 setEditing(true);
               }}
-              title="แก้ไข"
-              aria-label="แก้ไข"
+              title="Edit"
+              aria-label="Edit"
               className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
             >
               <Pencil size={12} />
@@ -153,8 +153,8 @@ function CommentRow({ comment, isOwn, onEdit, onDelete }: RowProps) {
             <button
               type="button"
               onClick={() => onDelete(comment.id)}
-              title="ลบ"
-              aria-label="ลบ"
+              title="Delete"
+              aria-label="Delete"
               className="rounded p-1 text-slate-400 hover:bg-red-50 hover:text-red-600"
             >
               <Trash2 size={12} />
@@ -180,7 +180,7 @@ function CommentRow({ comment, isOwn, onEdit, onDelete }: RowProps) {
               }}
               className="rounded px-2 py-0.5 text-xs text-slate-600 hover:bg-slate-100"
             >
-              ยกเลิก
+              Cancel
             </button>
             <button
               type="button"
@@ -191,7 +191,7 @@ function CommentRow({ comment, isOwn, onEdit, onDelete }: RowProps) {
               disabled={draft.trim().length === 0 || draft === comment.body}
               className="rounded bg-primary px-2 py-0.5 text-xs font-semibold text-white hover:bg-primary-hover disabled:opacity-40"
             >
-              บันทึก
+              Save
             </button>
           </div>
         </div>

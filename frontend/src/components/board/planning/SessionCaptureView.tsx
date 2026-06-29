@@ -223,7 +223,7 @@ export function SessionCaptureView({ boardId, sessionId }: Props) {
                       className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-white hover:bg-primary-hover disabled:opacity-40"
                     >
                       <ArrowRight size={14} />
-                      ส่งเข้า Board
+                      Send to Board
                       {selectedIds.size > 0 && <span>({selectedIds.size})</span>}
                     </button>
                     <button
@@ -231,7 +231,7 @@ export function SessionCaptureView({ boardId, sessionId }: Props) {
                       onClick={exitSelectMode}
                       className="rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
                     >
-                      ยกเลิก
+                      Cancel
                     </button>
                   </div>
                 ) : (
@@ -240,7 +240,7 @@ export function SessionCaptureView({ boardId, sessionId }: Props) {
                     onClick={enterSelectMode}
                     className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
                   >
-                    <ListChecks size={14} /> เลือกส่งเข้า Board
+                    <ListChecks size={14} /> Select to send
                   </button>
                 )
               }

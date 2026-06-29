@@ -183,7 +183,7 @@ export function CreateProjectModal({ onClose }: CreateProjectModalProps) {
                 disabled={isCreating}
                 className="px-4 py-2 text-sm rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors disabled:opacity-40"
               >
-                ยกเลิก
+                Cancel
               </button>
               <button
                 type="submit"
@@ -193,10 +193,10 @@ export function CreateProjectModal({ onClose }: CreateProjectModalProps) {
                 {isCreating ? (
                   <>
                     <Loader2 size={14} className="animate-spin" />
-                    กำลังสร้าง...
+                    Creating…
                   </>
                 ) : (
-                  "สร้างโปรเจกต์"
+                  "Create Project"
                 )}
               </button>
             </div>

@@ -161,7 +161,7 @@ export function Sidebar({ boards }: SidebarProps) {
       >
         <Link
           href="/stash"
-          title={isCollapsed ? "คลังบอร์ด" : undefined}
+          title={isCollapsed ? "Stash" : undefined}
           className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
             isCollapsed ? "justify-center w-full" : ""
           } ${
@@ -171,7 +171,7 @@ export function Sidebar({ boards }: SidebarProps) {
           }`}
         >
           <Archive size={16} className="shrink-0" />
-          {!isCollapsed && "คลังบอร์ด"}
+          {!isCollapsed && "Stash"}
         </Link>
 
       

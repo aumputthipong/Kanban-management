@@ -114,16 +114,16 @@ export function StashTable({ boards: initialBoards }: StashTableProps) {
                   ) : (
                     <RotateCcw size={15} />
                   )}
-                  กู้คืน
+                  Restore
                 </button>
                 <button
                   onClick={() => setDeleteTarget(board)}
                   disabled={isLoading}
                   className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg border border-red-200 text-[13px] font-semibold text-red-600 hover:bg-red-50 disabled:opacity-50 transition-colors"
-                  title="ลบถาวร"
+                  title="Delete permanently"
                 >
                   <Trash2 size={15} />
-                  ลบถาวร
+                  Delete permanently
                 </button>
               </div>
             </div>
@@ -140,8 +140,8 @@ export function StashTable({ boards: initialBoards }: StashTableProps) {
             ? `“${restoreTarget.title}” จะกลับไปแสดงในรายการโปรเจกต์ที่ใช้งาน`
             : undefined
         }
-        confirmLabel="กู้คืน"
-        cancelLabel="ยกเลิก"
+        confirmLabel="Restore"
+        cancelLabel="Cancel"
         onConfirm={() => restoreTarget && handleRestore(restoreTarget)}
         onCancel={() => setRestoreTarget(null)}
       />
@@ -163,8 +163,8 @@ export function StashTable({ boards: initialBoards }: StashTableProps) {
             เพื่อยืนยัน
           </>
         }
-        confirmLabel="ลบถาวร"
-        cancelLabel="ยกเลิก"
+        confirmLabel="Delete permanently"
+        cancelLabel="Cancel"
         loading={deleteTarget !== null && loadingId === deleteTarget.id}
         onConfirm={() => deleteTarget && handleDelete(deleteTarget)}
         onCancel={() => setDeleteTarget(null)}

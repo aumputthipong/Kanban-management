@@ -143,7 +143,7 @@ export function GeneralSection({
               />
               <button
                 type="button"
-                title="บันทึกชื่อ"
+                title="Save name"
                 disabled={!canManage || !nameDirty || savingName}
                 onClick={handleSaveName}
                 className="w-[42px] h-[42px] rounded-lg flex items-center justify-center bg-blue-800 text-white hover:bg-blue-900 disabled:opacity-40 disabled:cursor-not-allowed transition"
@@ -152,7 +152,7 @@ export function GeneralSection({
               </button>
               <button
                 type="button"
-                title="ยกเลิก"
+                title="Cancel"
                 disabled={!canManage || !nameDirty || savingName}
                 onClick={() => {
                   setName(savedName);
@@ -195,7 +195,7 @@ export function GeneralSection({
                     disabled={savingDesc}
                     className="h-8 px-3 rounded-lg border border-slate-200 text-[13px] font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-40 transition"
                   >
-                    ยกเลิก
+                    Cancel
                   </button>
                   <button
                     type="button"
@@ -204,7 +204,7 @@ export function GeneralSection({
                     className="h-8 px-3.5 rounded-lg bg-blue-800 text-white text-[13px] font-semibold hover:bg-blue-900 disabled:opacity-40 inline-flex items-center gap-1.5 transition"
                   >
                     {savingDesc ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
-                    บันทึกคำอธิบาย
+                    Save description
                   </button>
                 </div>
               )}

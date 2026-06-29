@@ -12,7 +12,7 @@ interface MemberToolbarProps {
 }
 
 const CHIPS: { key: MemberFilter; label: string }[] = [
-  { key: "all", label: "ทั้งหมด" },
+  { key: "all", label: "All" },
   { key: "owner", label: "Owner" },
   { key: "manager", label: "Managers" },
   { key: "member", label: "Members" },

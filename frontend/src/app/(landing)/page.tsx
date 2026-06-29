@@ -201,9 +201,9 @@ export default async function LandingPage() {
           {/* Left — copy + CTA */}
           <div>
             <h1 className="text-5xl md:text-7xl font-bold tracking-tight leading-[1.05]">
-              Less standup.
+              Project Task.
               <br />
-              More <span className="text-primary">shipping.</span>
+              <span className="text-primary">Management.</span>
             </h1>
 
             <p className="mt-8 text-base md:text-lg text-slate-500 leading-relaxed max-w-md">

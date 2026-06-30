@@ -148,7 +148,7 @@ export function TasksTabContent({
           <p className="text-xs text-slate-500 mt-1">
             {mineOnly
               ? "ไม่มีงานเร่งด่วนของคุณ"
-              : "ไม่มีงานเลยกำหนด หรือใกล้กำหนดในบอร์ดนี้"}
+              : "ไม่มีงานเลยกำหนด หรือใกล้กำหนดใน Board นี้"}
           </p>
         </div>
       ) : (

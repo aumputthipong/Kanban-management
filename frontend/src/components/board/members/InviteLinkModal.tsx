@@ -110,7 +110,7 @@ export function InviteLinkModal({
           {/* Body */}
           <div className="px-5 py-5">
             <p className="mb-3 text-[13px] text-slate-500">
-              ใครมีลิงก์นี้และล็อกอินอยู่ จะเข้าร่วมบอร์ดเป็นสมาชิกได้
+              ใครมีลิงก์นี้และล็อกอินอยู่ จะเข้าร่วม Project เป็นสมาชิกได้
             </p>
 
             {loading ? (

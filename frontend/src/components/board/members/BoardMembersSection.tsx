@@ -83,7 +83,7 @@ export function BoardMembersSection({ boardId }: BoardMembersSectionProps) {
         <div>
           <h1 className="text-[21px] font-bold tracking-tight text-slate-900">Members</h1>
           <p className="mt-0.5 max-w-[560px] text-[13px] leading-snug text-slate-600">
-            จัดการว่าใครเข้าถึงบอร์ดนี้ได้บ้าง และแต่ละคนมีสิทธิ์ทำอะไร — แยกจากการมอบหมายงานในบอร์ด
+            จัดการว่าใครเข้าถึง Project นี้ได้บ้าง และแต่ละคนมีสิทธิ์ทำอะไร — แยกจากการมอบหมายงานใน Board
           </p>
         </div>
         <span className="inline-flex h-[30px] shrink-0 items-baseline gap-1.5 rounded-full border border-slate-200 bg-slate-100 px-3">
@@ -144,7 +144,7 @@ export function BoardMembersSection({ boardId }: BoardMembersSectionProps) {
           </div>
 
           <div className="pt-5 text-center text-[12.5px] text-slate-300">
-            ทุกคนที่มีสิทธิ์เข้าถึงบอร์ดนี้แสดงอยู่ด้านบน
+            ทุกคนที่มีสิทธิ์เข้าถึง Project นี้แสดงอยู่ด้านบน
           </div>
 
           {canLeave && (
@@ -155,7 +155,7 @@ export function BoardMembersSection({ boardId }: BoardMembersSectionProps) {
                 className="inline-flex cursor-pointer items-center gap-1.5 rounded-sm px-3 py-1.5 text-xs font-semibold text-red-700 transition-colors hover:bg-red-50 disabled:opacity-50"
               >
                 {leaving ? <Loader2 size={12} className="animate-spin" /> : <LogOut size={12} />}
-                ออกจากบอร์ด
+                ออกจาก Project
               </button>
             </div>
           )}
@@ -164,9 +164,9 @@ export function BoardMembersSection({ boardId }: BoardMembersSectionProps) {
 
       <ConfirmDialog
         open={leaveConfirmOpen}
-        title="ออกจากบอร์ด"
-        description="คุณจะหมดสิทธิ์เข้าถึงบอร์ดนี้ทันที — ขอให้ manager หรือ owner เชิญกลับเข้ามาได้ภายหลัง"
-        confirmLabel="ออกจากบอร์ด"
+        title="ออกจาก Project"
+        description="คุณจะหมดสิทธิ์เข้าถึง Project นี้ทันที — ขอให้ manager หรือ owner เชิญกลับเข้ามาได้ภายหลัง"
+        confirmLabel="ออกจาก Project"
         destructive
         onConfirm={() => {
           setLeaveConfirmOpen(false);

@@ -10,7 +10,7 @@ export default function StashLoading() {
           Stash
         </h1>
         <p className="text-sm text-slate-500 mb-8">
-          บอร์ดที่เก็บเข้าคลัง — ซ่อนจากรายการที่ใช้งาน กู้คืนได้ทุกเมื่อ
+          Project ที่เก็บเข้า Stash — ซ่อนจากรายการที่ใช้งาน กู้คืนได้ทุกเมื่อ
         </p>
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden divide-y divide-slate-100">
           {Array.from({ length: 5 }).map((_, i) => (

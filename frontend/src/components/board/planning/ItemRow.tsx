@@ -147,7 +147,7 @@ export function ItemRow({
   // live note. (No "waiting on <person>" target / card key is shown — the
   // data model has neither.)
   const statusMeta = promoted
-    ? { Icon: CheckCircle2, label: "บนบอร์ดแล้ว", cls: "text-emerald-600" }
+    ? { Icon: CheckCircle2, label: "บน Board แล้ว", cls: "text-emerald-600" }
     : dropped
       ? { Icon: Circle, label: "พักไว้ก่อน", cls: "text-slate-400" }
       : selected

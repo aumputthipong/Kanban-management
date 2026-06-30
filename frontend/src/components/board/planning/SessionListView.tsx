@@ -99,7 +99,7 @@ export function SessionListView({ boardId }: Props) {
             </h1>
           </div>
           <p className="mt-1 text-sm text-slate-500">
-            บันทึกไอเดียที่คุย แล้วเลือกไปทำต่อบนบอร์ดได้ทันที
+            บันทึกไอเดียที่คุย แล้วเลือกไปทำต่อบน Board ได้ทันที
           </p>
         </div>
         <button

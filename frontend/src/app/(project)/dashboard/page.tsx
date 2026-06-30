@@ -24,10 +24,10 @@ export default async function DashboardPage() {
         <div className="flex justify-between items-start mb-6 gap-4">
           <div>
             <h1 className="text-3xl font-extrabold text-slate-800 tracking-tight">
-              โปรเจกต์ของฉัน
+              Project ของฉัน
             </h1>
             <p className="text-sm text-slate-500 mt-2">
-              <b className="text-slate-700 font-bold">{boards.length}</b> โปรเจกต์
+              <b className="text-slate-700 font-bold">{boards.length}</b> Project
               <span className="mx-1.5 text-slate-300">·</span>
               <span className="text-emerald-700 font-semibold">
                 {activeCount} เคลื่อนไหวล่าสุด

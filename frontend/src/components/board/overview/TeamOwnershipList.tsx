@@ -36,13 +36,13 @@ export function TeamOwnershipList({ onSelectCard }: TeamOwnershipListProps) {
 
       {members.length === 0 ? (
         <p className="px-4 py-8 text-center text-sm text-slate-400">
-          ยังไม่มีสมาชิกในบอร์ดนี้
+          ยังไม่มีสมาชิกใน Project นี้
         </p>
       ) : (
         <>
           {colCount === 0 && (
             <p className="border-b border-slate-100 bg-slate-50/70 px-4 py-2 text-[11px] text-slate-400">
-              บอร์ดนี้ยังไม่มีคอลัมน์ระหว่างทาง — ทุกคนจึงยังไม่ถืองาน
+              Board นี้ยังไม่มีคอลัมน์ระหว่างทาง — ทุกคนจึงยังไม่ถืองาน
             </p>
           )}
           <div className="overflow-x-auto">

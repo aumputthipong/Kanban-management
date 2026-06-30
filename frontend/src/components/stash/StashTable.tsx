@@ -134,10 +134,10 @@ export function StashTable({ boards: initialBoards }: StashTableProps) {
       {/* Restore — simple confirm */}
       <ConfirmDialog
         open={restoreTarget !== null}
-        title="กู้คืนบอร์ดนี้?"
+        title="กู้คืน Project นี้?"
         description={
           restoreTarget
-            ? `“${restoreTarget.title}” จะกลับไปแสดงในรายการโปรเจกต์ที่ใช้งาน`
+            ? `“${restoreTarget.title}” จะกลับไปแสดงในรายการ Project ที่ใช้งาน`
             : undefined
         }
         confirmLabel="Restore"
@@ -149,10 +149,10 @@ export function StashTable({ boards: initialBoards }: StashTableProps) {
       {/* Permanent delete — GitHub-style type-to-confirm */}
       <TypeToConfirmDialog
         open={deleteTarget !== null}
-        title="ลบบอร์ดนี้ถาวร?"
+        title="ลบ Project นี้ถาวร?"
         description={
           <>
-            การลบนี้ <b className="text-red-600">ไม่สามารถกู้คืนได้</b> — บอร์ด
+            การลบนี้ <b className="text-red-600">ไม่สามารถกู้คืนได้</b> — Project
             การ์ด และข้อมูลทั้งหมดจะถูกลบอย่างถาวร
           </>
         }

@@ -30,9 +30,9 @@ export default function BoardLayout({ children, params }: BoardLayoutProps) {
   if (error === "NOT_FOUND") {
     return (
       <main className="min-h-screen bg-slate-50 flex flex-col items-center justify-center gap-3 px-6 text-center">
-        <h1 className="text-2xl font-semibold text-slate-700">Board not found</h1>
+        <h1 className="text-2xl font-semibold text-slate-700">Project not found</h1>
         <p className="text-sm text-slate-500 max-w-md">
-          ไม่พบบอร์ดนี้ หรือคุณไม่ได้เป็น member ของบอร์ดนี้ — ติดต่อ owner เพื่อขอเชิญเข้าร่วม
+          ไม่พบ Project นี้ หรือคุณไม่ได้เป็น member ของ Project นี้ — ติดต่อ owner เพื่อขอเชิญเข้าร่วม
         </p>
         <a
           href="/dashboard"
@@ -50,9 +50,9 @@ export default function BoardLayout({ children, params }: BoardLayoutProps) {
         <div className="flex h-12 w-12 items-center justify-center rounded-full bg-danger/10 text-danger">
           <AlertCircle size={24} />
         </div>
-        <h1 className="text-2xl font-semibold text-slate-700">เปิดบอร์ดไม่สำเร็จ</h1>
+        <h1 className="text-2xl font-semibold text-slate-700">เปิด Project ไม่สำเร็จ</h1>
         <p className="text-sm text-slate-500 max-w-md">
-          เกิดข้อผิดพลาดในการโหลดบอร์ดนี้ — ลองใหม่อีกครั้ง หากยังไม่ได้ให้กลับไปหน้าโปรเจกต์แล้วลองเข้าใหม่
+          เกิดข้อผิดพลาดในการโหลด Project นี้ — ลองใหม่อีกครั้ง หากยังไม่ได้ให้กลับไปหน้า Project แล้วลองเข้าใหม่
         </p>
         <div className="mt-2 flex items-center gap-4">
           <button

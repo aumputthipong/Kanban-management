@@ -89,8 +89,8 @@ export function MemberItem({ member, isLoading, onRoleChange, onRemove }: Member
               <button
                 onClick={() => setConfirmOpen(true)}
                 disabled={isLoading}
-                aria-label={`นำ ${member.full_name} ออกจากบอร์ด`}
-                title="นำออกจากบอร์ด"
+                aria-label={`นำ ${member.full_name} ออกจาก Project`}
+                title="นำออกจาก Project"
                 className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-sm border border-transparent text-slate-400 transition hover:border-red-100 hover:bg-red-50 hover:text-red-600 disabled:opacity-40"
               >
                 {isLoading ? (
@@ -107,7 +107,7 @@ export function MemberItem({ member, isLoading, onRoleChange, onRemove }: Member
       <ConfirmDialog
         open={confirmOpen}
         title="นำสมาชิกออก"
-        description={`นำ ${member.full_name} ออกจากบอร์ดนี้? สมาชิกจะหมดสิทธิ์เข้าถึงทันที`}
+        description={`นำ ${member.full_name} ออกจาก Project นี้? สมาชิกจะหมดสิทธิ์เข้าถึงทันที`}
         confirmLabel="นำออก"
         destructive
         onConfirm={() => { setConfirmOpen(false); onRemove(member.user_id); }}

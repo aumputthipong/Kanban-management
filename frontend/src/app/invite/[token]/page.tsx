@@ -28,7 +28,7 @@ export default function InviteAcceptPage() {
       .accept(token)
       .then((res) => {
         if (cancelled) return;
-        showToast({ message: "เข้าร่วมบอร์ดแล้ว", duration: 3000 });
+        showToast({ message: "เข้าร่วม Project แล้ว", duration: 3000 });
         router.replace(`/board/${res.board_id}/tasks`);
       })
       .catch((err: unknown) => {
@@ -40,7 +40,7 @@ export default function InviteAcceptPage() {
             ? err.status === 410
               ? "ลิงก์เชิญนี้หมดอายุแล้ว"
               : err.message
-            : "เข้าร่วมบอร์ดไม่สำเร็จ";
+            : "เข้าร่วม Project ไม่สำเร็จ";
         setError(message);
       });
 
@@ -57,13 +57,13 @@ export default function InviteAcceptPage() {
             <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-danger/10 text-danger">
               <AlertCircle size={24} />
             </div>
-            <h1 className="text-base font-bold text-slate-800">เข้าร่วมบอร์ดไม่ได้</h1>
+            <h1 className="text-base font-bold text-slate-800">เข้าร่วม Project ไม่ได้</h1>
             <p className="mt-1.5 text-sm text-slate-500">{error}</p>
             <Link
               href="/dashboard"
               className="mt-5 inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white hover:bg-primary-hover"
             >
-              ไปหน้าโปรเจกต์ของฉัน
+              ไปหน้า Project ของฉัน
             </Link>
           </>
         ) : (
@@ -71,7 +71,7 @@ export default function InviteAcceptPage() {
             <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-indigo-50 text-primary">
               <Link2 size={22} />
             </div>
-            <h1 className="text-base font-bold text-slate-800">กำลังเข้าร่วมบอร์ด…</h1>
+            <h1 className="text-base font-bold text-slate-800">กำลังเข้าร่วม Project…</h1>
             <p className="mt-1.5 inline-flex items-center gap-1.5 text-sm text-slate-500">
               <Loader2 size={14} className="animate-spin" /> โปรดรอสักครู่
             </p>

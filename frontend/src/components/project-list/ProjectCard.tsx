@@ -169,7 +169,7 @@ export function ProjectCard({ board, viewMode, now }: ProjectCardProps) {
         <p
           className={`text-[12.5px] leading-relaxed mt-3 line-clamp-2 ${hasDesc ? "text-slate-500" : "text-slate-300 italic line-clamp-1"}`}
         >
-          {hasDesc ? board.description : "ยังไม่มีคำอธิบายโปรเจกต์"}
+          {hasDesc ? board.description : "ยังไม่มีคำอธิบาย Project"}
         </p>
 
         {/* progress */}

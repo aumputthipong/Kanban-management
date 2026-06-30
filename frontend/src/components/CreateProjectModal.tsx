@@ -58,7 +58,7 @@ export function CreateProjectModal({ onClose }: CreateProjectModalProps) {
     e.preventDefault();
     const trimmedTitle = title.trim();
     if (!trimmedTitle) {
-      setError("กรุณาใส่ชื่อโปรเจกต์");
+      setError("กรุณาใส่ชื่อ Project");
       return;
     }
 
@@ -76,7 +76,7 @@ export function CreateProjectModal({ onClose }: CreateProjectModalProps) {
       });
       router.push(`/board/${newBoard.id}/tasks`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "สร้างโปรเจกต์ไม่สำเร็จ");
+      setError(err instanceof Error ? err.message : "สร้าง Project ไม่สำเร็จ");
       setIsCreating(false);
     }
   };
@@ -129,7 +129,7 @@ export function CreateProjectModal({ onClose }: CreateProjectModalProps) {
                   if (error) setError(null);
                 }}
                 disabled={isCreating}
-                placeholder="ใส่ชื่อโปรเจกต์ของคุณ"
+                placeholder="ใส่ชื่อ Project ของคุณ"
                 className={`text-sm border rounded-lg px-3 py-2.5 focus:outline-none focus:ring-2 transition disabled:opacity-50 disabled:bg-slate-50 ${
                   error
                     ? "border-red-300 focus:ring-red-100 focus:border-red-400"
@@ -155,7 +155,7 @@ export function CreateProjectModal({ onClose }: CreateProjectModalProps) {
                 disabled={isCreating}
                 rows={2}
                 maxLength={160}
-                placeholder="อธิบายโปรเจกต์สั้น ๆ (ไม่บังคับ)"
+                placeholder="อธิบาย Project สั้น ๆ (ไม่บังคับ)"
                 className="text-sm border border-slate-200 rounded-lg px-3 py-2.5 resize-none focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-400 transition disabled:opacity-50 disabled:bg-slate-50"
               />
             </div>

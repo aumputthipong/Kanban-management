@@ -48,7 +48,7 @@ export function DangerSection({ onArchive, isArchiving }: DangerSectionProps) {
         id="sec-danger"
         danger
         icon={<AlertTriangle size={15} />}
-        title="พื้นที่อันตราย"
+        title="Danger Zone"
         description="การกระทำต่อไปนี้ส่งผลกับทั้ง Project โปรดดำเนินการอย่างระมัดระวัง"
       >
         {/* Stash — REAL (recoverable soft-delete → คลังบอร์ด) */}

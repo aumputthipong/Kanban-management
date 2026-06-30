@@ -120,7 +120,7 @@ export function GeneralSection({
     <SectionCard
       id="sec-general"
       icon={<Clock size={15} />}
-      title="ทั่วไป"
+      title="General"
       description="ชื่อ คำอธิบาย และรูปลักษณ์ของ Project ที่สมาชิกทุกคนมองเห็น"
     >
       {/* Board name */}

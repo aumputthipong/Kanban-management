@@ -90,7 +90,7 @@ export function BoardMembersSection({ boardId }: BoardMembersSectionProps) {
           <span className="text-[14px] font-bold leading-[30px] tracking-tight text-slate-900">
             {members.length}
           </span>
-          <span className="text-[12px] font-semibold text-slate-400">สมาชิก</span>
+          <span className="text-[12px] font-semibold text-slate-400">Members</span>
         </span>
       </div>
 

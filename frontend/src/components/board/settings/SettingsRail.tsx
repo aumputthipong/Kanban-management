@@ -11,8 +11,8 @@ export interface RailEntry {
 }
 
 export const RAIL_ITEMS: RailEntry[] = [
-  { id: "sec-general", label: "ทั่วไป", icon: <Clock size={18} /> },
-  { id: "sec-danger", label: "พื้นที่อันตราย", icon: <AlertTriangle size={18} />, danger: true },
+  { id: "sec-general", label: "General", icon: <Clock size={18} /> },
+  { id: "sec-danger", label: "Danger Zone", icon: <AlertTriangle size={18} />, danger: true },
 ];
 
 interface SettingsRailProps {

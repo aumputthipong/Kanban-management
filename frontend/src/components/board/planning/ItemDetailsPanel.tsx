@@ -22,7 +22,7 @@ export function ItemDetailsPanel({ note, onChangeNote }: Props) {
   return (
     <div className="ml-8 mt-1 flex flex-col gap-2 rounded border border-slate-200 bg-slate-50/40 p-3">
       <AutoSaveTextarea
-        label="รายละเอียด"
+        label="Details"
         placeholder={`โน้ตเพิ่มเติม เช่น "ใช้ webhook X", "เสร็จเมื่อ login ด้วย email ได้"`}
         value={note ?? ""}
         onSave={onChangeNote}

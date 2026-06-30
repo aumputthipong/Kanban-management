@@ -50,7 +50,7 @@ export function TeamOwnershipList({ onSelectCard }: TeamOwnershipListProps) {
               <thead>
                 <tr className="bg-slate-50/70">
                   <th className="px-4 py-2 text-left text-[10.5px] font-bold uppercase tracking-wide text-slate-400">
-                    สมาชิก
+                    Members
                   </th>
                   {numericMode &&
                     columns.map((col) => (

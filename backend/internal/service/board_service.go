@@ -1,4 +1,3 @@
-// internal/service/board_service.go
 package service
 
 import (
@@ -18,8 +17,8 @@ type BoardService struct {
 	queries *db.Queries
 }
 
-// ColumnData และ CardData ใช้ string สำหรับ ID แทน uuid.UUID
-// เพราะ sqlc generate ออกมาเป็น string อยู่แล้ว ไม่ต้องแปลงซ้ำ
+// ColumnData and CardData use string IDs (not uuid.UUID) to match the types
+// sqlc already generates, avoiding a conversion round-trip.
 type ColumnData struct {
 	ID       string
 	Title    string
@@ -86,11 +85,9 @@ func NewBoardService(pool *pgxpool.Pool, queries *db.Queries) *BoardService {
 	}
 }
 
-// CreateBoard สร้าง board ใหม่พร้อม 3 columns เริ่มต้น และกำหนด ownerID เป็น owner
-// รับและคืน string แทน uuid.UUID เพื่อให้ตรงกับ type จาก sqlc
-//
-// description/color/icon เป็น optional — nil = ใช้ default ของ column (handled
-// in the CreateBoard query via COALESCE), ไม่ต้อง resolve default ที่ service.
+// CreateBoard creates a board with its four default columns and adds ownerID as
+// the owner, all in one transaction. description/color/icon are optional; a nil
+// pointer lets the CreateBoard query apply the column default via COALESCE.
 func (s *BoardService) CreateBoard(ctx context.Context, title string, description, color, icon *string, ownerID string) (string, error) {
 	if strings.TrimSpace(title) == "" {
 		return "", fmt.Errorf("board title cannot be empty")
@@ -291,7 +288,7 @@ type MyWorkOptions struct {
 	Filter            MyWorkFilter
 	// Today is the caller-local date. The handler injects this in the user's
 	// timezone (Asia/Bangkok hardcoded in S.1) so the SQL CASE-bucket aligns
-	// with what the user reads as "วันนี้".
+	// with the day the user sees as "today".
 	Today time.Time
 }
 
@@ -491,19 +488,16 @@ func (s *BoardService) UpdateBoard(ctx context.Context, id string, title *string
 	})
 }
 
-// GetBoardWithCards ดึง columns, cards และ subtasks ทั้งหมดของ board ใน 3 queries
+// GetBoardWithCards loads all of a board's columns, cards, subtasks and tags in
+// a fixed number of batched queries (no per-card round-trips).
 func (s *BoardService) GetBoardWithCards(ctx context.Context, boardID string) ([]ColumnData, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
-	// 1. ดึงข้อมูล Columns
 	columns, err := s.queries.GetColumnsByBoardID(ctx, boardID)
 	if err != nil {
 		return nil, fmt.Errorf("fetch columns: %w", err)
 	}
-
-	// 🌟 Best Practice: ตรวจสอบความว่างเปล่า (Early Return)
-	// ถ้าบอร์ดนี้ยังไม่มี Column เลย ให้ส่ง Array ว่างกลับไปทันที
 	if len(columns) == 0 {
 		return []ColumnData{}, nil
 	}
@@ -513,14 +507,12 @@ func (s *BoardService) GetBoardWithCards(ctx context.Context, boardID string) ([
 		columnIDs[i] = col.ID
 	}
 
-	// 2. ดึงข้อมูล Cards
-	// (ถึงบรรทัดนี้ การันตีได้แล้วว่า columnIDs มีค่าอย่างน้อย 1 ตัวแน่นอน)
 	cards, err := s.queries.GetCardsByColumnIDs(ctx, columnIDs)
 	if err != nil {
 		return nil, fmt.Errorf("fetch cards: %w", err)
 	}
 
-	// 3. Batch load tags for all cards
+	// Batch load tags for all cards.
 	cardIDs := make([]string, len(cards))
 	for i, card := range cards {
 		cardIDs[i] = card.ID
@@ -568,9 +560,7 @@ func (s *BoardService) GetBoardWithCards(ctx context.Context, boardID string) ([
 
 	result := make([]ColumnData, 0, len(columns))
 	for _, col := range columns {
-		// 🌟 Best Practice: เช็คค่า nil ของ map
-		// ถ้า Column นั้นไม่มี Card เลย map จะคืนค่า nil
-		// เราควรแปลงเป็น Slice ว่าง []CardData{} แทนที่ Frontend จะได้รับเป็น null
+		// nil map entry → empty slice, so the frontend gets [] not null.
 		colCards := cardsByColumn[col.ID]
 		if colCards == nil {
 			colCards = []CardData{}

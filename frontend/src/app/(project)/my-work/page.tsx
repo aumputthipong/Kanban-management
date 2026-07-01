@@ -53,7 +53,7 @@ const GROUP_TO_COUNT: Record<MyWorkGroup, keyof Omit<MyWorkCounts, "total">> = {
 };
 
 // Keep the toast readable — long card titles get truncated so the message +
-// "ย้อนกลับ" action still fit on one line.
+// "back" action still fit on one line.
 function shortTitle(title: string, max = 40): string {
   const t = title.trim();
   return t.length > max ? `${t.slice(0, max).trimEnd()}…` : t;

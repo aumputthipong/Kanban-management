@@ -49,7 +49,7 @@ export function ProjectCalendar({ boardId }: Props) {
   const [statusFilter, setStatusFilter] = useState<PillState[]>([]);
   const [myTasksOnly, setMyTasksOnly] = useState(false);
   const [moreCellDate, setMoreCellDate] = useState<Date | null>(null);
-  // Clicking a task opens a read-only detail modal; "เปิด task" promotes it to
+  // Clicking a task opens a read-only detail modal; "open task" promotes it to
   // the full editable card modal.
   const [selectedCard, setSelectedCard] = useState<Card | null>(null);
   const [editCard, setEditCard] = useState<Card | null>(null);

@@ -1,4 +1,4 @@
-// app/(app)/stash/layout.tsx — wraps the คลังบอร์ด page with the app Sidebar.
+// Wraps the stash page with the app Sidebar.
 import { Sidebar } from "@/components/layout/Sidebar";
 import { apiClient } from "@/lib/apiClient";
 import { Board } from "@/types/board";
@@ -6,7 +6,7 @@ import { cookies } from "next/headers";
 
 export async function getBoards(): Promise<Board[]> {
   try {
-    // ใน Server Component ควรสกัด Cookie ส่งไปเองด้วยเสมอเพื่อยืนยันตัวตน
+    // In a Server Component, forward the request cookie explicitly for auth.
     const cookieStore = await cookies();
 
     return await apiClient<Board[]>("/boards", {

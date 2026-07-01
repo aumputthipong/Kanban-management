@@ -109,7 +109,7 @@ describe("progress calculation", () => {
       ],
     });
     const todoCol = makeColumn({ id: "col-todo", cards: [] });
-    // hook ใช้ column สุดท้ายเป็น done column
+    // the hook treats the last column as the done column
     useBoardStore.setState({ columns: [todoCol, doneCol] });
 
     const { result } = renderHook(() => useDashboardStats());
@@ -138,8 +138,8 @@ describe("progress calculation", () => {
 // ─── overdue cards ────────────────────────────────────────────────────────────
 
 // ── shared column setup used by overdue/dueSoon tests ──
-// hook ใช้ column สุดท้ายเป็น doneColumnId
-// ดังนั้นต้องมี doneCol เป็น column สุดท้ายเสมอ เพื่อไม่ให้การ์ดใน todoCol ถูกนับเป็น done
+// The hook uses the last column as doneColumnId, so doneCol must always be the
+// last column to avoid counting cards in todoCol as done.
 const doneCol = makeColumn({
   id: "col-done",
   title: "Done",

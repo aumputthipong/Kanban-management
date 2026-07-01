@@ -1,6 +1,6 @@
 "use client";
 
-// CardSourceSection — the "ที่มา" block inside the card detail modal.
+// CardSourceSection — the "source" block inside the card detail modal.
 // Renders only for cards that were promoted from a planning session.
 // Hidden during load + when the card has no source so the modal layout
 // doesn't shift; a small Skeleton appears only while we wait, which

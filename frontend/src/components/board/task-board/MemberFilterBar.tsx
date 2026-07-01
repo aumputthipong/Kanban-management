@@ -15,7 +15,7 @@ export function MemberFilterBar() {
     setFilterAssigneeId(filterAssigneeId === userId ? null : userId);
   };
 
-  // ปิด dropdown เมื่อคลิกนอก
+  // Close the dropdown on outside click.
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (

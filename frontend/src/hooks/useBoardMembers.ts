@@ -34,7 +34,7 @@ export function useBoardMembers(boardId: string) {
   }, [boardId]);
 
   // Invite by exact email — no user list is fetched/exposed (privacy). Returns
-  // an error message to show inline (e.g. "ไม่พบผู้ใช้อีเมลนี้") or null on success.
+  // an error message to show inline (e.g. "user not found") or null on success.
   const addMember = async (email: string, role: string): Promise<string | null> => {
     setIsAdding(true);
     try {
@@ -56,7 +56,7 @@ export function useBoardMembers(boardId: string) {
   const removeMember = async (userId: string) => {
     setLoadingId(userId);
     try {
-      // apiClient จัดการเรื่อง credentials และเช็ค error status ให้
+      // apiClient handles credentials and error-status checking.
       await apiClient(`/boards/${boardId}/members/${userId}`, {
         method: "DELETE",
       });
@@ -72,7 +72,7 @@ export function useBoardMembers(boardId: string) {
   const changeRole = async (userId: string, role: string) => {
     setLoadingId(userId);
     try {
-      // apiClient จัดการเรื่อง Headers และแปลง data เป็น JSON ให้
+      // apiClient sets the headers and parses the JSON response.
       await apiClient(`/boards/${boardId}/members/${userId}`, {
         method: "PATCH",
         data: { role },

@@ -7,7 +7,7 @@ export function useBoardSettings(boardId: string) {
   const router = useRouter();
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // ฟังก์ชันอัปเดตข้อมูลทีละฟิลด์
+  // Update one field at a time.
   const updateField = async (fieldKey: string, value: string | number) => {
     const res = await fetch(`${API_URL}/boards/${boardId}`, {
       method: "PATCH",
@@ -20,7 +20,7 @@ export function useBoardSettings(boardId: string) {
     router.refresh();
   };
 
-  // ฟังก์ชันลบบอร์ด
+  // Delete the board.
   const deleteBoard = async () => {
     setIsDeleting(true);
     try {

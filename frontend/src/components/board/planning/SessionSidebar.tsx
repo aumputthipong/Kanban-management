@@ -17,7 +17,7 @@ interface Props {
   promotedItems: PlanningItem[];
 }
 
-// Right-side rail: an at-a-glance "สรุปรายการ" panel (a big total + the per-type
+// Right-side rail: an at-a-glance summary panel (a big total + the per-type
 // breakdown) on top, then the list of titles already promoted to Board.
 //
 // The breakdown overlaps the filter chips' numbers, but it reads differently
@@ -26,7 +26,7 @@ interface Props {
 // rather than a filter control.
 export function SessionSidebar({ stats, promotedItems }: Props) {
   // Everything still "in the note" (live items + already promoted), matching the
-  // "ทั้งหมด" filter — paused items have their own line below.
+  // "All" filter — paused items have their own line below.
   const total = stats.REQ + stats.DEC + stats.Q + stats.promoted;
 
   return (

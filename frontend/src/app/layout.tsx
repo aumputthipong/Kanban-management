@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Turtask", // เปลี่ยนชื่อเว็บตรงนี้
+  title: "Turtask",
   description: "Project Task board management system",
   icons: {
     icon: "/Turtask.png",

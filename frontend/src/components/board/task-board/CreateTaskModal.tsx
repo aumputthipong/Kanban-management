@@ -94,7 +94,7 @@ export function CreateTaskModal({ onClose, onCreate, defaultColumnId }: Props) {
   const [columnId, setColumnId] = useState(
     () => defaultColumnId ?? todoColumns[0]?.id ?? "",
   );
-  // Default the assignee to the creator — the common case. "ยังไม่ระบุ" (null) is
+  // Default the assignee to the creator — the common case. "Unassigned" (null) is
   // a deliberate click, never the silent default.
   const [assigneeId, setAssigneeId] = useState<string | null>(currentUserId);
   const [priority, setPriority] = useState<string | null>(null);

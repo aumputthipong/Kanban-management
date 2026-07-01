@@ -31,7 +31,7 @@ export function BoardHeader({ title = "Project Board" }: BoardHeaderProps) {
   const displayTitle = boardMeta?.title || title;
   const accent = boardColor(boardMeta?.color);
 
-  // Base URL สำหรับบอร์ดนี้
+  // Base URL for this board.
   const basePath = `/board/${boardId}`;
 
   return (

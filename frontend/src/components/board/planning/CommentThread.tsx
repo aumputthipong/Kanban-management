@@ -5,7 +5,7 @@
 // posts wrap naturally next to the parent item without taking over the
 // session view.
 //
-// Deleted comments render as italic "ถูกลบแล้ว" with the original author
+// Deleted comments render as an italic "deleted" placeholder with the original author
 // + timestamp so the thread position stays stable (no scroll jumps when
 // someone removes a row). Edit / delete icons are own-comment-only —
 // permission is enforced on the server too (404 if non-author tries).

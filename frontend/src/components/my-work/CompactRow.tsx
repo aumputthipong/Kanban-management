@@ -34,7 +34,7 @@ function overdueDays(due: string): number {
 }
 
 // Thai-first due label. Today + overdue are special-cased so the dense rows
-// read in Thai ("วันนี้" / "เลย N วัน"); future dates fall back to the shared
+// rendered in Thai ("today" / "N days overdue"); future dates fall back to the shared
 // helper used elsewhere in the app.
 function dueText(card: MyWorkCard): string {
   if (card.group === "today") return "วันนี้";

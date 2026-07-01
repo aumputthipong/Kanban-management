@@ -4,7 +4,7 @@
 // for the two-pane task modal (design A · "clean default").
 //
 // Default/empty state keeps the modal quiet: both fields collapse into a
-// "เพิ่มเติม (ถ้าต้องการ)" row of ghost "+ Add" buttons. A field expands into a
+// "more (optional)" row of ghost "+ Add" buttons. A field expands into a
 // tinted card (with a remove affordance) only when the user opts in OR the
 // card already carries that value. Read-only viewers see filled fields only —
 // never the ghosts.

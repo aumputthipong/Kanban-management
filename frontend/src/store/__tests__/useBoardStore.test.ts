@@ -38,7 +38,7 @@ function makeColumn(overrides: Partial<Column> = {}): Column {
   };
 }
 
-// reset store ก่อนแต่ละ test เพื่อไม่ให้ state รั่วข้ามกัน
+// reset the store before each test so state doesn't leak between them
 beforeEach(() => {
   useBoardStore.setState({
     columns: [],
@@ -171,8 +171,8 @@ describe("moveCard", () => {
     useBoardStore.getState().moveCard("card-1", "col-2", 65536, true, null);
 
     const state = useBoardStore.getState();
-    expect(state.columns[0].cards).toHaveLength(0); // col-1 ว่าง
-    expect(state.columns[1].cards).toHaveLength(1); // col-2 มีการ์ด
+    expect(state.columns[0].cards).toHaveLength(0); // col-1 empty
+    expect(state.columns[1].cards).toHaveLength(1); // col-2 has the card
     expect(state.columns[1].cards[0].is_done).toBe(true);
   });
 
@@ -183,7 +183,7 @@ describe("moveCard", () => {
     const col2 = makeColumn({ id: "col-2", cards: [card2] });
     useBoardStore.setState({ columns: [col1, col2] });
 
-    // ย้าย card-1 ไป col-2 ด้วย position 200 (ต้องอยู่ท้าย)
+    // move card-1 to col-2 at position 200 (should land last)
     useBoardStore.getState().moveCard("card-1", "col-2", 200);
 
     const sorted = useBoardStore.getState().columns[1].cards;
@@ -240,8 +240,8 @@ describe("addColumnToStore", () => {
     useBoardStore.getState().addColumnToStore(col2);
 
     const cols = useBoardStore.getState().columns;
-    expect(cols[0].id).toBe("col-2"); // position 100 ก่อน
-    expect(cols[1].id).toBe("col-1"); // position 200 หลัง
+    expect(cols[0].id).toBe("col-2"); // position 100 first
+    expect(cols[1].id).toBe("col-1"); // position 200 second
   });
 
   it("does not add a duplicate column", () => {

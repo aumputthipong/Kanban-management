@@ -33,7 +33,6 @@ export function useDashboardStats() {
     const allCards: ExtendedCard[] = columns.flatMap((col) => col.cards);
     const totalCards = allCards.length;
 
-    // หากยังไม่มีการ์ดเลย ให้ส่งค่าว่างกลับไป
     if (totalCards === 0) {
       return {
         totalCards: 0,
@@ -58,7 +57,7 @@ export function useDashboardStats() {
     const weekEnd = new Date(today);
     weekEnd.setDate(today.getDate() + 7);
 
-    // สมมติว่าคอลัมน์สุดท้ายคือ Done
+    // Assume the last column is Done.
     const doneColumnId = columns.length > 0 ? columns[columns.length - 1].id : null;
 
     let doneCount = 0;
@@ -96,7 +95,6 @@ export function useDashboardStats() {
         assigneeCount[card.assignee_id].active++;
       }
 
-      // ตรวจสอบ Due Date
       if (card.due_date && !isDone) {
         const dueDate = new Date(card.due_date);
         dueDate.setHours(0, 0, 0, 0);
@@ -115,7 +113,7 @@ export function useDashboardStats() {
         }
       }
 
-      // ตรวจสอบ Stale Tasks (งานที่ไม่ขยับเกิน 7 วัน)
+      // Stale: not moved in over 7 days.
       if (card.updated_at && !isDone) {
         const updatedAt = new Date(card.updated_at);
         const daysDiff = (today.getTime() - updatedAt.getTime()) / (1000 * 3600 * 24);
@@ -125,17 +123,17 @@ export function useDashboardStats() {
 
     const progress = Math.round((doneCount / totalCards) * 100);
 
-    // ประมวลผล Zero-Config Insights
+    // Build the zero-config insight strings.
     const insights: string[] = [];
 
-    // 1. วิเคราะห์โอกาสเสร็จทันเวลา
+    // On-track vs at-risk.
     if (progress >= 60) {
       insights.push(`Project is on track with a high completion rate (${progress}% done).`);
     } else if (overdueCards.length > totalCards * 0.2) {
       insights.push(`Project is at risk: ${overdueCards.length} tasks are currently overdue.`);
     }
 
-    // 2. วิเคราะห์คอขวด (Workload Bottleneck)
+    // Workload bottleneck.
     const activeTasks = totalCards - doneCount;
     if (activeTasks > 0) {
       let maxAssignee = { name: "", count: 0 };
@@ -151,12 +149,12 @@ export function useDashboardStats() {
       }
     }
 
-    // 3. วิเคราะห์งานที่ถูกแช่ (Stale Tasks)
+    // Stale tasks.
     if (staleCount > 0) {
       insights.push(`Hidden bottleneck: ${staleCount} tasks haven't seen any movement in over 7 days.`);
     }
 
-    // สถิติการ์ดแต่ละ column สำหรับ Bottleneck Analysis
+    // Per-column counts for the bottleneck analysis.
     const columnStats = columns.map((col) => ({
       id: col.id,
       title: col.title,

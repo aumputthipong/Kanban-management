@@ -43,13 +43,13 @@ sqlc reads `database/queries.sql`, executes them against a real Postgres at code
 - zero ORM magic / N+1 surprises
 - queries you can copy-paste into `psql` to debug
 
-If a query gets ugly enough that hand-rolled SQL would help, write it as a service-level method that calls sqlc generated code under the hood — but don't reach for an ORM.
+If a query gets ugly enough that hand-rolled SQL would help, write it as a service-level method that calls sqlc generated code under the hood — but don't reach for an ORM. Full rationale: [ADR 0002](adr/0002-sqlc-over-orm.md).
 
 ### Permission model
 
 Three roles per board: `owner` > `manager` > `member` (see [`internal/core`](../backend/internal/core/)). Enforced in two layers:
 
-1. **Membership gate** — [`middleware.RequireBoardMember`](../backend/internal/middleware/board_access.go) returns 404 (not 403) if the caller is not a member. The 404 prevents enumeration of board IDs.
+1. **Membership gate** — [`middleware.RequireBoardMember`](../backend/internal/middleware/board_access.go) returns 404 (not 403) if the caller is not a member. The 404 prevents enumeration of board IDs ([ADR 0004](adr/0004-membership-gate-returns-404.md)).
 2. **Role gate** — [`middleware.RequireBoardRole(core.RoleManager)`](../backend/internal/middleware/board_role.go) returns 403 if the caller is a member but lacks the required role.
 
 Action matrix:
@@ -70,7 +70,7 @@ The frontend mirrors this matrix for UI gating (hide buttons), but the backend i
 
 ### WebSocket hub
 
-[`internal/websocket`](../backend/internal/websocket/) implements a simple hub with one channel per board. Each connection is bound to a `boardID` at handshake time; broadcasts only fan out to clients in that room. Activities (`ACTIVITY_CREATED`) are recorded server-side via [`ActivityService`](../backend/internal/service/activity_service.go) before the broadcast — single source of truth for the audit trail.
+[`internal/websocket`](../backend/internal/websocket/) implements a simple hub with one channel per board. Each connection is bound to a `boardID` at handshake time; broadcasts only fan out to clients in that room. Activities (`ACTIVITY_CREATED`) are recorded server-side via [`ActivityService`](../backend/internal/service/activity_service.go) before the broadcast — single source of truth for the audit trail. Hub state is in-memory and single-instance by design ([ADR 0003](adr/0003-single-instance-websocket-hub.md)).
 
 Failure modes:
 - **Client disconnect** → client's `useWebSocket` reconnects with exponential backoff (1s → 30s, 8 attempts).

@@ -3,7 +3,7 @@ import { Archive } from "lucide-react";
 import { StashTable } from "@/components/stash/StashTable";
 import { apiClient } from "@/lib/apiClient";
 
-// ตัวพิมพ์เล็กทั้งหมดตามที่ API ฝั่ง Go ส่งมา (stashed_at = เวลาที่เก็บเข้าคลัง)
+// All lowercase to match what the Go API returns (stashed_at = when it was stashed).
 export interface StashedBoard {
   id: string;
   title: string;

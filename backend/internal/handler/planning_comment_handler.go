@@ -37,7 +37,7 @@ func commentToResponse(row db.ListPlanningItemCommentsRow) dto.PlanningCommentRe
 		UpdatedAt:  row.UpdatedAt.Format(timeFormat),
 	}
 	// Soft-deleted rows surface deleted_at + nil body so the frontend can
-	// render italic "ถูกลบแล้ว" + the original author + time. Returning
+	// render a "deleted" placeholder + the original author + time. Returning
 	// the body even for deleted rows would leak content after delete.
 	if row.DeletedAt != nil {
 		ts := row.DeletedAt.Format(timeFormat)

@@ -7,7 +7,7 @@ import { API_URL } from "@/lib/constants";
 import { boardColor, BoardGlyph } from "@/lib/boardAppearance";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { TypeToConfirmDialog } from "@/components/ui/TypeToConfirmDialog";
-import type { StashedBoard } from "@/app/(app)/stash/page"; // ดึง Type มาจากหน้า page
+import type { StashedBoard } from "@/app/(app)/stash/page";
 
 interface StashTableProps {
   boards: StashedBoard[];

@@ -45,13 +45,13 @@ type PlanningSessionSummary struct {
 }
 
 type PlanningSessionDetail struct {
-	ID        string                `json:"id"`
-	BoardID   string                `json:"board_id"`
-	Title     string                `json:"title"`
-	Label     *string               `json:"label"`
-	MeetingAt *string               `json:"meeting_at"`
-	CreatedAt string                `json:"created_at"`
-	UpdatedAt string                `json:"updated_at"`
+	ID        string                 `json:"id"`
+	BoardID   string                 `json:"board_id"`
+	Title     string                 `json:"title"`
+	Label     *string                `json:"label"`
+	MeetingAt *string                `json:"meeting_at"`
+	CreatedAt string                 `json:"created_at"`
+	UpdatedAt string                 `json:"updated_at"`
 	Items     []PlanningItemResponse `json:"items"`
 }
 
@@ -100,7 +100,7 @@ type UpdatePlanningItemRequest struct {
 // CardSourceResponse describes which planning session/item a Kanban card
 // was promoted from. Returned by GET /api/cards/{cardID}/source — `null`
 // (not 404) when the card wasn't promoted from planning, so the modal can
-// render its "ที่มา" section conditionally without an error fork. The
+// render its "source" section conditionally without an error fork. The
 // pending_questions list is capped server-side (default 3) and excludes
 // dropped / already-promoted questions — only questions still worth
 // re-visiting are surfaced next to the resulting card.
@@ -131,7 +131,7 @@ type CardSourceQuestion struct {
 
 // PlanningCommentResponse is one row in an item's comment thread. Body is
 // nil when the comment has been soft-deleted — the UI renders that case
-// as italic "ถูกลบแล้ว" + the original author + time, so the thread's
+// as an italic "deleted" placeholder + the original author + time, so the thread's
 // position doesn't shift around as comments are removed.
 type PlanningCommentResponse struct {
 	ID         string  `json:"id"`

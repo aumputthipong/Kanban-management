@@ -3,13 +3,13 @@ import { Sidebar } from "@/components/layout/Sidebar";
 import { apiClient } from "@/lib/apiClient";
 import { API_URL } from "@/lib/constants";
 import type { Board } from "@/types/board";
-import { cookies } from "next/headers"; // 1. นำเข้า cookies
+import { cookies } from "next/headers";
 
 async function getBoards(): Promise<Board[]> {
   try {
     const cookieStore = await cookies();
 
-    // เรียกใช้ apiClient พร้อมแนบ Cookie และตั้งค่า cache
+    // Call apiClient with the cookie attached and cache configured.
     const boards = await apiClient<Board[]>("/boards", {
       cache: "no-store", 
       headers: {

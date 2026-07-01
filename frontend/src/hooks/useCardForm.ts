@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import type { Card, BoardMember, Tag } from "@/types/board";
 import { API_URL } from "@/lib/constants";
-import { FormState } from "../components/board/card-modal/CardDetailModal"; // หรือย้าย type FormState มาไว้ที่นี่
+import { FormState } from "../components/board/card-modal/CardDetailModal";
 
 function buildInitialForm(card: Card): FormState {
   return {
@@ -88,7 +88,7 @@ export function useCardForm(
     onCommit?.(cur);
   }, [card.title, onCommit]);
 
-  // Fetch รายชื่อ Member ใน Board
+  // Fetch the board's member list.
   useEffect(() => {
     if (!isOpen || !boardId) return;
     const fetchMembers = async () => {
@@ -104,7 +104,7 @@ export function useCardForm(
     fetchMembers();
   }, [isOpen, boardId]);
 
-  // Helper สำหรับ Update State (text/select inputs).
+  // Helper to update state (text/select inputs).
   //
   // Each field's handler is cached so its identity is STABLE across renders.
   // Without this, `handleChange("title")` returns a fresh closure every render,
@@ -122,7 +122,7 @@ export function useCardForm(
     return handler;
   }, [updateForm]);
 
-  // Setter สำหรับ tags (ไม่ผ่าน ChangeEvent เพราะเป็น array)
+  // Setter for tags (not via ChangeEvent since it's an array).
   const setTags = useCallback((tags: Tag[]) => {
     updateForm("tags", tags);
   }, [updateForm]);

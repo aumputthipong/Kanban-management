@@ -54,7 +54,7 @@ export function useDragActions() {
     if (!resolved) return;
     const { overColumnId, overCardId } = resolved;
 
-    // ref guard: ถ้าเราย้ายไป column นี้แล้ว ข้ามได้เลย (ป้องกัน loop)
+    // ref guard: skip if we've already moved to this column (prevents a loop).
     if (dragOverColumnRef.current === overColumnId) return;
 
     const currentCol = freshColumns.find((col) =>

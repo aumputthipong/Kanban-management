@@ -87,7 +87,7 @@ func (s *InviteService) GetActiveInvite(ctx context.Context, boardID string) (In
 	return InviteLink{Token: row.Token, ExpiresAt: row.ExpiresAt}, true, nil
 }
 
-// RevokeInvites turns off every active link for the board ("ปิดลิงก์").
+// RevokeInvites turns off every active invite link for the board.
 func (s *InviteService) RevokeInvites(ctx context.Context, boardID string) error {
 	return s.queries.RevokeActiveBoardInvites(ctx, boardID)
 }

@@ -21,8 +21,8 @@ export interface Card {
   completed_at: string | null;
   created_at: string | null;
   created_by: string | null;
-  total_subtasks: number;      // เพิ่ม — มาจาก COUNT
-  completed_subtasks: number;      // เพิ่ม — มาจาก COUNT
+  total_subtasks: number; // from COUNT
+  completed_subtasks: number; // from COUNT
   subtasks?: Subtask[];
   tags?: Tag[];
   // Free-text fields populated either by PromoteItem (copied from the source

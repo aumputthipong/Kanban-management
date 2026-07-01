@@ -195,7 +195,7 @@ export function useSessionItems(
     [showToast],
   );
 
-  // Direct per-row promote — the primary "→ ส่งขึ้น Board" action on a live
+  // Direct per-row promote — the primary "send to board" action on a live
   // row. Uses the same endpoint as the batch path, just for one item, so the
   // user can send a requirement up without the select-then-promote two-step.
   const promoteOne = useCallback(

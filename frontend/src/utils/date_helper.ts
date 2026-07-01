@@ -25,7 +25,7 @@ export const formatThaiDate = (dateStr: string) => {
   const date = new Date(dateStr);
   return date.toLocaleDateString("th-TH", {
     year: "numeric",
-    month: "long", // ใช้ "short" ถ้าต้องการตัวย่อเช่น เม.ย.
+    month: "long", // use "short" for an abbreviated month
     day: "numeric",
   });
 };

@@ -13,12 +13,12 @@ export async function getSession(): Promise<SessionUser | null> {
   if (!token) return null;
 
   try {
-    // decode JWT payload (Go verify แล้ว ไม่ต้อง verify ซ้ำ)
+    // Decode the JWT payload (already verified by Go; no need to re-verify).
     const payload = JSON.parse(
       Buffer.from(token.value.split(".")[1], "base64url").toString()
     );
 
-    // เช็ค expiry
+    // Check expiry.
     if (payload.exp && Date.now() / 1000 > payload.exp) return null;
 
     return payload as SessionUser;

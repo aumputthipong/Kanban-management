@@ -34,8 +34,8 @@ func ToStashedBoardDTOs(boards []db.GetStashedBoardsForOwnerRow) []dto.StashedBo
 }
 
 func ToSubtaskResponse(s db.CardSubtask) dto.SubtaskResponse {
-	// CreatedAt และ UpdatedAt เป็น *time.Time (nullable TIMESTAMPTZ)
-	// ใช้ deref ด้วย zero value ถ้า nil
+	// CreatedAt and UpdatedAt are *time.Time (nullable TIMESTAMPTZ); deref to
+	// the zero value when nil.
 	var createdAt, updatedAt time.Time
 	if s.CreatedAt != nil {
 		createdAt = *s.CreatedAt

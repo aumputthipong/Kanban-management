@@ -1,7 +1,5 @@
-// internal/websocket/handler_column.go
-//
-// Handlers สำหรับ WS message ในโดเมน column.
-// Handler รับ payload → validate → เรียก BoardCommandService → broadcast → record activity
+// Handlers for column-domain WS messages: each validates the payload, calls
+// BoardCommandService, broadcasts, and records an activity.
 package websocket
 
 import (

@@ -95,7 +95,7 @@ export function BoardsClient({ boards }: BoardsClientProps) {
   }, [boards, search, sortBy]);
 
   // "Started" vs "not started" mirrors the design's two groups. A board with
-  // zero cards renders in the muted "ยังไม่เริ่ม" group.
+  // zero cards renders in the muted "not started" group.
   const started = filtered.filter((b) => b.total_cards > 0);
   const notStarted = filtered.filter((b) => b.total_cards === 0);
 

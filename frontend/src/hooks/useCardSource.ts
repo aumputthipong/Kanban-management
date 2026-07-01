@@ -1,5 +1,5 @@
 // Fetches the planning origin of a card for the card detail modal's
-// "ที่มา" section. Backend responds with JSON `null` (not 404) when the
+// "source" section. Backend responds with JSON `null` (not 404) when the
 // card wasn't promoted from planning, so the loaded state has three
 // possible values: undefined (still loading), null (no source), or the
 // CardSource object.

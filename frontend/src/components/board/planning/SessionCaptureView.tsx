@@ -67,7 +67,7 @@ export function SessionCaptureView({ boardId, sessionId }: Props) {
   const [filter, setFilter] = useState<SessionFilter>(() => readFilterFromURL());
   const inputRef = useRef<HTMLInputElement | null>(null);
 
-  // Deep-link target from #item-<id> — when the card detail modal's "ที่มา"
+  // Deep-link target from #item-<id> — when the card detail modal's "source"
   // section links here, focus the source item so the user lands directly
   // on the row that became this card. Runs exactly once after items load.
   //

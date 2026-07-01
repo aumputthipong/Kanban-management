@@ -24,7 +24,7 @@ func TestComments_SoftDeletePreservesPosition(t *testing.T) {
 	// up — the thread's reading order is part of the conversation. The
 	// list endpoint returns deleted rows (with body intact at the SQL
 	// level; the handler nils it out before the response) so the UI can
-	// render them as "ถูกลบแล้ว" placeholders in their original slot.
+	// render them as "deleted" placeholders in their original slot.
 	ctx := context.Background()
 	pool := testutil.NewTestDB(t)
 	seed := testutil.NewSeed(t, pool)

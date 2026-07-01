@@ -1,7 +1,7 @@
 "use client";
 
 // ItemActionMenu — the row's secondary actions, folded into a single "⋯"
-// overflow menu so the row reads as one clear primary ("ส่งขึ้น Board") plus a
+// overflow menu so the row reads as one clear primary ("send to board") plus a
 // quiet "more" affordance, instead of a row of ambiguous grey icons.
 //
 // Each item carries a Thai text label (the bare icons were unreadable without

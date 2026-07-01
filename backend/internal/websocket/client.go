@@ -1,8 +1,6 @@
-// internal/websocket/client.go
-//
-// Connection lifecycle: upgrade HTTP → WebSocket, ReadPump, WritePump และ Client struct.
-// Responsibility: จัดการ connection อย่างเดียว — ไม่มี business logic หรือ DB calls.
-// Message routing อยู่ใน dispatcher.go / domain handlers แยกเป็นไฟล์ handler_*.go
+// Connection lifecycle: HTTP → WebSocket upgrade, ReadPump, WritePump, and the
+// Client struct. This file manages connections only — no business logic or DB
+// calls. Message routing lives in dispatcher.go and the handler_*.go files.
 package websocket
 
 import (

@@ -469,7 +469,7 @@ function defaultSessionTitle() {
 // A session is "not yet named" while it still carries the date-based title
 // minted by defaultSessionTitle ("Note <date>") — the row uses this to nudge
 // the user to give it a real name instead of just showing a quiet pencil.
-// The legacy Thai prefix ("บันทึก <date>") is still matched so notes created
+// The legacy Thai note-title prefix is still matched so notes created
 // before the rename keep behaving as auto-titled.
 function isAutoTitle(title: string) {
   return /^(Note|บันทึก)\s+\d/.test(title.trim());

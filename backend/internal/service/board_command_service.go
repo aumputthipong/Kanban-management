@@ -1,9 +1,6 @@
-// internal/service/board_command_service.go
-//
-// BoardCommandService รวม write-operations ที่ถูกเรียกจาก WebSocket layer:
-// การย้าย/สร้าง/ลบ/อัปเดต card, การจัดการ column, และ subtask write ops.
-// แยกออกจาก BoardService เพื่อไม่ให้ BoardService ใหญ่เกินไป
-// และเพื่อให้ WS handlers ไม่ต้องผูกกับ *db.Queries โดยตรง
+// BoardCommandService holds the write operations invoked from the WebSocket
+// layer (card move/create/delete/update, column and subtask writes). It is
+// split from BoardService so WS handlers don't depend on *db.Queries directly.
 package service
 
 import (
@@ -100,13 +97,10 @@ func (s *BoardCommandService) MoveCard(ctx context.Context, cardID, newColumnID 
 	return MoveCardResult{CardTitle: title, IsDone: isDone, CompletedAt: completedAt}, nil
 }
 
-// CreateCardWS — สร้าง card ผ่าน WS flow; คำนวณ position ให้ถ้า frontend ไม่ส่งมา.
-// ใช้ชื่อ WS เพื่อไม่ชนกับ BoardService.CreateCard ที่มีอยู่แล้ว
-//
-// assigneeID / dueDate / description เป็น optional (nil = ไม่ระบุ) และ
-// subtaskTitles เป็น list ชื่อ subtask ที่ Create Task modal แนบมา. card +
-// subtasks ถูกสร้างใน transaction เดียว — ถ้า subtask ใดล้ม card จะ rollback
-// ด้วย (ไม่เหลือ card ที่ subtask ไม่ครบ). quick-add ส่ง nil/empty หมด.
+// CreateCardWS creates a card through the WS flow, computing a position if the
+// client sent none. The card and its subtasks are created in one transaction,
+// so a failed subtask rolls the card back too. Optional fields are nil when
+// unset; quick-add passes nil/empty for all of them.
 func (s *BoardCommandService) CreateCardWS(ctx context.Context, columnID, creatorID, title, priority string, position float64, assigneeID, dueDate, description *string, subtaskTitles []string) (db.CreateCardRow, []db.CardSubtask, error) {
 	if position <= 0 {
 		maxPos, err := s.queries.GetMaxPositionInColumn(ctx, columnID)
@@ -161,7 +155,7 @@ func (s *BoardCommandService) CreateCardWS(ctx context.Context, columnID, creato
 	return card, subtasks, nil
 }
 
-// DeleteCard — คืน title ของ card ก่อนลบ เพื่อใช้เขียน activity
+// DeleteCard returns the card title before deleting it, for the activity log.
 func (s *BoardCommandService) DeleteCard(ctx context.Context, cardID string) (string, error) {
 	var title string
 	if card, err := s.queries.GetCard(ctx, cardID); err == nil {
@@ -173,7 +167,7 @@ func (s *BoardCommandService) DeleteCard(ctx context.Context, cardID string) (st
 	return title, nil
 }
 
-// UpdateCardBasicParams — field set ที่ WS layer update (ไม่รวม tags)
+// UpdateCardBasicParams is the field set the WS layer updates (tags excluded).
 type UpdateCardBasicParams struct {
 	ID             string
 	Title          string
@@ -246,8 +240,9 @@ func (s *BoardCommandService) ToggleCardDone(ctx context.Context, cardID, boardI
 // Column operations
 // -----------------------------
 
-// CreateColumn — insert column ใหม่ก่อน DONE column ถ้ามี.
-// category + color มาจาก Create-column modal (quick path ส่ง "TODO" + nil).
+// CreateColumn inserts a new column before the DONE column if one exists.
+// category and color come from the create-column modal (quick path passes
+// "TODO" and nil).
 func (s *BoardCommandService) CreateColumn(ctx context.Context, boardID, title, category string, color *string) (db.CreateColumnRow, error) {
 	if category != "DONE" {
 		category = "TODO"
@@ -259,7 +254,7 @@ func (s *BoardCommandService) CreateColumn(ctx context.Context, boardID, title, 
 
 	var position float64
 	if err != nil {
-		// ไม่มี DONE column → ต่อท้ายปกติ
+		// No DONE column — append at the end.
 		maxPos, _ := s.queries.GetMaxColumnPositionInBoard(ctx, boardID)
 		if v, ok := maxPos.(float64); ok {
 			position = v + wsPositionGap

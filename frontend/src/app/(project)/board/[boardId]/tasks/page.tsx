@@ -86,7 +86,7 @@ export default function KanbanPage({ params }: PageProps) {
   const { boardId } = use(params);
   const setTarget = useCardHighlightStore((s) => s.setTarget);
 
-  // Deep link from My Work ("เปิดในบอร์ด" → ?card=<id>): flag the card for the
+  // Deep link from My Work (open-in-board → ?card=<id>): flag the card for the
   // highlight, then strip the param so a reload/back doesn't re-trigger it.
   // Reads window.location directly to avoid a useSearchParams Suspense boundary.
   useEffect(() => {

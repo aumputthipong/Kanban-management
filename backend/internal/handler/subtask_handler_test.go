@@ -108,7 +108,7 @@ func TestGetSubtasks_MissingCardID(t *testing.T) {
 	svc := &mock.MockSubtaskService{}
 	h := NewSubtaskHandler(svc)
 	req := httptest.NewRequest(http.MethodGet, "/cards/subtasks", nil)
-	// ไม่ inject chiCtx → chi.URLParam returns ""
+	// No chiCtx injected → chi.URLParam returns "".
 	w := httptest.NewRecorder()
 
 	httputil.MakeHandler(h.GetSubtasks)(w, req)
@@ -160,7 +160,7 @@ func TestGetSubtask_MissingSubtaskID(t *testing.T) {
 	svc := &mock.MockSubtaskService{}
 	h := NewSubtaskHandler(svc)
 	req := httptest.NewRequest(http.MethodGet, "/cards/"+validCardID+"/subtasks/", nil)
-	// ไม่ inject chiCtx → chi.URLParam returns ""
+	// No chiCtx injected → chi.URLParam returns "".
 	w := httptest.NewRecorder()
 
 	httputil.MakeHandler(h.GetSubtask)(w, req)
@@ -214,7 +214,7 @@ func TestUpdateSubtask_MissingSubtaskID(t *testing.T) {
 	h := NewSubtaskHandler(svc)
 	body := strings.NewReader(`{"is_done":true}`)
 	req := httptest.NewRequest(http.MethodPatch, "/cards/"+validCardID+"/subtasks/", body)
-	// ไม่ inject chiCtx → chi.URLParam returns ""
+	// No chiCtx injected → chi.URLParam returns "".
 	w := httptest.NewRecorder()
 
 	httputil.MakeHandler(h.UpdateSubtask)(w, req)
@@ -280,7 +280,7 @@ func TestDeleteSubtask_MissingSubtaskID(t *testing.T) {
 	svc := &mock.MockSubtaskService{}
 	h := NewSubtaskHandler(svc)
 	req := httptest.NewRequest(http.MethodDelete, "/cards/"+validCardID+"/subtasks/", nil)
-	// ไม่ inject chiCtx → chi.URLParam returns ""
+	// No chiCtx injected → chi.URLParam returns "".
 	w := httptest.NewRecorder()
 
 	httputil.MakeHandler(h.DeleteSubtask)(w, req)

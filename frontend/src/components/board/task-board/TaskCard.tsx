@@ -46,7 +46,7 @@ export const TaskCard = memo(function TaskCard({
   const [isDetailOpen, setIsDetailOpen] = useState(false);
 
   // Deep-link highlight: when this card is the navigation target (e.g. opened
-  // from My Work's "เปิดในบอร์ด"), scroll it into view and hold a brief ring so
+  // from My Work's open-in-board), scroll it into view and hold a brief ring so
   // the user can spot it, then clear the one-shot signal.
   const isHighlighted = useCardHighlightStore((s) => s.targetId === card.id);
   const clearHighlight = useCardHighlightStore((s) => s.setTarget);

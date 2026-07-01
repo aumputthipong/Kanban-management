@@ -4,7 +4,7 @@
 // optional free-text note. It used to carry two structured dev fields
 // (acceptance_criteria + implementation_note); during planning capture those
 // were rarely filled and read as over-engineered for a fast jot-it-down
-// surface, so they were collapsed into one generic "รายละเอียด" note. The
+// surface, so they were collapsed into one generic "details" note. The
 // detailed acceptance-criteria / impl-note split still lives on the card
 // (the work phase), where it belongs.
 //

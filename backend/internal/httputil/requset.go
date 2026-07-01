@@ -107,8 +107,8 @@ func tagToMessage(fe validator.FieldError) string {
 	}
 }
 
-// GetUUIDParam ตรวจสอบว่า URL param เป็น UUID ที่ valid แล้วคืนค่าเป็น string
-// ใช้ uuid.Parse เพื่อ validate format แต่คืนเป็น string เพราะ sqlc ใช้ string สำหรับ ID
+// GetUUIDParam validates that the URL param is a well-formed UUID and returns
+// it as a string (sqlc uses string IDs, so uuid.Parse only checks the format).
 func GetUUIDParam(r *http.Request, key string) (string, error) {
 	paramStr := chi.URLParam(r, key)
 	if paramStr == "" {

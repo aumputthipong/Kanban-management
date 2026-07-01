@@ -11,7 +11,7 @@ import { useEscapeKey } from "@/hooks/useEscapeKey";
 // reuses the board's active link, or quietly mints one if there's none/it has
 // expired — so the manager never has to think about the link's lifecycle: open
 // → copy. The link stays hidden behind the button until intentionally opened
-// (less leak on screen-share). "สร้างลิงก์ใหม่" is a quiet escape hatch to
+// (less leak on screen-share). "New link" is a quiet escape hatch to
 // invalidate the old link if it ever gets out.
 export function InviteLinkModal({
   boardId,

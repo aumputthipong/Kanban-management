@@ -33,7 +33,7 @@ function statusDot(status: MyWorkStatus): string {
 // Read-focused detail view for a My Work task — opens in place of navigating to
 // the board. Basics render instantly from the row's data; description /
 // subtasks / tags are enriched via GET /cards/:id. Full editing stays on the
-// board ("เปิดในบอร์ด") so this modal needs none of the board's WS/store wiring.
+// board (open-in-board) so this modal needs none of the board's WS/store wiring.
 export function MyWorkTaskModal({ card, boardMeta, onClose, onComplete, onSnooze }: Props) {
   const [detail, setDetail] = useState<Card | null>(null);
   const [loading, setLoading] = useState(true);

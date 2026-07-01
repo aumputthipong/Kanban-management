@@ -21,7 +21,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// chiCtx ฉีด URL params เข้า request context สำหรับ chi router
+// chiCtx injects URL params into the request context for the chi router.
 func chiCtx(r *http.Request, pairs ...string) *http.Request {
 	rctx := chi.NewRouteContext()
 	for i := 0; i+1 < len(pairs); i += 2 {
@@ -30,7 +30,7 @@ func chiCtx(r *http.Request, pairs ...string) *http.Request {
 	return r.WithContext(context.WithValue(r.Context(), chi.RouteCtxKey, rctx))
 }
 
-// withUserID ฉีด userID เข้า context เหมือน middleware ทำ
+// withUserID injects userID into the context the way the middleware does.
 func withUserID(r *http.Request, userID string) *http.Request {
 	return r.WithContext(context.WithValue(r.Context(), middleware.UserIDKey, userID))
 }
@@ -244,7 +244,7 @@ func TestCreateBoard_Unauthorized(t *testing.T) {
 	h := NewBoardHandler(svc, nil, nil)
 	body := strings.NewReader(`{"title":"My Board"}`)
 	req := httptest.NewRequest(http.MethodPost, "/boards", body)
-	// ไม่ใส่ userID ใน context → unauthorized
+	// No userID in context → unauthorized.
 	w := httptest.NewRecorder()
 
 	httputil.MakeHandler(h.CreateBoard)(w, req)
@@ -513,7 +513,7 @@ func TestCreateCard_Unauthorized(t *testing.T) {
 	h := NewBoardHandler(svc, nil, nil)
 	body := strings.NewReader(`{"column_id":"` + validColumnID + `","title":"Test Card"}`)
 	req := httptest.NewRequest(http.MethodPost, "/cards", body)
-	// ไม่ใส่ userID ใน context
+	// No userID in context.
 	w := httptest.NewRecorder()
 
 	httputil.MakeHandler(h.CreateCard)(w, req)

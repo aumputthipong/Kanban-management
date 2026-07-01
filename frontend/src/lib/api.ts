@@ -36,7 +36,7 @@ export async function clientFetch<T>(
 ): Promise<T> {
   const res = await fetch(`${API_URL}${path}`, {
     ...options,
-    credentials: "include", // แนบ cookie อัตโนมัติ
+    credentials: "include", // attach the cookie automatically
     headers: {
       "Content-Type": "application/json",
       ...options.headers as Record<string, string>,

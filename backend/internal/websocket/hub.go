@@ -4,8 +4,9 @@ import (
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/service"
 )
 
-// Hub จัดการ client connections แยกเป็น room ตาม board ID.
-// Hub delegate write operations ให้ BoardCommandService — ไม่ถือ *db.Queries โดยตรง
+// Hub manages client connections grouped into one room per board ID. It
+// delegates write operations to BoardCommandService rather than holding
+// *db.Queries directly.
 type Hub struct {
 	rooms map[string]map[*Client]bool
 
@@ -63,21 +64,18 @@ func (h *Hub) Run() {
 			}
 			return
 		case client := <-h.register:
-			// เช็คว่ามีห้องสำหรับ BoardID นี้หรือยัง ถ้ายังไม่มีให้สร้างใหม่
 			if _, ok := h.rooms[client.boardID]; !ok {
 				h.rooms[client.boardID] = make(map[*Client]bool)
 			}
-			// เอา Client เข้าห้องที่ถูกต้อง
 			h.rooms[client.boardID][client] = true
 
 		case client := <-h.unregister:
-			// เอา Client ออกจากห้อง
 			if clients, ok := h.rooms[client.boardID]; ok {
 				if _, ok := clients[client]; ok {
 					delete(clients, client)
 					close(client.send)
-					
-					// ถ้าห้องว่างเปล่าแล้ว (ไม่มีคนดูบอร์ดนี้) ให้ลบห้องทิ้งเพื่อคืน Memory (Best Practice)
+
+					// Drop the room once empty to free memory.
 					if len(clients) == 0 {
 						delete(h.rooms, client.boardID)
 					}
@@ -85,13 +83,13 @@ func (h *Hub) Run() {
 			}
 
 		case broadcastMsg := <-h.broadcast:
-			// ดึงรายชื่อ Client เฉพาะคนที่อยู่ใน BoardID นี้
 			if clients, ok := h.rooms[broadcastMsg.BoardID]; ok {
 				for client := range clients {
 					select {
 					case client.send <- broadcastMsg.Message:
 					default:
-						// ถ้าส่งไม่ได้ (เช่น เน็ตหลุด) ให้เตะออกจากห้อง
+						// Slow or dead client: drop it so a full send buffer
+						// can't block the hub.
 						close(client.send)
 						delete(clients, client)
 					}

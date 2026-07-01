@@ -1,7 +1,6 @@
-// internal/websocket/activity.go
-//
-// Helper สำหรับบันทึก activity และกระจายข่าว ACTIVITY_CREATED ให้ทุก client ในห้อง.
-// ถ้า record ล้มเหลวจะแค่ log — ไม่ล้มทั้ง flow เพราะ activity feed เป็น secondary concern
+// Helper that records an activity and broadcasts ACTIVITY_CREATED to every
+// client in the room. A failed record is only logged, not fatal to the flow —
+// the activity feed is a secondary concern.
 package websocket
 
 import (
@@ -58,5 +57,5 @@ func (c *Client) recordActivity(ctx context.Context, eventType, entityType strin
 	c.hub.broadcast <- BroadcastMessage{BoardID: c.boardID, Message: msgBytes}
 }
 
-// strPtr สำหรับแปลง literal string เป็น *string — ใช้เพื่อ pass entity ID เข้า recordActivity
+// strPtr returns a pointer to s, for passing entity IDs into recordActivity.
 func strPtr(s string) *string { return &s }

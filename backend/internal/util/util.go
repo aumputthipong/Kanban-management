@@ -9,7 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-// ParseTime แปลง string (ISO 8601 หรือ YYYY-MM-DD) เป็น time.Time
+// ParseTime parses an ISO 8601 or YYYY-MM-DD string, returning the zero time on failure.
 func ParseTime(s string) time.Time {
 	if s == "" {
 		return time.Time{}
@@ -21,7 +21,7 @@ func ParseTime(s string) time.Time {
 	return t
 }
 
-// StringToTimePtr แปลง string เป็น *time.Time (คืน nil ถ้า string ว่างหรือ parse ไม่ได้)
+// StringToTimePtr parses s to *time.Time, returning nil if empty or unparseable.
 func StringToTimePtr(s string) *time.Time {
 	if s == "" {
 		return nil
@@ -33,7 +33,7 @@ func StringToTimePtr(s string) *time.Time {
 	return &t
 }
 
-// PtrStringToTimePtr แปลง *string เป็น *time.Time
+// PtrStringToTimePtr converts *string to *time.Time.
 func PtrStringToTimePtr(s *string) *time.Time {
 	if s == nil {
 		return nil
@@ -41,7 +41,7 @@ func PtrStringToTimePtr(s *string) *time.Time {
 	return StringToTimePtr(*s)
 }
 
-// StringToPtr คืน nil ถ้า string ว่าง มิฉะนั้นคืน pointer ไปที่ string นั้น
+// StringToPtr returns nil for an empty string, otherwise a pointer to it.
 func StringToPtr(s string) *string {
 	if s == "" {
 		return nil
@@ -49,7 +49,7 @@ func StringToPtr(s string) *string {
 	return &s
 }
 
-// FloatToPgNumeric แปลง float64 เป็น pgtype.Numeric (ใช้สำหรับ budget, estimated_hours)
+// FloatToPgNumeric converts a float64 to pgtype.Numeric (budget, estimated_hours).
 func FloatToPgNumeric(f float64) pgtype.Numeric {
 	if f == 0 {
 		return pgtype.Numeric{Valid: false}
@@ -59,7 +59,7 @@ func FloatToPgNumeric(f float64) pgtype.Numeric {
 	return n
 }
 
-// PtrFloatToPgNumeric แปลง *float64 เป็น pgtype.Numeric
+// PtrFloatToPgNumeric converts *float64 to pgtype.Numeric.
 func PtrFloatToPgNumeric(f *float64) pgtype.Numeric {
 	if f == nil {
 		return pgtype.Numeric{Valid: false}
@@ -69,12 +69,11 @@ func PtrFloatToPgNumeric(f *float64) pgtype.Numeric {
 	return n
 }
 
-// PgNumericToFloat64Ptr แปลง pgtype.Numeric → *float64 (คืน nil ถ้า invalid)
+// PgNumericToFloat64Ptr converts pgtype.Numeric to *float64, returning nil if invalid.
 func PgNumericToFloat64Ptr(n pgtype.Numeric) *float64 {
 	if !n.Valid || n.NaN || n.Int == nil {
 		return nil
 	}
-	// ใช้ fmt.Sprintf ผ่าน pgtype เพื่อหลีกเลี่ยง nil pointer
 	text := fmt.Sprintf("%d", n.Int)
 	base, err := strconv.ParseFloat(text, 64)
 	if err != nil {
@@ -86,8 +85,7 @@ func PgNumericToFloat64Ptr(n pgtype.Numeric) *float64 {
 	return &base
 }
 
-// TimestamptzToTimePtr แปลง pgtype.Timestamptz → *time.Time
-// ใช้ตอนอ่านค่าจาก DB สำหรับ field ที่ยังเป็น pgtype (TIMESTAMP WITH TIME ZONE)
+// TimestamptzToTimePtr converts a pgtype.Timestamptz read from the DB to *time.Time.
 func TimestamptzToTimePtr(t pgtype.Timestamptz) *time.Time {
 	if !t.Valid {
 		return nil
@@ -95,8 +93,7 @@ func TimestamptzToTimePtr(t pgtype.Timestamptz) *time.Time {
 	return &t.Time
 }
 
-// TimeToTimestamptz แปลง *time.Time เป็น pgtype.Timestamptz
-// ใช้กับ field ที่ยังเป็น pgtype.Timestamptz (เช่น completed_at ที่ใช้ TIMESTAMP WITH TIME ZONE ใน schema)
+// TimeToTimestamptz converts *time.Time to pgtype.Timestamptz for TIMESTAMPTZ columns.
 func TimeToTimestamptz(t *time.Time) pgtype.Timestamptz {
 	if t == nil {
 		return pgtype.Timestamptz{Valid: false}

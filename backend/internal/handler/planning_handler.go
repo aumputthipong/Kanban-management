@@ -549,7 +549,7 @@ func (h *PlanningHandler) PromoteItem(w http.ResponseWriter, r *http.Request) er
 
 // ─── Card source (reverse lookup) ──────────────────────────────────────────
 
-// GetCardSource powers the card detail modal's "ที่มา" section. It mounts
+// GetCardSource powers the card detail modal's "source" section. It mounts
 // under /api/cards/{cardID}/source — the same shape as /subtasks — and
 // returns 200 with body `null` for cards that weren't promoted from
 // planning, so the frontend can render the section conditionally without

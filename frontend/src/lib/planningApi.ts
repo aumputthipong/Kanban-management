@@ -81,7 +81,7 @@ export const planningApi = {
       { method: "POST", data: {} },
     ),
 
-  // Backlink lookup for the card detail modal's "ที่มา" section. Returns
+  // Backlink lookup for the card detail modal's "source" section. Returns
   // null when the card wasn't promoted from planning — apiClient passes
   // through the JSON-null body as JS null, so callers branch on `!source`.
   getCardSource: (cardId: string) =>
@@ -89,7 +89,7 @@ export const planningApi = {
 
   // Comment thread per item. List includes soft-deleted rows (with
   // body=null + deleted_at set) so the thread's position doesn't shift
-  // around as people delete — UI renders italic "ถูกลบแล้ว".
+  // around as people delete — the UI renders an italic "deleted" placeholder.
   listComments: (itemId: string) =>
     apiClient<PlanningComment[]>(`/planning/items/${itemId}/comments`),
 

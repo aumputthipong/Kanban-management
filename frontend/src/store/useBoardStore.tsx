@@ -76,7 +76,6 @@ interface BoardState {
   updateColumnInStore: (columnId: string, patch: Partial<Pick<Column, "title" | "category" | "color">>) => void;
 }
 
-// 3. สร้าง Store ด้วย Zustand (ตัวจัดการ State ที่ทำงานเร็วกว่า Redux และตั้งค่าง่ายกว่ามาก)
 export const useBoardStore = create<BoardState>((set) => ({
   columns: [],
   currentUserId: "",
@@ -118,7 +117,6 @@ export const useBoardStore = create<BoardState>((set) => ({
         cards: [...col.cards],
       }));
 
-      // ค้นหา card จากทุก column
       let fromColIndex = -1;
       let cardIndex = -1;
       for (let i = 0; i < newColumns.length; i++) {
@@ -135,17 +133,14 @@ export const useBoardStore = create<BoardState>((set) => ({
       const toColIndex = newColumns.findIndex((c) => c.id === toColumnId);
       if (toColIndex === -1) return state;
 
-      // ดึงการ์ดออกจาก column เดิม
       const [movedCard] = newColumns[fromColIndex].cards.splice(cardIndex, 1);
 
-      // อัปเดต fields
       movedCard.column_id = toColumnId;
       if (position !== undefined) movedCard.position = position;
       if (isDone !== undefined) movedCard.is_done = isDone;
       if (completedAt !== undefined)
         movedCard.completed_at = completedAt ?? null;
 
-      // เพิ่มการ์ดและ sort ตาม position
       newColumns[toColIndex].cards.push(movedCard);
       newColumns[toColIndex].cards.sort((a, b) => a.position - b.position);
 
@@ -154,18 +149,15 @@ export const useBoardStore = create<BoardState>((set) => ({
 
   addCardToStore: (newCard) =>
     set((state) => {
-      // 1. ตรวจสอบก่อนว่า ID นี้มีอยู่ในการ์ดใบไหนในทุก Column หรือยัง?
-      // ใช้ .some() เพื่อความรวดเร็วในการเช็ก
+      // Idempotent: ignore if a card with this id already exists (e.g. our own
+      // WS echo).
       const isAlreadyExists = state.columns.some((col) =>
         col.cards.some((card) => card.id === newCard.id),
       );
-
-      // 2. ถ้ามี ID นี้อยู่แล้ว ให้คืนค่า state เดิมกลับไป (ไม่ต้องอัปเดต)
       if (isAlreadyExists) {
         return state;
       }
 
-      // 3. ถ้ายังไม่มี (เป็นเคสที่คนอื่นสร้าง หรือเราเพิ่งได้รับครั้งแรก) ค่อยเพิ่มเข้าไป
       return {
         columns: state.columns.map((col) => {
           if (col.id === newCard.column_id) {
@@ -182,7 +174,6 @@ export const useBoardStore = create<BoardState>((set) => ({
     set((state) => ({
       columns: state.columns.map((col) => ({
         ...col,
-        // กรอง (filter) เอาเฉพาะการ์ดที่ ID ไม่ตรงกับตัวที่ถูกลบ ไว้ในคอลัมน์เดิม
         cards: col.cards.filter((card) => card.id !== cardId),
       })),
     })),
@@ -206,7 +197,6 @@ export const useBoardStore = create<BoardState>((set) => ({
       })),
     })),
 
-  // ✨ [เพิ่มใหม่]: Implementation ของ setSubtasksToCard
   setSubtasksToCard: (cardId, subtasks) =>
     set((state) => ({
       columns: state.columns.map((col) => ({
@@ -235,7 +225,7 @@ export const useBoardStore = create<BoardState>((set) => ({
                 st.id === subtaskId ? { ...st, ...updatedData } : st,
               )
             : card.subtasks;
-          // อัปเดต completed_subtasks count ถ้ามีการเปลี่ยน is_done
+          // Adjust the completed_subtasks count when is_done changed.
           let completedDelta = 0;
           if (updatedData.is_done !== undefined && card.subtasks) {
             const old = card.subtasks.find((st) => st.id === subtaskId);

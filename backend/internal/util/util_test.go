@@ -140,7 +140,7 @@ func TestPgNumericToFloat64Ptr(t *testing.T) {
 	})
 
 	t.Run("valid numeric with no exponent roundtrips correctly", func(t *testing.T) {
-		// สร้างผ่าน FloatToPgNumeric แล้วแปลงกลับ
+		// Build via FloatToPgNumeric then convert back.
 		n := FloatToPgNumeric(42.0)
 		result := PgNumericToFloat64Ptr(n)
 		require.NotNil(t, result)

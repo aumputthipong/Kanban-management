@@ -23,17 +23,10 @@ type boardContextKey string
 // the current board (set by RequireBoardMember, read via BoardRoleFromContext).
 const BoardRoleKey boardContextKey = "boardRole"
 
-// RequireBoardMember enforces that the authenticated user is a member of the
-// board referenced by the {boardID} URL parameter. It depends on RequireAuth
-// having already populated UserIDKey in the request context.
-//
-// On non-membership it returns 404 (rather than 403) — this is deliberate:
-// returning 403 would let an attacker enumerate valid board IDs by checking
-// which IDs flip from 404 to 403.
-//
-// On success it injects the user's role into the request context so a chained
-// RequireBoardRole middleware can do the privilege check without another
-// database round-trip.
+// RequireBoardMember enforces that the authenticated user (from RequireAuth) is
+// a member of the {boardID} board, returning 404 on failure and injecting the
+// caller's role into the context for a chained RequireBoardRole. The 404-not-403
+// choice is anti-enumeration: see docs/adr/0004-membership-gate-returns-404.md.
 func RequireBoardMember(svc service.BoardServicer) func(http.Handler) http.Handler {
 	return boardMembershipGate(svc.GetBoardMemberRole)
 }

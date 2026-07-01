@@ -1,21 +1,6 @@
-// internal/service/refresh_token_service.go
-//
-// Refresh-token rotation lives on AuthService because it operates on user
-// identity and is exercised from the same handlers as Register / Login /
-// OAuth. The flow:
-//
-//   1. Register / Login / OAuth → IssueRefreshToken stores sha256(raw) in DB,
-//      returns the raw token to the caller for SetRefreshCookie.
-//   2. POST /api/auth/refresh → RotateRefreshToken looks up by hash. If the
-//      token is unknown / expired / already revoked it errors. On the
-//      already-revoked case we treat it as replay and revoke every refresh
-//      token belonging to that user — a stolen token can be used at most once
-//      before the genuine user's next refresh forces both sides out.
-//   3. Logout → RevokeRefreshToken marks the single row revoked.
-//
-// Access-token issuance is *not* in this service; it stays in the token
-// package which is shared with middleware. Service only manages the
-// long-lived, server-side side of the session.
+// Refresh-token rotation (issue / rotate-on-refresh / revoke) lives on
+// AuthService; access-token issuance stays in the token package.
+// See docs/adr/0001-opaque-refresh-tokens.md.
 package service
 
 import (

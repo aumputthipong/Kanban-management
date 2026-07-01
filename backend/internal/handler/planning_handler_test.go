@@ -436,7 +436,7 @@ func TestUpdateItem_RetypeOnLiveItem_RecordsPreviousType(t *testing.T) {
 	// Q → DEC on a live item is the common "we finally decided this" flow.
 	// Activity payload must carry both the new type (item.Type) AND the
 	// previous_type so the chip-history tooltip can render
-	// "เคยเป็น Q · เปลี่ยนเมื่อ X ที่แล้ว" without a second query.
+	// "previously Q, changed X ago" without a second query.
 	plan, _, act, h := newPromoteTestRig()
 	stubItemAndBoard(plan, func(it *db.PlanningItem) { it.Type = "Q" })
 	plan.UpdateItemFn = func(ctx context.Context, itemID string, itemType, title *string, description *string, status *string, position *float64, acceptanceCriteria, implementationNote *string) (db.PlanningItem, error) {

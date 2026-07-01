@@ -18,8 +18,8 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// requireBoardMembership ตรวจว่า userID เป็น member ของ boardID แล้วคืน role
-// ถ้าไม่ใช่ member → คืน 404 (เลียนแบบ RequireBoardMember middleware)
+// requireBoardMembership checks that userID is a member of boardID and returns
+// the role, mirroring the RequireBoardMember middleware: non-members get 404.
 func (h *BoardHandler) requireBoardMembership(r *http.Request, boardID, userID string) (core.BoardRole, *httputil.APIError) {
 	role, err := h.boardService.GetBoardMemberRole(r.Context(), boardID, userID)
 	if err != nil {
@@ -134,8 +134,8 @@ func (h *BoardHandler) UpdateCard(w http.ResponseWriter, r *http.Request) error 
 		return apiErr
 	}
 
-	// Creator / assignee สามารถแก้ card ตัวเองได้เสมอ
-	// คนอื่นต้องมีสิทธิ์ manager+
+	// Creator / assignee can always edit their own card; everyone else needs
+	// manager or above.
 	isOwnCard := (existing.CreatedBy != nil && *existing.CreatedBy == userIDStr) ||
 		(existing.AssigneeID != nil && *existing.AssigneeID == userIDStr)
 	if !isOwnCard && role != core.RoleOwner && role != core.RoleManager {

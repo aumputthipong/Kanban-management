@@ -114,8 +114,8 @@ func (h *BoardHandler) UpdateMemberRole(w http.ResponseWriter, r *http.Request) 
 	return nil
 }
 
-// LeaveBoard ลบ user ปัจจุบันออกจาก board ตัวเอง
-// owner ต้องโอน ownership ก่อน ถึงจะออกได้
+// LeaveBoard removes the current user from the board. An owner must transfer
+// ownership before they can leave.
 func (h *BoardHandler) LeaveBoard(w http.ResponseWriter, r *http.Request) error {
 	boardID, err := httputil.GetUUIDParam(r, "boardID")
 	if err != nil {
@@ -142,4 +142,3 @@ func (h *BoardHandler) LeaveBoard(w http.ResponseWriter, r *http.Request) error 
 	w.WriteHeader(http.StatusNoContent)
 	return nil
 }
-

@@ -12,9 +12,9 @@ import (
 )
 
 var (
-	ErrEmailTaken     = errors.New("email already in use")
-	ErrInvalidCreds   = errors.New("invalid email or password")
-	ErrOAuthOnly      = errors.New("account registered via OAuth, please use Google or GitHub")
+	ErrEmailTaken   = errors.New("email already in use")
+	ErrInvalidCreds = errors.New("invalid email or password")
+	ErrOAuthOnly    = errors.New("account registered via OAuth, please use Google or GitHub")
 )
 
 type AuthService struct {
@@ -30,29 +30,30 @@ type RegisterParams struct {
 	FullName string
 	Password string
 }
+
 func (s *AuthService) Register(ctx context.Context, arg RegisterParams) (db.User, error) {
-    _, err := s.queries.GetUserByEmail(ctx, arg.Email)
-    if err == nil {
-        // ถ้า err เป็น nil แปลว่า query สำเร็จ = เจอข้อมูลคนใช้ชื่่อนี้แล้ว
-        return db.User{}, ErrEmailTaken
-    }
-    hash, err := bcrypt.GenerateFromPassword([]byte(arg.Password), bcrypt.DefaultCost)
-    if err != nil {
-        return db.User{}, fmt.Errorf("hash password: %w", err)
-    }
+	_, err := s.queries.GetUserByEmail(ctx, arg.Email)
+	if err == nil {
+		// A nil error means the query found a user with this email already.
+		return db.User{}, ErrEmailTaken
+	}
+	hash, err := bcrypt.GenerateFromPassword([]byte(arg.Password), bcrypt.DefaultCost)
+	if err != nil {
+		return db.User{}, fmt.Errorf("hash password: %w", err)
+	}
 
-    user, err := s.queries.CreateUser(ctx, db.CreateUserParams{
-        Email:        arg.Email,
-        FullName:     arg.FullName,
-        PasswordHash: util.StringToPtr(string(hash)), 
-        Provider:     "credentials",
-        ProviderID:   nil, 
-    })
-    if err != nil {
-        return db.User{}, fmt.Errorf("create user: %w", err)
-    }
+	user, err := s.queries.CreateUser(ctx, db.CreateUserParams{
+		Email:        arg.Email,
+		FullName:     arg.FullName,
+		PasswordHash: util.StringToPtr(string(hash)),
+		Provider:     "credentials",
+		ProviderID:   nil,
+	})
+	if err != nil {
+		return db.User{}, fmt.Errorf("create user: %w", err)
+	}
 
-    return user, nil
+	return user, nil
 }
 
 func (s *AuthService) Login(ctx context.Context, email, password string) (db.User, error) {
@@ -66,12 +67,12 @@ func (s *AuthService) Login(ctx context.Context, email, password string) (db.Use
 	}
 
 	if user.PasswordHash == nil {
-        return db.User{}, ErrInvalidCreds
-    }
+		return db.User{}, ErrInvalidCreds
+	}
 
-if err := bcrypt.CompareHashAndPassword([]byte(*user.PasswordHash), []byte(password)); err != nil {
-        return db.User{}, ErrInvalidCreds
-    }
+	if err := bcrypt.CompareHashAndPassword([]byte(*user.PasswordHash), []byte(password)); err != nil {
+		return db.User{}, ErrInvalidCreds
+	}
 
 	return user, nil
 }
@@ -85,7 +86,7 @@ func (s *AuthService) UpsertOAuthUser(ctx context.Context, email, fullName, prov
 		Email:      email,
 		FullName:   fullName,
 		Provider:   provider,
-		ProviderID: util.StringToPtr(providerID), 
+		ProviderID: util.StringToPtr(providerID),
 	})
 	if err != nil {
 		return db.User{}, fmt.Errorf("upsert oauth user: %w", err)

@@ -1,18 +1,16 @@
-// internal/websocket/dispatcher.go
-//
-// รับผิดชอบการ route WebSocket message ไปยัง handler ที่ถูกต้องตาม type.
-// แยกออกจาก client.go (connection management) เพื่อให้แต่ละไฟล์มี responsibility เดียว
+// Routes incoming WebSocket messages to the correct handler by type. Split from
+// client.go (connection management) so each file has a single responsibility.
 package websocket
 
 import "log"
 
-// WSMessage คือ envelope มาตรฐานของทุก message ระหว่าง client <-> server
+// WSMessage is the standard envelope for every client <-> server message.
 type WSMessage struct {
 	Type    string                 `json:"type"`
 	Payload map[string]interface{} `json:"payload"`
 }
 
-// dispatch route ข้อความที่เข้ามาไปยัง handler ของ domain ที่สอดคล้องกัน
+// dispatch routes an incoming message to the handler for its domain.
 func (c *Client) dispatch(wsMsg WSMessage, rawMsg []byte) {
 	switch wsMsg.Type {
 	case "CARD_MOVED":

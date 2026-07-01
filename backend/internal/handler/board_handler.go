@@ -142,7 +142,7 @@ func (h *BoardHandler) CreateBoard(w http.ResponseWriter, r *http.Request) error
 	if !ok || userIDStr == "" {
 		return httputil.NewAPIError(http.StatusUnauthorized, "Unauthorized", nil)
 	}
-	// validate UUID format ของ userID จาก token
+	// Validate the UUID format of userID from the token.
 	if _, err := uuid.Parse(userIDStr); err != nil {
 		return httputil.NewAPIError(http.StatusInternalServerError, "Invalid user ID in token", err)
 	}
@@ -220,7 +220,7 @@ func (h *BoardHandler) StashBoard(w http.ResponseWriter, r *http.Request) error 
 	return nil
 }
 
-// GetStashedBoards lists stashed boards owned by the caller (คลังบอร์ด).
+// GetStashedBoards lists stashed boards owned by the caller.
 //
 // @Summary  List stashed boards
 // @Tags     stash

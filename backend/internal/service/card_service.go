@@ -9,8 +9,8 @@ import (
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/util"
 )
 
-// UpdateCardParams คือข้อมูลสำหรับอัพเดต card ที่รับมาจาก handler
-// ใช้ string สำหรับ ID, *string สำหรับ nullable fields
+// UpdateCardParams is the card-update input passed from the handler: string
+// IDs, *string for nullable fields.
 type UpdateCardParams struct {
 	ID             string
 	Title          string

@@ -10,15 +10,15 @@ import (
 )
 
 const (
-	EventCardCreated      = "card.created"
-	EventCardMoved        = "card.moved"
-	EventCardUpdated      = "card.updated"
-	EventCardDeleted      = "card.deleted"
-	EventCardDoneToggled  = "card.done_toggled"
-	EventColumnCreated    = "column.created"
-	EventColumnDeleted    = "column.deleted"
-	EventColumnRenamed    = "column.renamed"
-	EventMemberAdded      = "member.added"
+	EventCardCreated     = "card.created"
+	EventCardMoved       = "card.moved"
+	EventCardUpdated     = "card.updated"
+	EventCardDeleted     = "card.deleted"
+	EventCardDoneToggled = "card.done_toggled"
+	EventColumnCreated   = "column.created"
+	EventColumnDeleted   = "column.deleted"
+	EventColumnRenamed   = "column.renamed"
+	EventMemberAdded     = "member.added"
 
 	// Planning section. Sessions hold meeting notes; items are the REQ/DEC/Q
 	// rows inside a session. PromoteItem turns an item into a Kanban card —
@@ -44,9 +44,9 @@ const (
 	// "X let go of it" from "the item was promoted to a card, claim
 	// auto-cleared" without the reader having to correlate timestamps
 	// with a separate promote event.
-	EventPlanningItemClaimed              = "planning.item_claimed"
-	EventPlanningItemReleased             = "planning.item_released"
-	EventPlanningItemClaimAutoReleased    = "planning.claim_auto_released_on_promote"
+	EventPlanningItemClaimed           = "planning.item_claimed"
+	EventPlanningItemReleased          = "planning.item_released"
+	EventPlanningItemClaimAutoReleased = "planning.claim_auto_released_on_promote"
 
 	EntityCard            = "card"
 	EntityColumn          = "column"
@@ -63,7 +63,7 @@ type ActivityService struct {
 }
 
 const (
-	activityQueueSize  = 512
+	activityQueueSize    = 512
 	activityWriteTimeout = 5 * time.Second
 )
 
@@ -281,13 +281,13 @@ type PlanningItemCreatedPayload struct {
 // "X commented: 'first 80 chars…'" without joining back to the comments
 // table when rendering.
 type PlanningCommentCreatedPayload struct {
-	ItemID       string `json:"item_id"`
-	BodyPreview  string `json:"body_preview"`
+	ItemID      string `json:"item_id"`
+	BodyPreview string `json:"body_preview"`
 }
 
 type PlanningCommentEditedPayload struct {
-	ItemID       string `json:"item_id"`
-	BodyPreview  string `json:"body_preview"`
+	ItemID      string `json:"item_id"`
+	BodyPreview string `json:"body_preview"`
 }
 
 type PlanningCommentDeletedPayload struct {
@@ -312,7 +312,7 @@ type PlanningItemUpdatedPayload struct {
 	Title  string   `json:"title"`
 	Fields []string `json:"fields"`
 	// PreviousType is set only when "type" is in Fields — lets the feed and
-	// the item-row chip tooltip render "เคยเป็น Q · เปลี่ยนเมื่อ X ที่แล้ว"
+	// the item-row chip tooltip render its "previously Q, changed X ago" note
 	// without a second query. Omitted from JSON when empty so non-retype
 	// updates stay byte-identical to the old payload shape.
 	PreviousType string `json:"previous_type,omitempty"`
@@ -324,7 +324,7 @@ type PlanningItemDeletedPayload struct {
 }
 
 type PlanningItemPromotedPayload struct {
-	Type      string `json:"type"`
-	Title     string `json:"title"`
-	ToCardID  string `json:"to_card_id"`
+	Type     string `json:"type"`
+	Title    string `json:"title"`
+	ToCardID string `json:"to_card_id"`
 }

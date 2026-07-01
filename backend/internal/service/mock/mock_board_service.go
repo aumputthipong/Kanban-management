@@ -7,10 +7,10 @@ import (
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/service"
 )
 
-// MockBoardService implements service.BoardServicer
-// ใช้ pattern "function field" — กำหนดพฤติกรรมแต่ละ test ได้โดยตรง
+// MockBoardService implements service.BoardServicer using the "function field"
+// pattern, so each test can set the behaviour it needs directly.
 //
-// ตัวอย่างการใช้:
+// Example:
 //
 //	mock := &mock.MockBoardService{
 //	    GetAllBoardsFn: func(ctx context.Context) ([]service.BoardSummaryData, error) {
@@ -34,10 +34,10 @@ type MockBoardService struct {
 	GetMyWorkFn                 func(ctx context.Context, opts service.MyWorkOptions) (service.MyWorkResult, error)
 	CompleteMyTaskFn            func(ctx context.Context, cardID, userID string) (service.CompleteMyTaskResult, error)
 
-	GetBoardMembersFn   func(ctx context.Context, boardID string) ([]db.GetBoardMembersRow, error)
+	GetBoardMembersFn       func(ctx context.Context, boardID string) ([]db.GetBoardMembersRow, error)
 	AddBoardMemberByEmailFn func(ctx context.Context, boardID, email, role string) error
-	RemoveBoardMemberFn func(ctx context.Context, boardID, userID string) error
-	UpdateMemberRoleFn  func(ctx context.Context, boardID, userID string, role string) error
+	RemoveBoardMemberFn     func(ctx context.Context, boardID, userID string) error
+	UpdateMemberRoleFn      func(ctx context.Context, boardID, userID string, role string) error
 
 	GetCardFn       func(ctx context.Context, cardID string) (db.Card, error)
 	GetCardDetailFn func(ctx context.Context, cardID string) (service.CardDetailData, error)

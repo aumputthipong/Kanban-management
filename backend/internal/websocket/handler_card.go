@@ -1,9 +1,7 @@
-// internal/websocket/handler_card.go
-//
-// Handlers สำหรับ WS message ในโดเมน card.
-// แต่ละ handler แค่ validate payload, เรียก BoardCommandService,
-// ประกอบ broadcast message, แล้วบันทึก activity.
-// Business logic ทั้งหมด (isDone derivation, position calc, ฯลฯ) อยู่ใน service layer
+// Handlers for card-domain WS messages. Each handler only validates the
+// payload, calls BoardCommandService, composes the broadcast, and records an
+// activity; all business logic (isDone derivation, position calc, etc.) lives
+// in the service layer.
 package websocket
 
 import (
@@ -281,7 +279,8 @@ func (c *Client) handleCardUpdated(payload map[string]interface{}, rawMsg []byte
 	log.Printf("Updated card [%s] successfully", cardIDStr)
 	c.hub.broadcast <- BroadcastMessage{BoardID: c.boardID, Message: rawMsg}
 
-	// ใช้ changed_fields จาก client เพื่อความแม่นยำ — ถ้า list ว่าง = ไม่มีอะไรเปลี่ยน จึงไม่ต้องบันทึก activity
+	// Use the client's changed_fields; an empty list means nothing changed, so
+	// skip the activity record.
 	var fields []string
 	if raw, ok := payload["changed_fields"].([]interface{}); ok {
 		for _, v := range raw {
@@ -337,7 +336,7 @@ func (c *Client) handleCardDoneToggled(payload map[string]interface{}) {
 		return
 	}
 
-	// Broadcast เป็น CARD_MOVED เพื่อให้ frontend ใช้ handler เดียวกัน
+	// Broadcast as CARD_MOVED so the frontend reuses the same handler.
 	broadcastMsg := WSMessage{
 		Type: "CARD_MOVED",
 		Payload: map[string]interface{}{

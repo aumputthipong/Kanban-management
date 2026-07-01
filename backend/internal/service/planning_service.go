@@ -131,14 +131,14 @@ func (s *PlanningService) UpdateItem(
 	acceptanceCriteria, implementationNote *string,
 ) (db.PlanningItem, error) {
 	return s.queries.UpdatePlanningItem(ctx, db.UpdatePlanningItemParams{
-		ID:                  itemID,
-		Type:                itemType,
-		Title:               title,
-		Description:         description,
-		Status:              status,
-		Position:            position,
-		AcceptanceCriteria:  acceptanceCriteria,
-		ImplementationNote:  implementationNote,
+		ID:                 itemID,
+		Type:               itemType,
+		Title:              title,
+		Description:        description,
+		Status:             status,
+		Position:           position,
+		AcceptanceCriteria: acceptanceCriteria,
+		ImplementationNote: implementationNote,
 	})
 }
 
@@ -146,7 +146,7 @@ func (s *PlanningService) DeleteItem(ctx context.Context, itemID string) error {
 	return s.queries.DeletePlanningItem(ctx, itemID)
 }
 
-// CardSource is the data behind the card detail modal's "ที่มา" section
+// CardSource is the data behind the card detail modal's "source" section
 // — the planning session + item that produced this card, plus a few of
 // the session's still-open questions so the dev opening the card can see
 // "what else came up in this meeting that's not yet decided".
@@ -218,7 +218,7 @@ func (s *PlanningService) GetCardSource(ctx context.Context, cardID string, pend
 // ─── Item comments ────────────────────────────────────────────────────────
 
 // ListItemComments returns the full thread including soft-deleted comments.
-// The UI renders deleted rows as "ถูกลบแล้ว" so the thread's position
+// The UI renders deleted rows as a "deleted" placeholder so the thread's position
 // doesn't shift on delete.
 func (s *PlanningService) ListItemComments(ctx context.Context, itemID string) ([]db.ListPlanningItemCommentsRow, error) {
 	return s.queries.ListPlanningItemComments(ctx, itemID)
@@ -263,7 +263,6 @@ func (s *PlanningService) EditComment(ctx context.Context, commentID, body strin
 func (s *PlanningService) DeleteComment(ctx context.Context, commentID string) error {
 	return s.queries.SoftDeletePlanningItemComment(ctx, commentID)
 }
-
 
 // PromoteItem turns a planning item into a Kanban card in the same board's
 // first TODO column. Wrapped in a tx so the cards.insert and the item's

@@ -3,7 +3,7 @@ module github.com/aumputthipong/mini-erp-kanban/backend
 go 1.25.10
 
 require (
-	github.com/getsentry/sentry-go v0.46.2
+	github.com/getsentry/sentry-go v0.47.0
 	github.com/go-chi/chi/v5 v5.3.0
 	github.com/go-chi/httprate v0.15.0
 	github.com/go-playground/validator/v10 v10.30.3

@@ -18,7 +18,14 @@ import { TaskCard } from "./TaskCard";
 import { CreateTaskModal } from "./CreateTaskModal";
 import type { Card, Column } from "@/types/board";
 import { FormState } from "../card-modal/CardDetailModal";
-import { ColumnOptionsModal, getColumnColorHex } from "./ColumnOptionsModal";
+import {
+  ColumnOptionsModal,
+  getColumnColorHex,
+  columnAccentColor,
+  columnCapColor,
+  columnBodyBg,
+  columnBodyBorder,
+} from "./ColumnOptionsModal";
 import { useCanManageBoard } from "@/hooks/useBoardRole";
 import { UNASSIGNED_FILTER } from "@/store/useBoardStore";
 
@@ -135,31 +142,17 @@ export const KanbanColumn = memo(function KanbanColumn({
   );
 
   const colorHex = getColumnColorHex(color);
-  const solidBgStyle = colorHex
-    ? { backgroundColor: `color-mix(in srgb, ${colorHex} 12%, white)` }
-    : undefined;
-  // Accent for the top strip + title dot — the column's own colour, or a neutral
-  // category fallback so every column still reads at a glance without a custom colour.
-  const accentColor = colorHex ?? (isDone ? "#10b981" : "#94a3b8");
+  // Column identity colour — the custom colour, or a neutral/emerald category
+  // fallback so every column still reads at a glance without a custom colour.
+  const accentColor = columnAccentColor(colorHex, isDone);
 
-  // Surface treatment when no custom color: DONE reads as a calm green zone,
-  // TODO keeps the neutral slate it always had.
-  const surfaceBg = colorHex
-    ? ""
-    : isDone
-      ? isOver
-        ? "bg-emerald-100"
-        : "bg-emerald-50"
-      : isOver
-        ? "bg-blue-50"
-        : "bg-slate-100";
-  const surfaceBorder = colorHex
-    ? "border-transparent"
-    : isOver
-      ? isDone
-        ? "border-emerald-300"
-        : "border-blue-300"
-      : "border-transparent";
+  // D1 "Solid Cap": a filled identity-colour cap over a faint wash of the same
+  // hue. Formulae live in ColumnOptionsModal so the options preview stays truthful.
+  const capColor = columnCapColor(accentColor);
+  const bodyStyle = {
+    backgroundColor: columnBodyBg(accentColor, isOver),
+    borderColor: columnBodyBorder(accentColor, isOver),
+  };
 
   const showCollapsed = isDone && collapsed;
 
@@ -170,22 +163,34 @@ export const KanbanColumn = memo(function KanbanColumn({
       <>
         <div
           ref={setNodeRef}
-          className={`group relative w-16 shrink-0 snap-start flex flex-col items-center rounded-2xl border-2 transition-colors duration-200 ${
-            isOver
-              ? "border-dashed border-emerald-400 bg-emerald-50"
-              : "border-transparent bg-emerald-50/70"
-          }`}
+          className="group relative w-16 shrink-0 snap-start flex flex-col items-center rounded-2xl border transition-colors duration-200"
+          style={{
+            backgroundColor: columnBodyBg(accentColor, isOver),
+            borderColor: isOver
+              ? capColor
+              : columnBodyBorder(accentColor, false),
+            borderStyle: isOver ? "dashed" : "solid",
+          }}
         >
-          <span className="absolute left-3 right-3 top-0 h-[3px] rounded-b bg-emerald-400" />
+          <span
+            className="absolute left-3 right-3 top-0 h-[3px] rounded-b"
+            style={{ backgroundColor: capColor }}
+          />
           <button
             onClick={() => setCollapsedPersisted(false)}
             title="ขยายคอลัมน์ที่เสร็จแล้ว"
             className="flex h-full w-full cursor-pointer flex-col items-center pt-4 pb-3"
           >
-            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700">
+            <span
+              className="flex h-7 w-7 items-center justify-center rounded-lg text-white"
+              style={{ backgroundColor: capColor }}
+            >
               <CircleCheck size={16} />
             </span>
-            <span className="mt-3 min-w-5 rounded-full bg-emerald-100 px-2 py-0.5 text-center text-xs font-bold text-emerald-700">
+            <span
+              className="mt-3 min-w-5 rounded-full px-2 py-0.5 text-center text-xs font-bold text-white"
+              style={{ backgroundColor: capColor }}
+            >
               {cards.length}
             </span>
             <span
@@ -200,8 +205,8 @@ export const KanbanColumn = memo(function KanbanColumn({
           </button>
           {isOver && (
             <span
-              className="pointer-events-none absolute inset-0 flex rotate-180 items-center justify-center text-[11px] font-bold text-emerald-700"
-              style={{ writingMode: "vertical-rl" }}
+              className="pointer-events-none absolute inset-0 flex rotate-180 items-center justify-center text-[11px] font-bold"
+              style={{ writingMode: "vertical-rl", color: capColor }}
             >
               วางเพื่อปิดงาน
             </span>
@@ -227,86 +232,67 @@ export const KanbanColumn = memo(function KanbanColumn({
     <>
       <div
         ref={setNodeRef}
-        className={`w-72 shrink-0 flex flex-col snap-start rounded-2xl border-2 transition-all duration-200 ${surfaceBorder} ${surfaceBg}`}
-        style={solidBgStyle}
+        className="w-72 shrink-0 flex flex-col snap-start rounded-2xl transition-all duration-200"
       >
-        {/* Sticky header — colored accent strip + title row */}
+        {/* Solid Cap — filled identity-colour header, white text (D1) */}
         <div
-          className={`sticky top-0 z-10 rounded-t-2xl transition-colors pb-2 ${surfaceBg}`}
-          style={solidBgStyle}
+          className="sticky top-0 z-10 flex items-center gap-2 h-12 pl-4 pr-2 rounded-t-2xl"
+          style={{ backgroundColor: capColor }}
         >
-          {/* Top accent strip — the column's colour as a thin full-width bar. */}
-          <div
-            className="h-1.5 rounded-t-2xl"
-            style={{ backgroundColor: accentColor }}
-          />
-          <div className="flex items-center justify-between gap-3 px-4 pt-3">
-            <div className="flex items-center gap-2 min-w-0 flex-1">
-              {isDone ? (
-                <CircleCheck size={16} className="text-emerald-600 shrink-0" />
-              ) : (
-                <span
-                  aria-hidden
-                  className="w-2.5 h-2.5 rounded-full shrink-0"
-                  style={{ backgroundColor: accentColor }}
-                />
-              )}
-              <h2 className="font-bold text-slate-700 leading-tight truncate">
-                {title}
-              </h2>
-            </div>
+          {isDone && (
+            <CircleCheck size={16} className="text-white shrink-0" />
+          )}
+          <h2 className="flex-1 min-w-0 truncate font-bold leading-tight text-white">
+            {title}
+          </h2>
 
-            <div className="flex items-center gap-1 shrink-0">
-              <span
-                className={`text-xs font-bold px-2 py-0.5 rounded-full min-w-5 text-center ${
-                  isDone
-                    ? "bg-emerald-100 text-emerald-700"
-                    : "bg-slate-200 text-slate-500"
-                }`}
+          <div className="flex items-center gap-1 shrink-0">
+            <span className="min-w-5 rounded-full bg-white/25 px-2 py-0.5 text-center text-xs font-bold text-white">
+              {cards.length}
+            </span>
+
+            {/* DONE columns close cards by dragging — no inline add button */}
+            {!isDone && (
+              <button
+                onClick={() => setTopAddOpen(true)}
+                title="Add card"
+                className="cursor-pointer text-white/85 hover:text-white p-1 rounded-md hover:bg-white/20 transition-colors"
               >
-                {cards.length}
-              </span>
+                <Plus size={16} />
+              </button>
+            )}
 
-              {/* DONE columns close cards by dragging — no inline add button */}
-              {!isDone && (
-                <button
-                  onClick={() => setTopAddOpen(true)}
-                  title="Add card"
-                  className="cursor-pointer text-slate-400 hover:text-primary p-1 rounded-md hover:bg-slate-200 transition-colors"
-                >
-                  <Plus size={16} />
-                </button>
-              )}
+            {isDone && (
+              <button
+                onClick={() => setCollapsedPersisted(true)}
+                title="ยุบคอลัมน์ที่เสร็จแล้ว"
+                className="cursor-pointer text-white/85 hover:text-white p-1 rounded-md hover:bg-white/20 transition-colors"
+              >
+                <ChevronsRight size={16} />
+              </button>
+            )}
 
-              {isDone && (
-                <button
-                  onClick={() => setCollapsedPersisted(true)}
-                  title="ยุบคอลัมน์ที่เสร็จแล้ว"
-                  className="cursor-pointer text-slate-400 hover:text-slate-600 p-1 rounded-md hover:bg-slate-200 transition-colors"
-                >
-                  <ChevronsRight size={16} />
-                </button>
-              )}
-
-              {canManage && (
-                <button
-                  onClick={() => setOptionsOpen(true)}
-                  title="Column options"
-                  className="cursor-pointer text-slate-400 hover:text-slate-600 p-1 rounded-md hover:bg-slate-200 transition-colors"
-                >
-                  <MoreHorizontal size={16} />
-                </button>
-              )}
-            </div>
+            {canManage && (
+              <button
+                onClick={() => setOptionsOpen(true)}
+                title="Column options"
+                className="cursor-pointer text-white/85 hover:text-white p-1 rounded-md hover:bg-white/20 transition-colors"
+              >
+                <MoreHorizontal size={16} />
+              </button>
+            )}
           </div>
         </div>
 
-        {/* Card List — fills remaining column height */}
+        {/* Body — faint wash of the identity colour, 1px hued border (D1) */}
         <SortableContext
           items={cards.map((c) => c.id)}
           strategy={verticalListSortingStrategy}
         >
-          <div className="px-4 pb-4 flex flex-col gap-2 flex-1">
+          <div
+            className="px-3 pt-3 pb-4 flex flex-col gap-2 flex-1 border border-t-0 rounded-b-2xl transition-colors"
+            style={bodyStyle}
+          >
             {visibleCards.map((card) => (
               <div key={card.id}>
                 {dropIndicatorBeforeId === card.id && <DropIndicator />}

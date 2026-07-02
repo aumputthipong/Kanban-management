@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { Check, CircleCheck, Inbox, Trash2, X } from "lucide-react";
+import { Check, CircleCheck, Trash2, X } from "lucide-react";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 // ── colour palette ────────────────────────────────────────────────────────────
@@ -24,6 +24,31 @@ export const COLUMN_COLOR_PALETTE: {
 
 export function getColumnColorHex(key?: string | null): string | null {
   return COLUMN_COLOR_PALETTE.find((c) => c.key === (key ?? null))?.hex ?? null;
+}
+
+// ── D1 "Solid Cap" colour derivations ──────────────────────────────────────────
+// Shared between the column (Column.tsx) and this modal's live preview so the
+// preview mirrors the real thing. `accent` is the column identity colour.
+
+/** Column identity colour: the custom colour, or a neutral/emerald category fallback. */
+export function columnAccentColor(hex: string | null, isDone: boolean): string {
+  return hex ?? (isDone ? "#10b981" : "#94a3b8");
+}
+
+/** Solid-cap fill: deepen the identity colour toward ink so white cap text stays
+ *  legible across the light palette (raw pastels fail white contrast). */
+export function columnCapColor(accent: string): string {
+  return `color-mix(in oklab, ${accent} 68%, #0f172a)`;
+}
+
+/** Column body: a faint wash of the identity hue; `hot` = drag-over highlight. */
+export function columnBodyBg(accent: string, hot = false): string {
+  return `color-mix(in oklab, ${accent} ${hot ? 12 : 6}%, white)`;
+}
+
+/** Column body border: a light tint of the identity hue; `hot` = drag-over. */
+export function columnBodyBorder(accent: string, hot = false): string {
+  return `color-mix(in oklab, ${accent} ${hot ? 42 : 20}%, white)`;
 }
 
 // ── props ─────────────────────────────────────────────────────────────────────
@@ -85,10 +110,10 @@ export function ColumnOptionsModal({
   };
 
   const selectedHex = getColumnColorHex(color);
-  // Mirror the real column tint formula (Column.tsx) so the preview is truthful.
-  const previewBg = selectedHex
-    ? `color-mix(in srgb, ${selectedHex} 12%, white)`
-    : "#f1f5f9";
+  // Mirror the real column's D1 "Solid Cap" formulae so the preview is truthful.
+  const accent = columnAccentColor(selectedHex, category === "DONE");
+  const capColor = columnCapColor(accent);
+  const bodyBg = columnBodyBg(accent);
 
   return createPortal(
     <>
@@ -161,33 +186,24 @@ export function ColumnOptionsModal({
                 Color
               </label>
 
-              {/* Live preview of the actual column header */}
-              <div
-                className="rounded-lg border border-slate-100 px-3 py-2.5"
-                style={{ backgroundColor: previewBg }}
-              >
-                <div className="flex items-center gap-2">
-                  <span
-                    className="w-2.5 h-2.5 rounded-full shrink-0"
-                    style={{ backgroundColor: selectedHex ?? "#cbd5e1" }}
-                  />
-                  {category === "DONE" ? (
-                    <CircleCheck size={15} className="text-emerald-600 shrink-0" />
-                  ) : (
-                    <Inbox size={15} className="text-slate-400 shrink-0" />
+              {/* Live preview of the actual column — D1 Solid Cap */}
+              <div className="rounded-lg border border-slate-100 overflow-hidden">
+                <div
+                  className="flex items-center gap-2 px-3 h-9"
+                  style={{ backgroundColor: capColor }}
+                >
+                  {category === "DONE" && (
+                    <CircleCheck size={14} className="text-white shrink-0" />
                   )}
-                  <span className="text-sm font-bold text-slate-700 truncate">
+                  <span className="flex-1 min-w-0 truncate text-sm font-bold text-white">
                     {title.trim() || "ชื่อคอลัมน์"}
                   </span>
-                  <span
-                    className={`ml-auto text-xs font-bold px-2 py-0.5 rounded-full min-w-5 text-center ${
-                      category === "DONE"
-                        ? "bg-emerald-100 text-emerald-700"
-                        : "bg-slate-200 text-slate-500"
-                    }`}
-                  >
+                  <span className="min-w-5 rounded-full bg-white/25 px-2 py-0.5 text-center text-xs font-bold text-white">
                     {cardCount}
                   </span>
+                </div>
+                <div className="px-3 py-2.5" style={{ backgroundColor: bodyBg }}>
+                  <div className="h-2 w-2/3 rounded bg-white/80" />
                 </div>
               </div>
 

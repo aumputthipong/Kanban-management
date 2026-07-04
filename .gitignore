@@ -1,6 +1,12 @@
 # Dependencies
 node_modules/
 
+# Compiled Go binaries (e.g. a stray `go build ./cmd/seed` — use `go build ./...`
+# or `-o` a temp path instead, which don't leave artifacts in the tree)
+*.exe
+/backend/api
+/backend/seed
+
 # IDEs and OS files
 .vscode/
 .idea/

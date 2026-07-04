@@ -70,6 +70,8 @@ Set env vars on each platform — copy from `backend/.env.example` and `frontend
 
 > **Cross-site cookies (required for this split):** frontend and backend are on different sites (`*.vercel.app` vs `*.onrender.com`), so set **`COOKIE_CROSS_SITE=true`** on the backend. This switches the auth cookies to `SameSite=None; Secure`. Without it the browser refuses to send the cookie cross-site and login silently loops (see "Unauthorized loop" below). Both hosts serve HTTPS, so `Secure` is satisfied.
 
+**Seed demo data** (once, after the first successful deploy): with the production `DB_URL` set, run `make seed` (or `cd backend && go run ./cmd/seed`). It creates a `demo@turtask.app` login and a sample board with cards + a planning session so the app opens onto real content. Idempotent — re-running does nothing if the demo user already exists.
+
 ### C. Cloud Run / ECS
 
 Use the existing Dockerfiles. Key extras:

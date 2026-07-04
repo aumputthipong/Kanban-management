@@ -39,6 +39,10 @@ backend: ## Run the backend with live env (needs ./backend/.env)
 frontend: ## Run the Next.js dev server
 	cd frontend && npm run dev
 
+.PHONY: seed
+seed: ## Seed demo data (demo account + sample board). Needs DB_URL (or backend/.env)
+	cd backend && go run ./cmd/seed
+
 # ─── Verification (mirrors CI) ───────────────────────────────────────────────
 .PHONY: verify
 verify: vet test typecheck test-fe ## Run everything CI runs (vet + test + tsc + vitest)

@@ -59,6 +59,17 @@ Deeper docs:
 - [docs/DEPLOY.md](docs/DEPLOY.md) — pre-flight checklist, deploy paths (VPS / Vercel+Railway / Cloud Run), rollback, common breakages
 - **API spec** — interactive Swagger UI served at `/docs/index.html` once the backend is running. Raw spec at `/docs/doc.json`. Regenerate after editing handler annotations: `cd backend && go generate ./cmd/api` (requires `swag` — `go install github.com/swaggo/swag/cmd/swag@latest`).
 
+## Key decisions
+
+Short "why", with the full reasoning in [`docs/adr/`](docs/adr/):
+
+- **sqlc, not an ORM** — SQL lives in `queries.sql` and compiles to typed Go; a renamed column is a compile error, not a runtime 500, and there's no hidden N+1. ([ADR 0002](docs/adr/0002-sqlc-over-orm.md))
+- **Opaque, revocable refresh tokens** — the long-lived token is a hashed random string, not a JWT, so sessions can be revoked server-side and a replayed token burns the whole session. ([ADR 0001](docs/adr/0001-opaque-refresh-tokens.md))
+- **In-memory, single-instance WebSocket hub** — one room per board in process memory; the scaling path (Redis pub/sub) is known and deferred until a real hot path needs it. ([ADR 0003](docs/adr/0003-single-instance-websocket-hub.md))
+- **Membership gate returns 404, not 403** — a non-member can't tell "board doesn't exist" from "you're not on it", so board IDs can't be enumerated. ([ADR 0004](docs/adr/0004-membership-gate-returns-404.md))
+- **Layered backend (`handler → service → db`)** — domain rules and permission checks live only in `service/`; handlers stay 10–30 lines.
+- **Optimistic UI + idempotent WS reconcile** — the client mutates its Zustand store first, then reconciles from broadcasts; receiving an event for state it already has is a no-op.
+
 ## Project structure
 
 ```text

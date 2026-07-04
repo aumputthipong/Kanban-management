@@ -203,6 +203,15 @@ The **Team** tab (`overview/TeamTabContent` → `TeamOwnershipList`) answers **"
 
 ---
 
+## Comment & doc conventions
+
+Code comments are **English**, concise, and explain the *why* the code can't — not a translation of the next line. (User-facing copy still follows the Thai/English UI rule above; this is about code comments only.)
+
+- **Exported Go symbols:** a godoc comment of **1–2 lines stating WHAT** it does. No bullet lists inside godoc, no step-by-step narration.
+- **Unexported / local code:** comment only when the logic is non-obvious. A comment that restates the code (`// loop over cards`) should be deleted; fix an unclear name instead of annotating it.
+- **Rationale for a design decision belongs in an ADR** (`docs/adr/`), not in a long code comment. Leave a one-line pointer (`// ... see docs/adr/000N`) and move the reasoning there.
+- **No** emoji, changelog markers (`[เพิ่มใหม่]`), commented-out code, or "Best Practice:" narration in source.
+
 ## Testing & verification
 
 ก่อนรายงานว่างานเสร็จ:
@@ -268,7 +277,7 @@ The **Team** tab (`overview/TeamTabContent` → `TeamOwnershipList`) answers **"
 - ❌ Microservices — single binary
 - ❌ Event sourcing — `activities` คือ audit log ไม่ใช่ state log
 
-ถ้าจะเสนอเพิ่มของพวกนี้ — เขียนเหตุผลที่ trigger การเปลี่ยน design ลง `docs/decisions/` แล้วถามผู้ใช้ก่อน.
+ถ้าจะเสนอเพิ่มของพวกนี้ — เขียน ADR ลง `docs/adr/` (ดู `docs/adr/README.md` เป็น template) แล้วถามผู้ใช้ก่อน.
 
 ### Code anti-patterns
 

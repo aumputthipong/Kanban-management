@@ -2,6 +2,8 @@
 
 How to ship a new version, recover from common breakages, and what to monitor. Treat this as a script — when something is on fire at 2 AM, you should be able to follow it without thinking.
 
+> **First time deploying the free demo?** Follow the click-by-click [deploy walkthrough](deploy-walkthrough.md) (Vercel + Render + Neon, every choice pre-made). This runbook is the reference; that guide is the first-run script.
+
 ## Pre-flight checklist
 
 Run through this before every production deploy.

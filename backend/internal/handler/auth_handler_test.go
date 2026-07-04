@@ -41,7 +41,7 @@ func findCookie(w *httptest.ResponseRecorder, name string) (value string, found 
 
 func newTestAuthHandler(svc *mock.MockAuthService) *AuthHandler {
 	// production=false → cookies are not Secure-only, so httptest captures them.
-	return NewAuthHandler(svc, false)
+	return NewAuthHandler(svc, false, false)
 }
 
 // ────────────────────────────────────────────────

@@ -128,17 +128,31 @@ func Parse(tokenStr string) (*Claims, error) {
 	return claims, nil
 }
 
+// AuthCookieSameSite returns the SameSite mode and Secure flag for an auth
+// cookie. A cross-site deploy (frontend and backend on different sites, e.g.
+// Vercel + Render) needs SameSite=None, which browsers only accept together
+// with Secure. Otherwise the stricter same-site default is kept and Secure
+// follows production. dflt is this cookie's same-site default (Lax for the
+// access cookie, Strict for refresh).
+func AuthCookieSameSite(dflt http.SameSite, production, crossSite bool) (http.SameSite, bool) {
+	if crossSite {
+		return http.SameSiteNoneMode, true
+	}
+	return dflt, production
+}
+
 // SetAuthCookie writes the signed JWT into the `auth_token` HttpOnly cookie.
 // The Secure flag is set only in production (passed in from main) so local
 // HTTP development is not blocked by the browser refusing to send the cookie.
-func SetAuthCookie(w http.ResponseWriter, tokenStr string, production bool) {
+func SetAuthCookie(w http.ResponseWriter, tokenStr string, production, crossSite bool) {
+	sameSite, secure := AuthCookieSameSite(http.SameSiteLaxMode, production, crossSite)
 	http.SetCookie(w, &http.Cookie{
 		Name:     "auth_token",
 		Value:    tokenStr,
 		Path:     "/",
 		HttpOnly: true,
-		Secure:   production,
-		SameSite: http.SameSiteLaxMode,
+		Secure:   secure,
+		SameSite: sameSite,
 		MaxAge:   int(AccessTokenDuration().Seconds()),
 	})
 }

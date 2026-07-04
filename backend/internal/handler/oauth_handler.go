@@ -28,12 +28,13 @@ type OAuthHandler struct {
 	authService  service.AuthServicer
 	frontendURL  string
 	production   bool
+	crossSite    bool
 }
 
 func NewOAuthHandler(
 	clientID, clientSecret, redirectURL, frontendURL string,
 	authService service.AuthServicer,
-	production bool,
+	production, crossSite bool,
 ) *OAuthHandler {
 	return &OAuthHandler{
 		googleConfig: &oauth2.Config{
@@ -49,6 +50,7 @@ func NewOAuthHandler(
 		authService: authService,
 		frontendURL: frontendURL,
 		production:  production,
+		crossSite:   crossSite,
 	}
 }
 
@@ -58,14 +60,15 @@ func (h *OAuthHandler) RedirectToGoogle(w http.ResponseWriter, r *http.Request) 
 	if err != nil {
 		return httputil.NewAPIError(http.StatusInternalServerError, "Failed to generate state", err)
 	}
+	sameSite, secure := token.AuthCookieSameSite(http.SameSiteLaxMode, h.production, h.crossSite)
 	http.SetCookie(w, &http.Cookie{
 		Name:     "oauth_state",
 		Value:    state,
 		Path:     "/",
 		MaxAge:   300,
 		HttpOnly: true,
-		Secure:   h.production,
-		SameSite: http.SameSiteLaxMode,
+		Secure:   secure,
+		SameSite: sameSite,
 	})
 	http.Redirect(w, r, h.googleConfig.AuthCodeURL(state), http.StatusTemporaryRedirect)
 	return nil
@@ -99,7 +102,7 @@ func (h *OAuthHandler) HandleGoogleCallback(w http.ResponseWriter, r *http.Reque
 	if err != nil {
 		return httputil.NewAPIError(http.StatusInternalServerError, "Failed to generate token", err)
 	}
-	token.SetAuthCookie(w, jwtToken, h.production)
+	token.SetAuthCookie(w, jwtToken, h.production, h.crossSite)
 
 	refreshRaw, err := h.authService.IssueRefreshToken(r.Context(), user.ID, r.UserAgent(), r.RemoteAddr)
 	if err != nil {
@@ -107,7 +110,7 @@ func (h *OAuthHandler) HandleGoogleCallback(w http.ResponseWriter, r *http.Reque
 		// and will be bounced to login when it expires.
 		slog.Error("issue refresh token on oauth", "user_id", user.ID, "err", err)
 	} else {
-		token.SetRefreshCookie(w, refreshRaw, h.production)
+		token.SetRefreshCookie(w, refreshRaw, h.production, h.crossSite)
 	}
 
 	http.Redirect(w, r, h.frontendURL+"/auth/callback", http.StatusTemporaryRedirect)

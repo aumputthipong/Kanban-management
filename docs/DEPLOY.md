@@ -68,6 +68,10 @@ Best for: zero ops; managed everything.
 
 Set env vars on each platform — copy from `backend/.env.example` and `frontend/.env.example`. The Google OAuth `GOOGLE_REDIRECT_URL` must match what's registered in the Google Cloud console.
 
+> **Cross-site cookies (required for this split):** frontend and backend are on different sites (`*.vercel.app` vs `*.onrender.com`), so set **`COOKIE_CROSS_SITE=true`** on the backend. This switches the auth cookies to `SameSite=None; Secure`. Without it the browser refuses to send the cookie cross-site and login silently loops (see "Unauthorized loop" below). Both hosts serve HTTPS, so `Secure` is satisfied.
+
+**Seed demo data** (once, after the first successful deploy): with the production `DB_URL` set, run `make seed` (or `cd backend && go run ./cmd/seed`). It creates a `demo@turtask.app` login and a sample board with cards + a planning session so the app opens onto real content. Idempotent — re-running does nothing if the demo user already exists.
+
 ### C. Cloud Run / ECS
 
 Use the existing Dockerfiles. Key extras:
@@ -154,6 +158,7 @@ Before running `down`, take a fresh `pg_dump` — `down` migrations may drop col
 - For a single trusted IP that needs more, bypass `httprate.LimitByIP` with a custom `KeyFunc` that returns a constant for that IP.
 
 ### "Unauthorized" loop after deploy
+- **Split-domain deploy (frontend ≠ backend site):** the auth cookie is `SameSite=Lax/Strict` by default, so the browser won't send it cross-site — login succeeds, the next request is 401. Fix: set **`COOKIE_CROSS_SITE=true`** on the backend (→ `SameSite=None; Secure`). Both ends must be HTTPS.
 - Old `auth_token` cookie was signed with the previous `JWT_SECRET`. Either revert the secret change or accept that all sessions are invalidated (everyone re-logs in).
 - This is why `JWT_SECRET` should not rotate casually.
 

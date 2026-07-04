@@ -57,30 +57,32 @@ func HashRefreshToken(raw string) string {
 	return hex.EncodeToString(sum[:])
 }
 
-// SetRefreshCookie writes the refresh token cookie: HttpOnly, SameSite=Strict,
-// and path-scoped to the refresh endpoint.
-func SetRefreshCookie(w http.ResponseWriter, raw string, production bool) {
+// SetRefreshCookie writes the refresh token cookie: HttpOnly, path-scoped to the
+// refresh endpoint, and SameSite=Strict (or None on a cross-site deploy).
+func SetRefreshCookie(w http.ResponseWriter, raw string, production, crossSite bool) {
+	sameSite, secure := AuthCookieSameSite(http.SameSiteStrictMode, production, crossSite)
 	http.SetCookie(w, &http.Cookie{
 		Name:     RefreshCookieName,
 		Value:    raw,
 		Path:     RefreshCookiePath,
 		HttpOnly: true,
-		Secure:   production,
-		SameSite: http.SameSiteStrictMode,
+		Secure:   secure,
+		SameSite: sameSite,
 		MaxAge:   int(RefreshTokenDuration().Seconds()),
 	})
 }
 
 // ClearRefreshCookie expires the refresh cookie. MaxAge=-1 plus matching Path
 // is required — browsers will not clear a cookie whose Path differs.
-func ClearRefreshCookie(w http.ResponseWriter, production bool) {
+func ClearRefreshCookie(w http.ResponseWriter, production, crossSite bool) {
+	sameSite, secure := AuthCookieSameSite(http.SameSiteStrictMode, production, crossSite)
 	http.SetCookie(w, &http.Cookie{
 		Name:     RefreshCookieName,
 		Value:    "",
 		Path:     RefreshCookiePath,
 		HttpOnly: true,
-		Secure:   production,
-		SameSite: http.SameSiteStrictMode,
+		Secure:   secure,
+		SameSite: sameSite,
 		MaxAge:   -1,
 	})
 }

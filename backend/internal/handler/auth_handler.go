@@ -15,10 +15,11 @@ import (
 type AuthHandler struct {
 	authService service.AuthServicer
 	production  bool
+	crossSite   bool
 }
 
-func NewAuthHandler(authService service.AuthServicer, production bool) *AuthHandler {
-	return &AuthHandler{authService: authService, production: production}
+func NewAuthHandler(authService service.AuthServicer, production, crossSite bool) *AuthHandler {
+	return &AuthHandler{authService: authService, production: production, crossSite: crossSite}
 }
 
 // issueSession signs the short-lived access JWT and provisions a fresh refresh
@@ -31,14 +32,14 @@ func (h *AuthHandler) issueSession(w http.ResponseWriter, r *http.Request, userI
 	if err != nil {
 		return httputil.NewAPIError(http.StatusInternalServerError, "Failed to generate token", err)
 	}
-	token.SetAuthCookie(w, accessTok, h.production)
+	token.SetAuthCookie(w, accessTok, h.production, h.crossSite)
 
 	refreshRaw, err := h.authService.IssueRefreshToken(r.Context(), userID, r.UserAgent(), r.RemoteAddr)
 	if err != nil {
 		slog.Error("issue refresh token", "user_id", userID, "err", err)
 		return nil
 	}
-	token.SetRefreshCookie(w, refreshRaw, h.production)
+	token.SetRefreshCookie(w, refreshRaw, h.production, h.crossSite)
 	return nil
 }
 
@@ -198,7 +199,7 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) error {
 		HttpOnly: true,
 		MaxAge:   -1,
 	})
-	token.ClearRefreshCookie(w, h.production)
+	token.ClearRefreshCookie(w, h.production, h.crossSite)
 	w.WriteHeader(http.StatusNoContent)
 	return nil
 }
@@ -226,7 +227,7 @@ func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) error {
 		// Both invalid and expired surface as 401 to the client; differentiating
 		// them would let an attacker probe for valid-but-expired tokens. Clear
 		// the cookie either way so the browser stops sending it.
-		token.ClearRefreshCookie(w, h.production)
+		token.ClearRefreshCookie(w, h.production, h.crossSite)
 		return httputil.NewAPIError(http.StatusUnauthorized, "Unauthorized", nil)
 	}
 
@@ -234,8 +235,8 @@ func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return httputil.NewAPIError(http.StatusInternalServerError, "Failed to generate token", err)
 	}
-	token.SetAuthCookie(w, accessTok, h.production)
-	token.SetRefreshCookie(w, result.RawToken, h.production)
+	token.SetAuthCookie(w, accessTok, h.production, h.crossSite)
+	token.SetRefreshCookie(w, result.RawToken, h.production, h.crossSite)
 	w.WriteHeader(http.StatusNoContent)
 	return nil
 }

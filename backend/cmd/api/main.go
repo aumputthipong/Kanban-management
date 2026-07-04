@@ -62,6 +62,7 @@ type config struct {
 	MigrationsPath     string
 	SkipMigrations     bool
 	Production         bool
+	CrossSite          bool
 }
 
 func loadConfig() config {
@@ -70,6 +71,7 @@ func loadConfig() config {
 		Port:               os.Getenv("PORT"),
 		FrontendURL:        os.Getenv("FRONTEND_URL"),
 		Production:         os.Getenv("ENV") == "production",
+		CrossSite:          os.Getenv("COOKIE_CROSS_SITE") == "true",
 		GoogleClientID:     os.Getenv("GOOGLE_CLIENT_ID"),
 		GoogleClientSecret: os.Getenv("GOOGLE_CLIENT_SECRET"),
 		GoogleRedirect:     os.Getenv("GOOGLE_REDIRECT_URL"),
@@ -167,7 +169,7 @@ func run(ctx context.Context, cfg config) error {
 	tagHandler := handler.NewTagHandler(tagService)
 	activityHandler := handler.NewActivityHandler(activityService)
 	planningHandler := handler.NewPlanningHandler(planningService, boardService, activityService)
-	authHandler := handler.NewAuthHandler(authService, cfg.Production)
+	authHandler := handler.NewAuthHandler(authService, cfg.Production, cfg.CrossSite)
 	settingsHandler := handler.NewUserSettingsHandler(settingsService)
 	inviteHandler := handler.NewInviteHandler(inviteService)
 	oauthHandler := handler.NewOAuthHandler(
@@ -177,6 +179,7 @@ func run(ctx context.Context, cfg config) error {
 		cfg.FrontendURL,
 		authService,
 		cfg.Production,
+		cfg.CrossSite,
 	)
 
 	startedAt := time.Now()

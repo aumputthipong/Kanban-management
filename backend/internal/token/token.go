@@ -5,7 +5,7 @@
 package token
 
 import (
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"sync"
@@ -48,7 +48,7 @@ func parseDurationEnv(key string, def time.Duration) time.Duration {
 	}
 	d, err := time.ParseDuration(v)
 	if err != nil || d <= 0 {
-		log.Printf("token: invalid %s=%q, using default %s", key, v, def)
+		slog.Warn("token: invalid duration env, using default", "key", key, "value", v, "default", def.String())
 		return def
 	}
 	return d
@@ -75,16 +75,20 @@ var (
 )
 
 // secret returns the JWT signing key, initialising it on first use.
-// It log.Fatal's if JWT_SECRET is missing — this is intentional because
-// running with an empty secret would silently accept forged tokens.
+// It aborts the process if JWT_SECRET is missing or too short — this is
+// intentional because running with an empty secret would silently accept
+// forged tokens.
 func secret() []byte {
 	jwtSecretOnce.Do(func() {
 		s := os.Getenv("JWT_SECRET")
 		if s == "" {
-			log.Fatal("JWT_SECRET is required")
+			slog.Error("JWT_SECRET is required")
+			os.Exit(1)
 		}
 		if len(s) < MinSecretBytes {
-			log.Fatalf("JWT_SECRET must be at least %d bytes (got %d) — generate one with: openssl rand -base64 32", MinSecretBytes, len(s))
+			slog.Error("JWT_SECRET too short — generate one with: openssl rand -base64 32",
+				"min_bytes", MinSecretBytes, "got_bytes", len(s))
+			os.Exit(1)
 		}
 		jwtSecret = []byte(s)
 	})

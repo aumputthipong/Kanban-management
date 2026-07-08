@@ -2,7 +2,7 @@
 // client.go (connection management) so each file has a single responsibility.
 package websocket
 
-import "log"
+import "log/slog"
 
 // WSMessage is the standard envelope for every client <-> server message.
 type WSMessage struct {
@@ -32,6 +32,6 @@ func (c *Client) dispatch(wsMsg WSMessage, rawMsg []byte) {
 	case "COLUMN_UPDATED":
 		c.handleColumnUpdated(wsMsg.Payload)
 	default:
-		log.Printf("Unknown message type: %s", wsMsg.Type)
+		slog.Warn("unknown ws message type", "type", wsMsg.Type, "board_id", c.boardID)
 	}
 }

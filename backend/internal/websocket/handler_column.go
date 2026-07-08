@@ -5,7 +5,7 @@ package websocket
 import (
 	"context"
 	"encoding/json"
-	"log"
+	"log/slog"
 
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/service"
 	"github.com/google/uuid"
@@ -14,7 +14,7 @@ import (
 func (c *Client) handleColumnCreated(payload map[string]interface{}) {
 	title, ok := payload["title"].(string)
 	if !ok || title == "" {
-		log.Println("Invalid payload for COLUMN_CREATED")
+		slog.Warn("invalid COLUMN_CREATED payload", "board_id", c.boardID)
 		return
 	}
 
@@ -31,7 +31,7 @@ func (c *Client) handleColumnCreated(payload map[string]interface{}) {
 
 	newCol, err := c.hub.boardCmd.CreateColumn(ctx, c.boardID, title, category, color)
 	if err != nil {
-		log.Printf("Failed to create column: %v", err)
+		slog.Error("create column failed", "board_id", c.boardID, "err", err)
 		return
 	}
 
@@ -48,11 +48,11 @@ func (c *Client) handleColumnCreated(payload map[string]interface{}) {
 	}
 	msgBytes, err := json.Marshal(broadcastMsg)
 	if err != nil {
-		log.Printf("Failed to marshal COLUMN_CREATED broadcast: %v", err)
+		slog.Error("marshal COLUMN_CREATED broadcast failed", "err", err)
 		return
 	}
 
-	log.Printf("Created column [%s] '%s' at position [%f]", newCol.ID, newCol.Title, newCol.Position)
+	slog.Debug("column created", "column_id", newCol.ID, "position", newCol.Position)
 	c.hub.broadcast <- BroadcastMessage{BoardID: c.boardID, Message: msgBytes}
 
 	c.recordActivity(ctx, service.EventColumnCreated, service.EntityColumn, strPtr(newCol.ID), service.ColumnCreatedPayload{
@@ -64,11 +64,11 @@ func (c *Client) handleColumnRenamed(payload map[string]interface{}) {
 	columnIDStr, ok1 := payload["column_id"].(string)
 	title, ok2 := payload["title"].(string)
 	if !ok1 || !ok2 || title == "" {
-		log.Println("Invalid payload for COLUMN_RENAMED")
+		slog.Warn("invalid COLUMN_RENAMED payload", "board_id", c.boardID)
 		return
 	}
 	if _, err := uuid.Parse(columnIDStr); err != nil {
-		log.Printf("Invalid column ID: %s", columnIDStr)
+		slog.Warn("invalid column id", "column_id", columnIDStr)
 		return
 	}
 
@@ -76,12 +76,12 @@ func (c *Client) handleColumnRenamed(payload map[string]interface{}) {
 	defer cancel()
 
 	if err := c.hub.boardCmd.VerifyColumnInBoard(ctx, columnIDStr, c.boardID); err != nil {
-		log.Printf("COLUMN_RENAMED rejected: column [%s] not in board [%s]", columnIDStr, c.boardID)
+		slog.Warn("COLUMN_RENAMED rejected: column not in board", "column_id", columnIDStr, "board_id", c.boardID)
 		return
 	}
 
 	if err := c.hub.boardCmd.RenameColumn(ctx, columnIDStr, title); err != nil {
-		log.Printf("Failed to rename column [%s]: %v", columnIDStr, err)
+		slog.Error("rename column failed", "column_id", columnIDStr, "err", err)
 		return
 	}
 
@@ -94,11 +94,11 @@ func (c *Client) handleColumnRenamed(payload map[string]interface{}) {
 	}
 	msgBytes, err := json.Marshal(broadcastMsg)
 	if err != nil {
-		log.Printf("Failed to marshal COLUMN_RENAMED broadcast: %v", err)
+		slog.Error("marshal COLUMN_RENAMED broadcast failed", "err", err)
 		return
 	}
 
-	log.Printf("Renamed column [%s] to '%s'", columnIDStr, title)
+	slog.Debug("column renamed", "column_id", columnIDStr)
 	c.hub.broadcast <- BroadcastMessage{BoardID: c.boardID, Message: msgBytes}
 
 	c.recordActivity(ctx, service.EventColumnRenamed, service.EntityColumn, strPtr(columnIDStr), service.ColumnRenamedPayload{
@@ -109,11 +109,11 @@ func (c *Client) handleColumnRenamed(payload map[string]interface{}) {
 func (c *Client) handleColumnDeleted(payload map[string]interface{}) {
 	columnIDStr, ok := payload["column_id"].(string)
 	if !ok {
-		log.Println("Invalid payload for COLUMN_DELETED")
+		slog.Warn("invalid COLUMN_DELETED payload", "board_id", c.boardID)
 		return
 	}
 	if _, err := uuid.Parse(columnIDStr); err != nil {
-		log.Printf("Invalid column ID: %s", columnIDStr)
+		slog.Warn("invalid column id", "column_id", columnIDStr)
 		return
 	}
 
@@ -121,12 +121,12 @@ func (c *Client) handleColumnDeleted(payload map[string]interface{}) {
 	defer cancel()
 
 	if err := c.hub.boardCmd.VerifyColumnInBoard(ctx, columnIDStr, c.boardID); err != nil {
-		log.Printf("COLUMN_DELETED rejected: column [%s] not in board [%s]", columnIDStr, c.boardID)
+		slog.Warn("COLUMN_DELETED rejected: column not in board", "column_id", columnIDStr, "board_id", c.boardID)
 		return
 	}
 
 	if err := c.hub.boardCmd.DeleteColumn(ctx, columnIDStr); err != nil {
-		log.Printf("Failed to delete column [%s]: %v", columnIDStr, err)
+		slog.Error("delete column failed", "column_id", columnIDStr, "err", err)
 		return
 	}
 
@@ -138,11 +138,11 @@ func (c *Client) handleColumnDeleted(payload map[string]interface{}) {
 	}
 	msgBytes, err := json.Marshal(broadcastMsg)
 	if err != nil {
-		log.Printf("Failed to marshal COLUMN_DELETED broadcast: %v", err)
+		slog.Error("marshal COLUMN_DELETED broadcast failed", "err", err)
 		return
 	}
 
-	log.Printf("Deleted column [%s]", columnIDStr)
+	slog.Debug("column deleted", "column_id", columnIDStr)
 	c.hub.broadcast <- BroadcastMessage{BoardID: c.boardID, Message: msgBytes}
 
 	c.recordActivity(ctx, service.EventColumnDeleted, service.EntityColumn, strPtr(columnIDStr), service.ColumnDeletedPayload{})
@@ -151,18 +151,18 @@ func (c *Client) handleColumnDeleted(payload map[string]interface{}) {
 func (c *Client) handleColumnUpdated(payload map[string]interface{}) {
 	columnIDStr, ok := payload["column_id"].(string)
 	if !ok {
-		log.Println("Invalid payload for COLUMN_UPDATED")
+		slog.Warn("invalid COLUMN_UPDATED payload", "board_id", c.boardID)
 		return
 	}
 	if _, err := uuid.Parse(columnIDStr); err != nil {
-		log.Printf("Invalid column ID: %s", columnIDStr)
+		slog.Warn("invalid column id", "column_id", columnIDStr)
 		return
 	}
 
 	title, _ := payload["title"].(string)
 	category, _ := payload["category"].(string)
 	if title == "" || category == "" {
-		log.Println("COLUMN_UPDATED: missing title or category")
+		slog.Warn("COLUMN_UPDATED missing title or category", "column_id", columnIDStr)
 		return
 	}
 	var colorPtr *string
@@ -174,7 +174,7 @@ func (c *Client) handleColumnUpdated(payload map[string]interface{}) {
 	defer cancel()
 
 	if err := c.hub.boardCmd.VerifyColumnInBoard(ctx, columnIDStr, c.boardID); err != nil {
-		log.Printf("COLUMN_UPDATED rejected: column [%s] not in board [%s]", columnIDStr, c.boardID)
+		slog.Warn("COLUMN_UPDATED rejected: column not in board", "column_id", columnIDStr, "board_id", c.boardID)
 		return
 	}
 
@@ -184,7 +184,7 @@ func (c *Client) handleColumnUpdated(payload map[string]interface{}) {
 		Category: category,
 		Color:    colorPtr,
 	}); err != nil {
-		log.Printf("Failed to update column [%s]: %v", columnIDStr, err)
+		slog.Error("update column failed", "column_id", columnIDStr, "err", err)
 		return
 	}
 
@@ -199,10 +199,10 @@ func (c *Client) handleColumnUpdated(payload map[string]interface{}) {
 	}
 	msgBytes, err := json.Marshal(broadcastMsg)
 	if err != nil {
-		log.Printf("Failed to marshal COLUMN_UPDATED broadcast: %v", err)
+		slog.Error("marshal COLUMN_UPDATED broadcast failed", "err", err)
 		return
 	}
 
-	log.Printf("Updated column [%s]", columnIDStr)
+	slog.Debug("column updated", "column_id", columnIDStr)
 	c.hub.broadcast <- BroadcastMessage{BoardID: c.boardID, Message: msgBytes}
 }

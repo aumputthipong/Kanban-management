@@ -4,7 +4,7 @@ package migrate
 import (
 	"errors"
 	"fmt"
-	"log"
+	"log/slog"
 
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/pgx/v5"
@@ -27,10 +27,10 @@ func Run(sourcePath, dbURL string) error {
 	defer func() {
 		srcErr, dbErr := m.Close()
 		if srcErr != nil {
-			log.Printf("migrate: source close error: %v", srcErr)
+			slog.Warn("migrate: source close failed", "err", srcErr)
 		}
 		if dbErr != nil {
-			log.Printf("migrate: db close error: %v", dbErr)
+			slog.Warn("migrate: db close failed", "err", dbErr)
 		}
 	}()
 
@@ -40,9 +40,9 @@ func Run(sourcePath, dbURL string) error {
 
 	version, dirty, verr := m.Version()
 	if verr != nil && !errors.Is(verr, migrate.ErrNilVersion) {
-		log.Printf("migrate: version probe error: %v", verr)
+		slog.Warn("migrate: version probe failed", "err", verr)
 	} else {
-		log.Printf("migrate: applied — version=%d dirty=%v", version, dirty)
+		slog.Info("migrate: applied", "version", version, "dirty", dirty)
 	}
 	return nil
 }

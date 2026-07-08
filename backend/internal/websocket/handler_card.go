@@ -7,7 +7,7 @@ package websocket
 import (
 	"context"
 	"encoding/json"
-	"log"
+	"log/slog"
 	"strings"
 
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/service"
@@ -20,16 +20,16 @@ func (c *Client) handleCardMoved(payload map[string]interface{}, rawMsg []byte) 
 	newColumnIDStr, ok2 := payload["new_column_id"].(string)
 	position, ok3 := payload["position"].(float64)
 	if !ok1 || !ok2 || !ok3 {
-		log.Println("Invalid payload for CARD_MOVED")
+		slog.Warn("invalid CARD_MOVED payload", "board_id", c.boardID)
 		return
 	}
 
 	if _, err := uuid.Parse(cardIDStr); err != nil {
-		log.Printf("Invalid card ID: %s", cardIDStr)
+		slog.Warn("invalid card id", "card_id", cardIDStr)
 		return
 	}
 	if _, err := uuid.Parse(newColumnIDStr); err != nil {
-		log.Printf("Invalid column ID: %s", newColumnIDStr)
+		slog.Warn("invalid column id", "column_id", newColumnIDStr)
 		return
 	}
 
@@ -37,17 +37,17 @@ func (c *Client) handleCardMoved(payload map[string]interface{}, rawMsg []byte) 
 	defer cancel()
 
 	if err := c.hub.boardCmd.VerifyCardInBoard(ctx, cardIDStr, c.boardID); err != nil {
-		log.Printf("CARD_MOVED rejected: card [%s] not in board [%s]", cardIDStr, c.boardID)
+		slog.Warn("CARD_MOVED rejected: card not in board", "card_id", cardIDStr, "board_id", c.boardID)
 		return
 	}
 	if err := c.hub.boardCmd.VerifyColumnInBoard(ctx, newColumnIDStr, c.boardID); err != nil {
-		log.Printf("CARD_MOVED rejected: column [%s] not in board [%s]", newColumnIDStr, c.boardID)
+		slog.Warn("CARD_MOVED rejected: column not in board", "column_id", newColumnIDStr, "board_id", c.boardID)
 		return
 	}
 
 	result, err := c.hub.boardCmd.MoveCard(ctx, cardIDStr, newColumnIDStr, position)
 	if err != nil {
-		log.Printf("Failed to move card: %v", err)
+		slog.Error("move card failed", "card_id", cardIDStr, "err", err)
 		return
 	}
 
@@ -63,11 +63,11 @@ func (c *Client) handleCardMoved(payload map[string]interface{}, rawMsg []byte) 
 	}
 	msgBytes, err := json.Marshal(broadcastMsg)
 	if err != nil {
-		log.Printf("Failed to marshal CARD_MOVED broadcast: %v", err)
+		slog.Error("marshal CARD_MOVED broadcast failed", "err", err)
 		return
 	}
 
-	log.Printf("Moved card [%s] to column [%s] at position [%f] (isDone=%v)", cardIDStr, newColumnIDStr, position, result.IsDone)
+	slog.Debug("card moved", "card_id", cardIDStr, "column_id", newColumnIDStr, "position", position, "is_done", result.IsDone)
 	c.hub.broadcast <- BroadcastMessage{BoardID: c.boardID, Message: msgBytes}
 
 	c.recordActivity(ctx, service.EventCardMoved, service.EntityCard, strPtr(cardIDStr), service.CardMovedPayload{
@@ -80,16 +80,16 @@ func (c *Client) handleCardCreated(payload map[string]interface{}) {
 	columnIDStr, ok1 := payload["column_id"].(string)
 	title, ok2 := payload["title"].(string)
 	if !ok1 || !ok2 {
-		log.Println("Invalid payload for CARD_CREATED")
+		slog.Warn("invalid CARD_CREATED payload", "board_id", c.boardID)
 		return
 	}
 
 	if _, err := uuid.Parse(columnIDStr); err != nil {
-		log.Printf("Invalid column ID: %s", columnIDStr)
+		slog.Warn("invalid column id", "column_id", columnIDStr)
 		return
 	}
 	if _, err := uuid.Parse(c.userID); err != nil {
-		log.Printf("Invalid creator ID: %s", c.userID)
+		slog.Warn("invalid creator id", "user_id", c.userID)
 		return
 	}
 
@@ -97,7 +97,7 @@ func (c *Client) handleCardCreated(payload map[string]interface{}) {
 	defer cancel()
 
 	if err := c.hub.boardCmd.VerifyColumnInBoard(ctx, columnIDStr, c.boardID); err != nil {
-		log.Printf("CARD_CREATED rejected: column [%s] not in board [%s]", columnIDStr, c.boardID)
+		slog.Warn("CARD_CREATED rejected: column not in board", "column_id", columnIDStr, "board_id", c.boardID)
 		return
 	}
 
@@ -108,7 +108,7 @@ func (c *Client) handleCardCreated(payload map[string]interface{}) {
 	var assigneeID *string
 	if a, ok := payload["assignee_id"].(string); ok && a != "" {
 		if _, err := uuid.Parse(a); err != nil {
-			log.Printf("Invalid assignee ID: %s", a)
+			slog.Warn("invalid assignee id", "assignee_id", a)
 			return
 		}
 		assigneeID = &a
@@ -127,7 +127,7 @@ func (c *Client) handleCardCreated(payload map[string]interface{}) {
 
 	newCard, subtasks, err := c.hub.boardCmd.CreateCardWS(ctx, columnIDStr, c.userID, title, priority, position, assigneeID, dueDate, description, subtaskTitles)
 	if err != nil {
-		log.Printf("Failed to create card: %v", err)
+		slog.Error("create card failed", "column_id", columnIDStr, "err", err)
 		return
 	}
 
@@ -163,7 +163,7 @@ func (c *Client) handleCardCreated(payload map[string]interface{}) {
 
 	msgBytes, err := json.Marshal(broadcastMsg)
 	if err != nil {
-		log.Printf("Failed to marshal CARD_CREATED broadcast: %v", err)
+		slog.Error("marshal CARD_CREATED broadcast failed", "err", err)
 		return
 	}
 
@@ -177,8 +177,8 @@ func (c *Client) handleCardCreated(payload map[string]interface{}) {
 
 // parseSubtaskTitles normalises the modal's optional "subtasks" payload (a JSON
 // array of strings) into clean titles: trimmed, empties dropped, each capped at
-// 200 chars (mirrors UpdateSubtaskRequest's max) and the list capped at 50 so a
-// malformed client can't insert an unbounded batch in one card create.
+// 200 characters (mirrors UpdateSubtaskRequest's max) and the list capped at 50
+// so a malformed client can't insert an unbounded batch in one card create.
 func parseSubtaskTitles(raw interface{}) []string {
 	arr, ok := raw.([]interface{})
 	if !ok {
@@ -196,8 +196,11 @@ func parseSubtaskTitles(raw interface{}) []string {
 		if s == "" {
 			continue
 		}
-		if len(s) > maxLen {
-			s = s[:maxLen]
+		// Truncate by runes, not bytes — a byte slice can cut a multi-byte
+		// character (e.g. Thai) mid-sequence and produce invalid UTF-8 that
+		// Postgres rejects.
+		if r := []rune(s); len(r) > maxLen {
+			s = string(r[:maxLen])
 		}
 		titles = append(titles, s)
 		if len(titles) >= maxSubtasks {
@@ -210,12 +213,12 @@ func parseSubtaskTitles(raw interface{}) []string {
 func (c *Client) handleCardDeleted(payload map[string]interface{}, rawMsg []byte) {
 	cardIDStr, ok := payload["card_id"].(string)
 	if !ok {
-		log.Println("Invalid payload for CARD_DELETED")
+		slog.Warn("invalid CARD_DELETED payload", "board_id", c.boardID)
 		return
 	}
 
 	if _, err := uuid.Parse(cardIDStr); err != nil {
-		log.Printf("Invalid card ID: %s", cardIDStr)
+		slog.Warn("invalid card id", "card_id", cardIDStr)
 		return
 	}
 
@@ -223,17 +226,17 @@ func (c *Client) handleCardDeleted(payload map[string]interface{}, rawMsg []byte
 	defer cancel()
 
 	if err := c.hub.boardCmd.VerifyCardInBoard(ctx, cardIDStr, c.boardID); err != nil {
-		log.Printf("CARD_DELETED rejected: card [%s] not in board [%s]", cardIDStr, c.boardID)
+		slog.Warn("CARD_DELETED rejected: card not in board", "card_id", cardIDStr, "board_id", c.boardID)
 		return
 	}
 
 	cardTitle, err := c.hub.boardCmd.DeleteCard(ctx, cardIDStr)
 	if err != nil {
-		log.Printf("Failed to delete card: %v", err)
+		slog.Error("delete card failed", "card_id", cardIDStr, "err", err)
 		return
 	}
 
-	log.Printf("Deleted card [%s]", cardIDStr)
+	slog.Debug("card deleted", "card_id", cardIDStr)
 	c.hub.broadcast <- BroadcastMessage{BoardID: c.boardID, Message: rawMsg}
 
 	c.recordActivity(ctx, service.EventCardDeleted, service.EntityCard, strPtr(cardIDStr), service.CardDeletedPayload{
@@ -241,10 +244,15 @@ func (c *Client) handleCardDeleted(payload map[string]interface{}, rawMsg []byte
 	})
 }
 
+// handleCardUpdated applies a full-value update. Unlike the REST PATCH path
+// (pointer fields + COALESCE), the WS payload always carries every field's
+// current value — "" means "clear", not "no change" — because the client
+// sends its full card state. Don't reuse this payload shape for partial
+// updates.
 func (c *Client) handleCardUpdated(payload map[string]interface{}, rawMsg []byte) {
 	cardIDStr, ok := payload["card_id"].(string)
 	if !ok {
-		log.Println("Invalid payload for CARD_UPDATED")
+		slog.Warn("invalid CARD_UPDATED payload", "board_id", c.boardID)
 		return
 	}
 
@@ -259,7 +267,7 @@ func (c *Client) handleCardUpdated(payload map[string]interface{}, rawMsg []byte
 	defer cancel()
 
 	if err := c.hub.boardCmd.VerifyCardInBoard(ctx, cardIDStr, c.boardID); err != nil {
-		log.Printf("CARD_UPDATED rejected: card [%s] not in board [%s]", cardIDStr, c.boardID)
+		slog.Warn("CARD_UPDATED rejected: card not in board", "card_id", cardIDStr, "board_id", c.boardID)
 		return
 	}
 
@@ -272,11 +280,11 @@ func (c *Client) handleCardUpdated(payload map[string]interface{}, rawMsg []byte
 		Priority:       priority,
 		EstimatedHours: estimatedHours,
 	}); err != nil {
-		log.Printf("Failed to update card [%s]: %v", cardIDStr, err)
+		slog.Error("update card failed", "card_id", cardIDStr, "err", err)
 		return
 	}
 
-	log.Printf("Updated card [%s] successfully", cardIDStr)
+	slog.Debug("card updated", "card_id", cardIDStr)
 	c.hub.broadcast <- BroadcastMessage{BoardID: c.boardID, Message: rawMsg}
 
 	// Use the client's changed_fields; an empty list means nothing changed, so
@@ -303,22 +311,22 @@ func (c *Client) handleCardDoneToggled(payload map[string]interface{}) {
 	boardIDStr, ok2 := payload["board_id"].(string)
 	isDone, ok3 := payload["is_done"].(bool)
 	if !ok1 || !ok2 || !ok3 {
-		log.Println("Invalid payload for CARD_DONE_TOGGLED")
+		slog.Warn("invalid CARD_DONE_TOGGLED payload", "board_id", c.boardID)
 		return
 	}
 	if _, err := uuid.Parse(cardIDStr); err != nil {
-		log.Printf("Invalid card ID: %s", cardIDStr)
+		slog.Warn("invalid card id", "card_id", cardIDStr)
 		return
 	}
 	if _, err := uuid.Parse(boardIDStr); err != nil {
-		log.Printf("Invalid board ID: %s", boardIDStr)
+		slog.Warn("invalid board id", "board_id", boardIDStr)
 		return
 	}
 	// Reject mismatched board_id in payload outright — the client must operate
 	// on the board it connected to. Pinning to c.boardID also closes the
 	// payload-injection path where an attacker passes someone else's board.
 	if boardIDStr != c.boardID {
-		log.Printf("CARD_DONE_TOGGLED rejected: payload board [%s] != connection board [%s]", boardIDStr, c.boardID)
+		slog.Warn("CARD_DONE_TOGGLED rejected: board mismatch", "payload_board_id", boardIDStr, "conn_board_id", c.boardID)
 		return
 	}
 
@@ -326,13 +334,13 @@ func (c *Client) handleCardDoneToggled(payload map[string]interface{}) {
 	defer cancel()
 
 	if err := c.hub.boardCmd.VerifyCardInBoard(ctx, cardIDStr, c.boardID); err != nil {
-		log.Printf("CARD_DONE_TOGGLED rejected: card [%s] not in board [%s]", cardIDStr, c.boardID)
+		slog.Warn("CARD_DONE_TOGGLED rejected: card not in board", "card_id", cardIDStr, "board_id", c.boardID)
 		return
 	}
 
 	result, err := c.hub.boardCmd.ToggleCardDone(ctx, cardIDStr, boardIDStr, isDone)
 	if err != nil {
-		log.Printf("Failed to toggle card done: %v", err)
+		slog.Error("toggle card done failed", "card_id", cardIDStr, "err", err)
 		return
 	}
 
@@ -349,11 +357,11 @@ func (c *Client) handleCardDoneToggled(payload map[string]interface{}) {
 	}
 	msgBytes, err := json.Marshal(broadcastMsg)
 	if err != nil {
-		log.Printf("Failed to marshal CARD_DONE_TOGGLED broadcast: %v", err)
+		slog.Error("marshal CARD_DONE_TOGGLED broadcast failed", "err", err)
 		return
 	}
 
-	log.Printf("Toggled card [%s] done=%v → column [%s]", cardIDStr, isDone, result.TargetColumnID)
+	slog.Debug("card done toggled", "card_id", cardIDStr, "is_done", isDone, "column_id", result.TargetColumnID)
 	c.hub.broadcast <- BroadcastMessage{BoardID: c.boardID, Message: msgBytes}
 
 	c.recordActivity(ctx, service.EventCardDoneToggled, service.EntityCard, strPtr(cardIDStr), service.CardDoneToggledPayload{

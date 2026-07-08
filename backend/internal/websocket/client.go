@@ -5,7 +5,7 @@ package websocket
 
 import (
 	"encoding/json"
-	"log"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -63,14 +63,14 @@ func (c *Client) ReadPump() {
 		_, message, err := c.conn.ReadMessage()
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure, websocket.CloseNoStatusReceived) {
-				log.Printf("Unexpected websocket error: %v", err)
+				slog.Warn("unexpected websocket close", "board_id", c.boardID, "err", err)
 			}
 			break
 		}
 
 		var wsMsg WSMessage
 		if err := json.Unmarshal(message, &wsMsg); err != nil {
-			log.Printf("Invalid JSON format: %v", err)
+			slog.Warn("invalid ws message JSON", "board_id", c.boardID, "err", err)
 			continue
 		}
 
@@ -116,7 +116,7 @@ func ServeWs(hub *Hub, w http.ResponseWriter, r *http.Request, boardID string) {
 	upgrader := newUpgrader(hub.allowedOrigin)
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Println("Upgrade error:", err)
+		slog.Warn("websocket upgrade failed", "board_id", boardID, "err", err)
 		return
 	}
 	userID, _ := r.Context().Value(middleware.UserIDKey).(string)

@@ -6,7 +6,7 @@ package websocket
 import (
 	"context"
 	"encoding/json"
-	"log"
+	"log/slog"
 	"time"
 
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/service"
@@ -29,7 +29,7 @@ func (c *Client) recordActivity(ctx context.Context, eventType, entityType strin
 		Payload:    payload,
 	})
 	if err != nil {
-		log.Printf("Failed to record activity [%s]: %v", eventType, err)
+		slog.Error("record activity failed", "event_type", eventType, "board_id", c.boardID, "err", err)
 		return
 	}
 
@@ -51,7 +51,7 @@ func (c *Client) recordActivity(ctx context.Context, eventType, entityType strin
 	msg := WSMessage{Type: "ACTIVITY_CREATED", Payload: broadcastPayload}
 	msgBytes, err := json.Marshal(msg)
 	if err != nil {
-		log.Printf("Failed to marshal ACTIVITY_CREATED: %v", err)
+		slog.Error("marshal ACTIVITY_CREATED failed", "err", err)
 		return
 	}
 	c.hub.broadcast <- BroadcastMessage{BoardID: c.boardID, Message: msgBytes}

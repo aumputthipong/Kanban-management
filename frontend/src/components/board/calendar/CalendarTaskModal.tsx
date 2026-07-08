@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { ArrowRight, Calendar, Check, Clock, ListChecks, X } from "lucide-react";
 import { apiClient } from "@/lib/apiClient";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { PriorityBadge } from "@/components/board/task-board/PriorityBadge";
 import { TagChip } from "@/components/board/task-board/TagChip";
@@ -222,7 +223,7 @@ export function CalendarTaskModal({ card, columnName, onClose, onOpenTask }: Pro
 
             {loading && !detail && (
               <div className="space-y-1.5">
-                <div className="h-3 w-2/3 rounded bg-slate-100 animate-pulse" />
+                <Skeleton className="h-3 w-2/3" />
               </div>
             )}
           </div>

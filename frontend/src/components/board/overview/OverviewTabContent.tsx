@@ -3,21 +3,20 @@
 import { useMemo } from "react";
 import { CheckCircle2, Loader2, AlarmClock, Zap, AlertTriangle, Users } from "lucide-react";
 import dynamic from "next/dynamic";
+import { Skeleton } from "@/components/ui/Skeleton";
 import type { Card } from "@/types/board";
 
 // recharts is ~400KB. The overview tab is the only place we use it, so split
 // it out of the main bundle and render a lightweight placeholder while it loads.
 const PieChartWidget = dynamic(() => import("./PieChartWidget"), {
   ssr: false,
-  loading: () => <div className="h-64 rounded-xl bg-slate-100 animate-pulse" />,
+  loading: () => <Skeleton className="h-64 rounded-xl" />,
 });
 const BurndownChartWidget = dynamic(
   () => import("./BurndownChartWidget").then((m) => m.BurndownChartWidget),
   {
     ssr: false,
-    loading: () => (
-      <div className="lg:col-span-2 h-64 rounded-xl bg-slate-100 animate-pulse" />
-    ),
+    loading: () => <Skeleton className="lg:col-span-2 h-64 rounded-xl" />,
   }
 );
 

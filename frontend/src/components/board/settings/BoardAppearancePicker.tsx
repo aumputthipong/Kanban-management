@@ -41,7 +41,7 @@ export function BoardAppearancePicker({
   return (
     <div className="flex flex-col gap-3.5">
       {/* preview */}
-      <div className="flex items-center gap-3.5 p-3.5 rounded-lg border border-slate-200 bg-[#FBFCFE]">
+      <div className="flex items-center gap-3.5 p-3.5 rounded-lg border border-slate-200 bg-slate-50">
         <div
           className="w-[46px] h-[46px] rounded-lg flex items-center justify-center text-white shrink-0 transition-colors"
           style={{ background: accent }}
@@ -93,7 +93,7 @@ export function BoardAppearancePicker({
               className={`w-[42px] h-[42px] rounded-lg border flex items-center justify-center transition disabled:opacity-60 ${
                 on
                   ? "bg-indigo-50 border-blue-200 text-blue-800"
-                  : "bg-[#FBFCFE] border-slate-200 text-slate-600 hover:border-slate-300"
+                  : "bg-slate-50 border-slate-200 text-slate-600 hover:border-slate-300"
               }`}
             >
               <G size={20} />

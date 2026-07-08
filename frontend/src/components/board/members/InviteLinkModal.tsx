@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { Link2, Copy, Check, RefreshCw, X, Loader2 } from "lucide-react";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { inviteApi, type InviteLink } from "@/lib/inviteApi";
 import { useToastStore } from "@/store/useToastStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
@@ -114,7 +115,7 @@ export function InviteLinkModal({
             </p>
 
             {loading ? (
-              <div className="h-11 animate-pulse rounded-md bg-slate-100" />
+              <Skeleton className="h-11 rounded-md" />
             ) : failed ? (
               <button
                 type="button"

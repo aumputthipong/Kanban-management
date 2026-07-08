@@ -2,7 +2,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 
 export function BoardSkeleton() {
   return (
-    <main className="min-h-screen bg-[#fafafa] px-8 py-6">
+    <main className="min-h-screen bg-slate-50 px-8 py-6">
       <Skeleton className="h-14 mb-6 w-full rounded-xl" />
       <Skeleton className="h-12 mb-6 rounded-xl" />
       <div className="flex gap-6 items-start">

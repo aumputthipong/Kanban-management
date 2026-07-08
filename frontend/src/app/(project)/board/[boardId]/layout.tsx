@@ -74,7 +74,7 @@ export default function BoardLayout({ children, params }: BoardLayoutProps) {
 
   return (
     <BoardWebSocketProvider boardId={boardId}>
-      <div className={`relative h-full flex flex-col ${isSettings ? "bg-[#F8FAFC]" : "bg-[#fafafa]"}`}>
+      <div className="relative h-full flex flex-col bg-slate-50">
         {!isSettings && <BoardBackground />}
 
         <div className="relative z-10 flex flex-col h-full min-h-0">

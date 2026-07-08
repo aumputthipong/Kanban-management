@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import Link from "next/link";
 import { ArrowRight, Calendar, Check, Clock, ListChecks, X } from "lucide-react";
 import { apiClient } from "@/lib/apiClient";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 import { BoardGlyph, boardColor } from "@/lib/boardAppearance";
 import { PriorityBadge } from "@/components/board/task-board/PriorityBadge";
@@ -157,7 +158,7 @@ export function MyWorkTaskModal({ card, boardMeta, onClose, onComplete, onSnooze
                 Assignee
               </span>
               {loading ? (
-                <span className="h-6 w-28 rounded bg-slate-100 animate-pulse" />
+                <Skeleton className="h-6 w-28" />
               ) : detail?.assignee_name && detail.assignee_id ? (
                 <span className="inline-flex items-center gap-2 min-w-0">
                   <span
@@ -194,8 +195,8 @@ export function MyWorkTaskModal({ card, boardMeta, onClose, onComplete, onSnooze
               </p>
               {loading ? (
                 <div className="space-y-1.5">
-                  <div className="h-3 w-full rounded bg-slate-100 animate-pulse" />
-                  <div className="h-3 w-2/3 rounded bg-slate-100 animate-pulse" />
+                  <Skeleton className="h-3 w-full" />
+                  <Skeleton className="h-3 w-2/3" />
                 </div>
               ) : detail?.description ? (
                 <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">

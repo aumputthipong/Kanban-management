@@ -137,7 +137,7 @@ export function GeneralSection({
                   setName(e.target.value);
                   setNameError(null);
                 }}
-                className={`h-[42px] w-[320px] px-3.5 rounded-lg border bg-[#FBFCFE] text-sm text-slate-900 outline-none transition focus:bg-white focus:ring-2 focus:ring-blue-800/10 disabled:opacity-60 ${
+                className={`h-[42px] w-[320px] px-3.5 rounded-lg border bg-slate-50 text-sm text-slate-900 outline-none transition focus:bg-white focus:ring-2 focus:ring-blue-800/10 disabled:opacity-60 ${
                   nameError ? "border-red-400" : "border-slate-200 focus:border-blue-300"
                 }`}
               />
@@ -181,7 +181,7 @@ export function GeneralSection({
               disabled={!canManage}
               onChange={(e) => setDesc(e.target.value)}
               placeholder="เช่น Project ติดตามงานพัฒนา Sprint ของทีม Engineering…"
-              className="w-full min-h-[78px] px-3.5 py-2.5 rounded-lg border border-slate-200 bg-[#FBFCFE] text-sm text-slate-900 leading-relaxed outline-none resize-y transition focus:bg-white focus:border-blue-300 focus:ring-2 focus:ring-blue-800/10 disabled:opacity-60"
+              className="w-full min-h-[78px] px-3.5 py-2.5 rounded-lg border border-slate-200 bg-slate-50 text-sm text-slate-900 leading-relaxed outline-none resize-y transition focus:bg-white focus:border-blue-300 focus:ring-2 focus:ring-blue-800/10 disabled:opacity-60"
             />
             <div className="flex items-center justify-between">
               <span className="text-[11.5px] font-semibold text-slate-400">

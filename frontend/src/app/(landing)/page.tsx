@@ -194,7 +194,6 @@ export default async function LandingPage() {
       <section className="px-6 md:px-12 pt-16 pb-24 max-w-6xl mx-auto">
         <div className="flex items-center justify-between text-xs text-slate-400 mb-8 font-medium">
           <span>A field manual for shipping</span>
-          <span>April 2026 · v2.4</span>
         </div>
 
         <div className="grid lg:grid-cols-[1.15fr_1fr] gap-12 lg:gap-16 items-center">
@@ -455,7 +454,7 @@ export default async function LandingPage() {
               </h2>
             </div>
             <span className="hidden md:inline text-xs text-slate-400 font-medium">
-              03 steps · ~4 min read
+              03 steps
             </span>
           </div>
 

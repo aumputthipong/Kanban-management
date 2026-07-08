@@ -256,8 +256,9 @@ WHERE b.deleted_at IS NOT NULL
 ORDER BY b.deleted_at DESC;
 
 -- name: HardDeleteBoard :exec
--- ลบข้อมูลออกจากตารางจริง (ถ้าตั้ง ON DELETE CASCADE ไว้ ลูกๆ จะหายไปด้วย)
-DELETE FROM boards 
+-- Permanent delete — child rows (columns, cards, members, ...) go with it
+-- via ON DELETE CASCADE.
+DELETE FROM boards
 WHERE id = $1;
 
 -- name: RestoreStashedBoard :exec
@@ -437,8 +438,8 @@ FROM columns
 WHERE id = $1;
 
 -- name: GetColumnByBoardAndCategory :one
--- ใช้หา DONE column หรือ TODO column ของ board นั้นๆ
--- ORDER BY position เพื่อได้ column แรกสุดของ category นั้น
+-- Finds a board's DONE or TODO column. ORDER BY position picks the first
+-- column of that category when there are several.
 SELECT id, position
 FROM columns
 WHERE board_id = $1 AND category = $2

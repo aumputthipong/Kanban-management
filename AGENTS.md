@@ -34,7 +34,7 @@ Working agreement สำหรับ AI coding agents ที่เข้าม�
 1. **อ่าน `frontend/design.md`** — ดู YAML frontmatter (tokens) และ section ที่เกี่ยวข้อง (Colors / Typography / Layout / Shapes / Components / Do's and Don'ts).
 2. **ใช้ token ที่มีอยู่เท่านั้น** — เช่น `{colors.primary}`, `{spacing.md}`, `{rounded.sm}`. ห้ามฮาร์ดโค้ดสี/ขนาดใหม่.
 3. **ถ้า token ที่ต้องการไม่มี** — **อย่าเพิ่งเขียนค่า inline**. หยุดก่อน, ถามผู้ใช้ว่าจะเพิ่ม token ใหม่ใน `frontend/design.md` หรือ map ไปใช้ token ที่ใกล้เคียงที่สุด.
-4. **ถ้าแก้ `frontend/design.md`** — รัน `npm run design:link` ต้องผ่าน **0 errors, 0 warnings** ก่อน commit. info findings (token summary) ยอมรับได้.
+4. **ถ้าแก้ `frontend/design.md`** — เช็คด้วยตาว่า token ใหม่ไม่ซ้ำ/ไม่ขัดกับของเดิม และอัปเดต `frontend/src/app/globals.css` (`@theme`) ให้ตรงกันถ้า token นั้นถูกใช้เป็น Tailwind utility. (ยังไม่มี lint tool อัตโนมัติ — ถ้าจะสร้าง เขียน ADR ก่อน.)
 5. **เคารพ Do's & Don'ts** ใน `frontend/design.md` — เช่น "หนึ่ง `button-primary` ต่อ view", "status colors ใช้บน chip/toast เท่านั้น", "ใช้ named radius step ห้าม `rounded-[Npx]` ลอย ๆ".
 
 ### Anti-patterns ที่ห้าม
@@ -222,7 +222,7 @@ Code comments are **English**, concise, and explain the *why* the code can't —
 | Backend critical path | `make test-integration` (real Postgres via Docker) |
 | Frontend logic      | `make test-fe` (vitest)                              |
 | Frontend types      | `make typecheck` (`tsc --noEmit`)                    |
-| **UI change**       | `npm run design:link` + เปิด browser ทดสอบจริง       |
+| **UI change**       | `grep -rn 'bg-\[#\|text-\[#\|border-\[#' frontend/src` ต้องไม่เจอ + เปิด browser ทดสอบจริง |
 | E2E flow            | `make test-e2e` (Playwright)                         |
 | ทั้งหมดที่ CI รัน    | `make verify`                                        |
 

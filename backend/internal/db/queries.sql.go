@@ -1041,8 +1041,8 @@ type GetColumnByBoardAndCategoryRow struct {
 	Position float64
 }
 
-// ใช้หา DONE column หรือ TODO column ของ board นั้นๆ
-// ORDER BY position เพื่อได้ column แรกสุดของ category นั้น
+// Finds a board's DONE or TODO column. ORDER BY position picks the first
+// column of that category when there are several.
 func (q *Queries) GetColumnByBoardAndCategory(ctx context.Context, arg GetColumnByBoardAndCategoryParams) (GetColumnByBoardAndCategoryRow, error) {
 	row := q.db.QueryRow(ctx, getColumnByBoardAndCategory, arg.BoardID, arg.Category)
 	var i GetColumnByBoardAndCategoryRow
@@ -1776,11 +1776,12 @@ func (q *Queries) GetUserSettings(ctx context.Context, userID string) (UserSetti
 }
 
 const hardDeleteBoard = `-- name: HardDeleteBoard :exec
-DELETE FROM boards 
+DELETE FROM boards
 WHERE id = $1
 `
 
-// ลบข้อมูลออกจากตารางจริง (ถ้าตั้ง ON DELETE CASCADE ไว้ ลูกๆ จะหายไปด้วย)
+// Permanent delete — child rows (columns, cards, members, ...) go with it
+// via ON DELETE CASCADE.
 func (q *Queries) HardDeleteBoard(ctx context.Context, id string) error {
 	_, err := q.db.Exec(ctx, hardDeleteBoard, id)
 	return err

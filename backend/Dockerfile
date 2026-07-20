@@ -27,6 +27,7 @@ WORKDIR /app
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 COPY --from=builder /usr/share/zoneinfo /usr/share/zoneinfo
 COPY --from=builder /out/api /app/api
+COPY --from=builder /src/database/schema.sql /app/database/schema.sql
 COPY --from=builder /src/database/migrations /app/database/migrations
 
 USER nonroot:nonroot

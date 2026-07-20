@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 	"time"
 
@@ -128,9 +129,12 @@ func initDB(ctx context.Context, dbURL string) (*pgxpool.Pool, error) {
 
 func run(ctx context.Context, cfg config) error {
 	if !cfg.SkipMigrations {
-		slog.Info("running database migrations", "path", cfg.MigrationsPath)
-		if err := migrate.Run(cfg.MigrationsPath, cfg.DBUrl); err != nil {
-			return fmt.Errorf("migrations failed: %w", err)
+		// schema.sql (the sqlc source of truth) bootstraps a fresh DB; migrations
+		// evolve an existing one. See migrate.Bootstrap.
+		schemaPath := filepath.Join(filepath.Dir(cfg.MigrationsPath), "schema.sql")
+		slog.Info("bootstrapping database", "schema", schemaPath, "migrations", cfg.MigrationsPath)
+		if err := migrate.Bootstrap(ctx, cfg.DBUrl, schemaPath, cfg.MigrationsPath); err != nil {
+			return fmt.Errorf("database bootstrap failed: %w", err)
 		}
 	} else {
 		slog.Info("skipping migrations", "reason", "SKIP_MIGRATIONS=true")

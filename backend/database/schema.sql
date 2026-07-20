@@ -82,8 +82,6 @@ CREATE TABLE board_members (
 );
 CREATE INDEX idx_board_members_board_id ON board_members(board_id);
 CREATE INDEX idx_board_members_user_id ON board_members(user_id);
-ALTER TABLE board_members
-ADD CONSTRAINT board_members_role_check CHECK (role IN ('owner', 'manager', 'member'));
 CREATE TABLE card_subtasks (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     card_id UUID NOT NULL REFERENCES cards(id) ON DELETE CASCADE,

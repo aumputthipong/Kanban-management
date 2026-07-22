@@ -1,7 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  output: "standalone",
+  // Standalone output is for the self-hosted Docker image (frontend/Dockerfile).
+  // Vercel builds its own output and 404s every route if standalone is set, so
+  // disable it there — Vercel sets VERCEL=1 during the build.
+  output: process.env.VERCEL ? undefined : "standalone",
   compress: true,
   images: {
     formats: ["image/avif", "image/webp"],

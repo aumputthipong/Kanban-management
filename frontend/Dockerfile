@@ -21,6 +21,9 @@ ARG NEXT_PUBLIC_WS_URL
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_WS_URL=$NEXT_PUBLIC_WS_URL
 ENV NEXT_TELEMETRY_DISABLED=1
+# Opt in to Next.js standalone output for this self-hosted image (Vercel must not
+# set this — see next.config.ts).
+ENV BUILD_STANDALONE=1
 
 RUN npm run build
 

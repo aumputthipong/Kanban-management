@@ -4,7 +4,7 @@ import { apiClient } from "@/lib/apiClient";
 import { Board } from "@/types/board";
 import { cookies } from "next/headers";
 
-export async function getBoards(): Promise<Board[]> {
+async function getBoards(): Promise<Board[]> {
   try {
     // In a Server Component, forward the request cookie explicitly for auth.
     const cookieStore = await cookies();

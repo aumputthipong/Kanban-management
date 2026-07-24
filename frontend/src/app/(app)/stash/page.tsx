@@ -13,7 +13,7 @@ export interface StashedBoard {
   stashed_at: string;
 }
 
-export async function getStashedBoards(): Promise<StashedBoard[]> {
+async function getStashedBoards(): Promise<StashedBoard[]> {
   try {
     const cookieStore = await cookies();
 

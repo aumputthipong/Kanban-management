@@ -13,6 +13,14 @@ const nextConfig: NextConfig = {
       transform: "lucide-react/dist/esm/icons/{{kebabCase member}}",
     },
   },
+  // Proxy same-origin "/api/*" calls from the browser to the real backend so
+  // the auth cookie is first-party (see lib/constants.ts). NEXT_PUBLIC_API_URL
+  // already includes the "/api" suffix, e.g. https://turtask-api.onrender.com/api.
+  async rewrites() {
+    const backend = process.env.NEXT_PUBLIC_API_URL;
+    if (!backend) return [];
+    return [{ source: "/api/:path*", destination: `${backend}/:path*` }];
+  },
   async redirects() {
     return [
       // /my-tasks was renamed to /my-work in S.1. Permanent redirect so

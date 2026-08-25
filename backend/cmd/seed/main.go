@@ -56,7 +56,7 @@ func main() {
 
 func seed(ctx context.Context, pool *pgxpool.Pool) error {
 	queries := db.New(pool)
-	auth := service.NewAuthService(queries)
+	auth := service.NewAuthService(pool, queries)
 	boards := service.NewBoardService(pool, queries)
 	cmds := service.NewBoardCommandService(pool, queries)
 

@@ -54,26 +54,58 @@ type RefreshRotationResult struct {
 	RawToken  string
 }
 
-// RotateRefreshToken validates the presented raw token, marks it revoked,
-// inserts a new one, and returns the new token plus the user identity. If
-// the presented token was already revoked we treat that as replay and revoke
-// every refresh token for the user — the legitimate client will be forced to
-// log in again, but so will the attacker.
+// rotationRaceWindow is how long after a rotation a replay of the superseded
+// token is read as two clients racing rather than as theft. Browser tabs share
+// one cookie jar but refresh independently, so a second tab can present the
+// token it read a moment before the first tab rotated it. Inside the window
+// that caller is rejected (401) but the user's other sessions are left alone;
+// outside it, or for a token revoked by logout rather than by rotation, the
+// whole family still burns. See docs/adr/0001.
+const rotationRaceWindow = 30 * time.Second
+
+// RotateRefreshToken validates the presented raw token, revokes it, inserts a
+// replacement, and returns the new token plus the user identity. Replay of an
+// already-rotated token is treated as theft and revokes every refresh token
+// for the user — the legitimate client is forced to log in again, but so is
+// the attacker.
+//
+// The whole rotation runs in one transaction and locks the token row: without
+// the lock two concurrent refreshes of the same token both read it as unused
+// and both mint a replacement, which quietly breaks the single-use property
+// that replay detection depends on.
 func (s *AuthService) RotateRefreshToken(ctx context.Context, rawToken, userAgent, ip string) (RefreshRotationResult, error) {
 	if rawToken == "" {
 		return RefreshRotationResult{}, ErrRefreshInvalid
 	}
 	hash := token.HashRefreshToken(rawToken)
-	row, err := s.queries.GetRefreshTokenByHash(ctx, hash)
+
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return RefreshRotationResult{}, fmt.Errorf("begin tx: %w", err)
+	}
+	defer tx.Rollback(ctx)
+	qtx := s.queries.WithTx(tx)
+
+	row, err := qtx.LockRefreshTokenByHash(ctx, hash)
 	if err != nil {
 		return RefreshRotationResult{}, ErrRefreshInvalid
 	}
 
-	// Replay: the token was rotated before. The genuine client should be
-	// using the replacement by now, so seeing the old one means it was
-	// captured somewhere. Burn every session for this user.
+	// Replay: the token was rotated before. The genuine client should be using
+	// the replacement by now, so seeing the old one means it was captured
+	// somewhere — unless it lands inside the race window (see above).
 	if row.RevokedAt != nil {
-		_ = s.queries.RevokeAllRefreshTokensForUser(ctx, row.UserID)
+		raced := row.ReplacedBy != nil && time.Since(*row.RevokedAt) < rotationRaceWindow
+		if !raced {
+			if err := qtx.RevokeAllRefreshTokensForUser(ctx, row.UserID); err != nil {
+				return RefreshRotationResult{}, fmt.Errorf("revoke token family: %w", err)
+			}
+			// Commit the burn before returning the error — the deferred
+			// rollback would otherwise undo the defence we just triggered.
+			if err := tx.Commit(ctx); err != nil {
+				return RefreshRotationResult{}, fmt.Errorf("commit token family revoke: %w", err)
+			}
+		}
 		return RefreshRotationResult{}, ErrRefreshInvalid
 	}
 
@@ -81,18 +113,16 @@ func (s *AuthService) RotateRefreshToken(ctx context.Context, rawToken, userAgen
 		return RefreshRotationResult{}, ErrRefreshExpired
 	}
 
-	user, err := s.queries.GetUserByID(ctx, row.UserID)
+	user, err := qtx.GetUserByID(ctx, row.UserID)
 	if err != nil {
 		return RefreshRotationResult{}, fmt.Errorf("load user for rotation: %w", err)
 	}
 
-	// Mint the replacement first; only revoke the old row after we know we
-	// have something to hand back to the client.
 	newRaw, err := token.GenerateRefreshToken()
 	if err != nil {
 		return RefreshRotationResult{}, fmt.Errorf("generate refresh token: %w", err)
 	}
-	newID, err := s.queries.InsertRefreshToken(ctx, db.InsertRefreshTokenParams{
+	newID, err := qtx.InsertRefreshToken(ctx, db.InsertRefreshTokenParams{
 		UserID:    row.UserID,
 		TokenHash: token.HashRefreshToken(newRaw),
 		ExpiresAt: time.Now().Add(token.RefreshTokenDuration()),
@@ -102,11 +132,15 @@ func (s *AuthService) RotateRefreshToken(ctx context.Context, rawToken, userAgen
 	if err != nil {
 		return RefreshRotationResult{}, fmt.Errorf("insert rotated refresh token: %w", err)
 	}
-	if err := s.queries.RevokeRefreshToken(ctx, db.RevokeRefreshTokenParams{
+	if err := qtx.RevokeRefreshToken(ctx, db.RevokeRefreshTokenParams{
 		ID:         row.ID,
 		ReplacedBy: util.StringToPtr(newID),
 	}); err != nil {
 		return RefreshRotationResult{}, fmt.Errorf("revoke prior refresh token: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return RefreshRotationResult{}, fmt.Errorf("commit rotation: %w", err)
 	}
 
 	return RefreshRotationResult{

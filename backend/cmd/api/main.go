@@ -161,7 +161,7 @@ func run(ctx context.Context, cfg config) error {
 	go hub.Run()
 
 	boardService := service.NewBoardService(pool, queries)
-	authService := service.NewAuthService(queries)
+	authService := service.NewAuthService(pool, queries)
 	subtaskService := service.NewSubtaskService(pool)
 	tagService := service.NewTagService(pool, queries)
 	planningService := service.NewPlanningService(pool, queries)

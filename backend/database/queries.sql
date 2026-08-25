@@ -531,6 +531,18 @@ FROM refresh_tokens
 WHERE token_hash = $1
 LIMIT 1;
 
+-- name: LockRefreshTokenByHash :one
+-- Rotation-path read. FOR UPDATE holds the row for the rest of the
+-- transaction so two concurrent refreshes of the same token serialize: the
+-- second caller blocks here and, once the first commits its revoke, reads the
+-- row as already used instead of passing the "not revoked yet" check.
+-- Without the lock both callers mint a token and the single-use guarantee
+-- that replay detection rests on (docs/adr/0001) silently stops holding.
+SELECT id, user_id, token_hash, expires_at, revoked_at, replaced_by, created_at
+FROM refresh_tokens
+WHERE token_hash = $1
+FOR UPDATE;
+
 -- name: RevokeRefreshToken :exec
 -- Single-token revoke. replaced_by is set on rotation to track lineage so
 -- replay of an already-rotated token can be detected and the whole family

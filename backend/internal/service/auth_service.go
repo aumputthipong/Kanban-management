@@ -8,6 +8,7 @@ import (
 
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/db"
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/util"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -17,12 +18,15 @@ var (
 	ErrOAuthOnly    = errors.New("account registered via OAuth, please use Google or GitHub")
 )
 
+// AuthService owns identity (register / login / OAuth) and the refresh-token
+// lifecycle. It holds the pool because refresh rotation runs in a transaction.
 type AuthService struct {
+	pool    *pgxpool.Pool
 	queries *db.Queries
 }
 
-func NewAuthService(queries *db.Queries) *AuthService {
-	return &AuthService{queries: queries}
+func NewAuthService(pool *pgxpool.Pool, queries *db.Queries) *AuthService {
+	return &AuthService{pool: pool, queries: queries}
 }
 
 type RegisterParams struct {

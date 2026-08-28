@@ -5,11 +5,30 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"path/filepath"
 
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/pgx/v5"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 )
+
+// fileSourceURL turns an OS filesystem path into a "file://" URL golang-
+// migrate's source driver can parse. A naive "file://" + path breaks on
+// Windows: a path like `C:\Users\...\migrations` has backslashes url.Parse
+// treats as opaque, so the whole path — including the "C:" — gets read as
+// the URL authority, and Parse tries (and fails) to read what follows the
+// colon as a port number.
+//
+// filepath.ToSlash is the whole fix. It turns the Windows path into
+// `C:/Users/...`; url.Parse then reads "C:" as the host and "/Users/..." as
+// the path, and golang-migrate's own parseURL concatenates host+path back
+// into the original "C:/Users/..." — which os.DirFS accepts. On Unix
+// ToSlash is a no-op (already forward slashes), so this changes nothing
+// there: an absolute path already starts with "/", giving the same
+// "file:///home/..." this produced before.
+func fileSourceURL(sourcePath string) string {
+	return "file://" + filepath.ToSlash(sourcePath)
+}
 
 // Run applies all pending up-migrations from the given source path against
 // the given Postgres URL. It is idempotent — already-applied migrations are skipped.
@@ -17,7 +36,7 @@ import (
 // sourcePath: filesystem path to the migrations directory (e.g. "database/migrations").
 // dbURL:      Postgres connection URL. Will be normalized to the pgx/v5 driver.
 func Run(sourcePath, dbURL string) error {
-	migrationsURL := "file://" + sourcePath
+	migrationsURL := fileSourceURL(sourcePath)
 	driverURL := normalizeDBURL(dbURL)
 
 	m, err := migrate.New(migrationsURL, driverURL)

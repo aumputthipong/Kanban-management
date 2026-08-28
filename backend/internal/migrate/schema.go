@@ -93,7 +93,7 @@ func latestVersion(sourcePath string) (int, error) {
 // stampVersion marks the database as being at version v (clean) without running
 // any migration — used after applying the schema.sql baseline on a fresh DB.
 func stampVersion(sourcePath, dbURL string, v int) error {
-	m, err := migrate.New("file://"+sourcePath, normalizeDBURL(dbURL))
+	m, err := migrate.New(fileSourceURL(sourcePath), normalizeDBURL(dbURL))
 	if err != nil {
 		return fmt.Errorf("schema: open migrate: %w", err)
 	}

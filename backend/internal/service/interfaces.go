@@ -133,3 +133,10 @@ type InviteServicer interface {
 	RevokeInvites(ctx context.Context, boardID string) error
 	AcceptInvite(ctx context.Context, token, userID string) (string, error)
 }
+
+// TagServicer is the seam the TagHandler depends on (per-board card labels).
+type TagServicer interface {
+	GetTagsByBoard(ctx context.Context, boardID string) ([]db.Tag, error)
+	CreateTag(ctx context.Context, boardID, name, color string) (db.Tag, error)
+	DeleteTag(ctx context.Context, boardID, tagID string) error
+}

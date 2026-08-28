@@ -110,3 +110,31 @@ func (s *SeedHelper) PlanningItemWithType(ctx context.Context, sessionID, itemTy
 	}
 	return it.ID
 }
+
+// Card creates a card in the given column with default title/position.
+func (s *SeedHelper) Card(ctx context.Context, columnID string) string {
+	s.t.Helper()
+	c, err := s.queries.CreateCard(ctx, db.CreateCardParams{
+		ColumnID: columnID,
+		Title:    "Test Card",
+		Position: 65536,
+	})
+	if err != nil {
+		s.t.Fatalf("seed card: %v", err)
+	}
+	return c.ID
+}
+
+// Tag creates a board-scoped tag with the given name.
+func (s *SeedHelper) Tag(ctx context.Context, boardID, name string) string {
+	s.t.Helper()
+	tag, err := s.queries.CreateTag(ctx, db.CreateTagParams{
+		BoardID: boardID,
+		Name:    name,
+		Color:   "slate",
+	})
+	if err != nil {
+		s.t.Fatalf("seed tag: %v", err)
+	}
+	return tag.ID
+}

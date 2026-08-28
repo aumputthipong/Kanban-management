@@ -28,12 +28,22 @@ import (
 func TestMigrations_DownUpRoundTrip(t *testing.T) {
 	pool := testutil.NewTestDB(t)
 
-	m, err := migrate.New("file://"+migrationsDir(), toPgx5(pool.Config().ConnString()))
+	m, err := migrate.New(toFileURL(migrationsDir()), toPgx5(pool.Config().ConnString()))
 	require.NoError(t, err)
 	t.Cleanup(func() { _, _ = m.Close() })
 
 	require.NoError(t, m.Down(), "down migrations must all revert cleanly")
 	require.NoError(t, m.Up(), "re-applying up after a full down must succeed")
+}
+
+// toFileURL turns an OS path into a "file://" URL (mirrors
+// migrate.fileSourceURL, which is unexported). A naive "file://"+path
+// breaks on Windows: backslashes make url.Parse read the whole path,
+// colon included, as the authority, and fail trying to parse a port.
+// filepath.ToSlash is the fix — see fileSourceURL's doc comment for why
+// that alone is enough (host ends up "C:", url.Parse can handle that).
+func toFileURL(path string) string {
+	return "file://" + filepath.ToSlash(path)
 }
 
 // toPgx5 swaps the postgres:// scheme for the pgx5:// scheme golang-migrate's

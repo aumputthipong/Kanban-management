@@ -15,7 +15,6 @@ package testutil
 import (
 	"context"
 	"fmt"
-	"os"
 	"path/filepath"
 	"runtime"
 	"sync"
@@ -134,16 +133,18 @@ func bootstrap(ctx context.Context) error {
 		return fmt.Errorf("create template: %w", err)
 	}
 
-	// Apply the base schema first. schema.sql is the pre-migration baseline
-	// (users / boards / columns / cards / time_logs / board_members /
-	// card_subtasks) — in prod it's loaded once by hand on a fresh DB, then
-	// golang-migrate takes over. Tests need the same two-step bootstrap.
-	if err := applySchemaFile(ctx, dsnForDB(templateDB), schemaFilePath()); err != nil {
-		return fmt.Errorf("template schema: %w", err)
-	}
-
-	if err := migrate.Run(migrationsDir(), dsnForDB(templateDB)); err != nil {
-		return fmt.Errorf("template migrate: %w", err)
+	// Mirror production's bootstrap exactly (internal/migrate.Bootstrap):
+	// schema.sql already reflects every migration's end state, so on this
+	// fresh template DB it applies schema.sql and stamps the version table
+	// to latest — it does NOT also replay the migrations. Calling
+	// applySchemaFile followed by migrate.Run here used to do both
+	// unconditionally, which re-ran every migration against a DB that
+	// schema.sql had already brought to the same end state, and failed on
+	// the first CREATE TABLE schema.sql and a migration both contain
+	// (e.g. "tags" already exists, added in schema.sql and again in
+	// migration 000004).
+	if err := migrate.Bootstrap(ctx, dsnForDB(templateDB), schemaFilePath(), migrationsDir()); err != nil {
+		return fmt.Errorf("template bootstrap: %w", err)
 	}
 
 	// Mark template as a template so CREATE DATABASE ... TEMPLATE is allowed
@@ -181,25 +182,6 @@ func backendDir() string {
 	}
 	// file = .../backend/internal/testutil/db.go → backend is two dirs up
 	return filepath.Join(filepath.Dir(file), "..", "..")
-}
-
-// applySchemaFile reads a .sql file and executes it as a single batch
-// against the given DSN. Used for the baseline schema only — migrations
-// go through golang-migrate.
-func applySchemaFile(ctx context.Context, dsn, path string) error {
-	sql, err := os.ReadFile(path)
-	if err != nil {
-		return fmt.Errorf("read %s: %w", path, err)
-	}
-	pool, err := pgxpool.New(ctx, dsn)
-	if err != nil {
-		return fmt.Errorf("connect for schema: %w", err)
-	}
-	defer pool.Close()
-	if _, err := pool.Exec(ctx, string(sql)); err != nil {
-		return fmt.Errorf("exec schema: %w", err)
-	}
-	return nil
 }
 
 // dsnForDB rewrites the admin DSN to point at a specific database. The

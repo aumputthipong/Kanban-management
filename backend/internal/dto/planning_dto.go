@@ -1,28 +1,5 @@
-// PATCH semantics for the planning section (Update* request DTOs below):
-//
-//   - field omitted from JSON       → no change
-//   - "field": null                 → no change (same as omit — Go's *string
-//                                     cannot distinguish the two after
-//                                     json.Unmarshal, so the convention
-//                                     collapses them)
-//   - "field": "" (nullable column) → stored as empty string. Nullable text
-//                                     columns (label, description) treat ""
-//                                     and NULL as equivalent at the app
-//                                     layer; we don't insert a literal NULL
-//                                     because there's no observable
-//                                     difference and a "clear" flag would
-//                                     bloat the wire payload.
-//   - "field": "" (required column) → 400 (title, type, status). The
-//                                     validator's `omitempty,min=1` does
-//                                     NOT catch this on a *string pointing
-//                                     to "" — that path is short-circuited
-//                                     by omitempty, so handlers check
-//                                     explicitly.
-//   - "field": <valid value>        → update
-//
-// All Update* SQL uses COALESCE(sqlc.narg(...), <existing>) so a nil pointer
-// preserves the existing column value end-to-end. See planning_handler.go
-// for the explicit required-field empty-string check.
+// PATCH semantics for the Update* DTOs below (omit or null = no change; "" on
+// a required field = 400). See AGENTS.md, "REST API conventions".
 package dto
 
 // PlanningSessionSummary is one row in the sessions list. Counts exclude

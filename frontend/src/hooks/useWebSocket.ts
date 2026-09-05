@@ -8,27 +8,16 @@ import { WS_EVENT } from "@/types/wsEvents";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 /**
- * Wire-format envelope for every WebSocket message. The server routes by
- * `type`; the shape of `payload` depends on the type (CARD_MOVED carries
- * card_id + position, COLUMN_RENAMED carries column_id + title, etc.).
- *
- * `payload` is typed as `unknown` to force handlers to narrow before use —
- * the canonical shape per type is documented in the backend's
- * `internal/dto/card_dto.go` (CardMovedBroadcastPayload, etc.) and in the
- * dispatcher below.
+ * Wire-format envelope for every WebSocket message. `payload` is `unknown` to
+ * force handlers to narrow; its shape per `type` mirrors the backend's
+ * internal/dto/card_dto.go.
  */
 export interface WebSocketMessage {
   type: string;
   payload: unknown;
 }
 
-/**
- * Connection lifecycle reflected to the UI:
- *   - connecting  — first attempt is in flight
- *   - open        — handshake completed; messages flowing
- *   - reconnecting — backoff timer is running between attempts
- *   - closed      — gave up after MAX_RECONNECT_ATTEMPTS; user action needed
- */
+/** Connection state for the UI. `closed` = gave up retrying; needs a reload. */
 export type WSStatus = "connecting" | "open" | "reconnecting" | "closed";
 
 const RECONNECT_BASE_MS = 1000;
@@ -36,23 +25,10 @@ const RECONNECT_MAX_MS = 30_000;
 const MAX_RECONNECT_ATTEMPTS = 8;
 
 /**
- * Owns one WebSocket connection to a board room. Messages are dispatched
- * directly into `useBoardStore` / `useActivityStore` — this hook never
- * exposes raw events to the caller.
- *
- * Reconnection is exponential backoff (1s → 30s, capped) for up to 8 attempts;
- * after that the status becomes `"closed"` and a UI banner / page reload is
- * the only recovery. Cancellation on unmount is safe — pending timers and
- * the open socket are torn down before the effect resolves.
- *
- * Every attempt first mints a short-lived auth ticket and appends it to the
- * URL as `?ticket=` — the handshake carries no cookie of its own (see
- * docs/adr/0005-websocket-ticket-auth.md). A failed ticket fetch counts as a
- * failed attempt and feeds the same backoff.
- *
- * @param url Full ws:// or wss:// URL including the boardID path segment.
- * @returns   `{ sendMessage, status }` — sendMessage is a no-op if the
- *            socket is not OPEN (it logs a warning instead of buffering).
+ * Owns one board room's socket, dispatching into useBoardStore/useActivityStore.
+ * Reconnects with exponential backoff; each attempt mints a fresh auth ticket
+ * (docs/adr/0005-websocket-ticket-auth.md). `sendMessage` is a NO-OP when the
+ * socket is not OPEN — it does not buffer, so the message is lost.
  */
 export const useWebSocket = (url: string) => {
   const socketRef = useRef<WebSocket | null>(null);

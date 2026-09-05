@@ -124,7 +124,7 @@ Constants live in [`backend/internal/service/activity_service.go`](backend/inter
 - **PATCH semantics:**
   - field omit หรือ JSON `null` → **no change** (Go's *string ไม่สามารถแยก 2 case นี้ — convention collapse)
   - `""` บน nullable column → store "" (≈ NULL ที่ app layer)
-  - `""` บน required column → **400 bad request** (validator's `omitempty,min=1` catches it; กัน defense-in-depth ที่ handler ด้วย)
+  - `""` บน required column → **400 bad request** (validator's `omitempty,min=1` reject `&""` ผ่าน `min` rule; handler ยังเช็คซ้ำเป็น defence-in-depth เผื่อ tag ถูกแก้)
   - SQL update ใช้ `COALESCE(sqlc.narg(...), <existing>)` กับ **ทุก field** — แม้ nullable ก็ใช้, ไม่อย่างนั้น omit จะ silently clobber
 - **Activity log (REST path):** service mutation → return → handler call `activity.Record(...)` → respond. Best-effort: ถ้า audit fail แค่ log + ดำเนินต่อ (mutation already committed). อย่ารวมใน tx นอกจาก case critical จริง ๆ.
 - **Error mapping ที่ handler:** `errors.Is(err, sentinel)` → typed HTTP code. ตัวอย่าง:

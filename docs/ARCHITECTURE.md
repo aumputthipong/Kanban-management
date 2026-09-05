@@ -116,12 +116,17 @@ Drag-and-drop and "complete task" actions follow:
 
 The WebSocket event for the same action is *idempotent* on the local store — receiving `CARD_MOVED` for a card already at that position is a no-op. This means the writer doesn't need to filter out their own broadcasts.
 
+Drag-and-drop runs this in two phases ([`useDragActions`](../frontend/src/hooks/useDragActions.ts)): `dragOver` applies a cross-column *preview* so the card visibly lands, then `dragEnd` computes the final position and broadcasts `CARD_MOVED`. The preview is guarded by a ref holding the last column moved into — using state there would re-render on every pointer move and re-fire the move. Position math (the 64k-gap strategy) lives in `utils/boardPosition`, see [`DATABASE.md`](DATABASE.md).
+
 ### Realtime hook
 
 [`useWebSocket`](../frontend/src/hooks/useWebSocket.ts) owns:
 - connection lifecycle (connect, reconnect with exp backoff, cancel on unmount)
 - message dispatch into `useBoardStore` / `useActivityStore`
 - exposed `status: 'connecting' | 'open' | 'reconnecting' | 'closed'` so a UI banner can react
+- minting a fresh auth ticket per connection attempt — the handshake carries no cookie of its own, see [ADR 0005](adr/0005-websocket-ticket-auth.md)
+
+Backoff is 1s → 30s for 8 attempts; after that `status` is `closed` and a page reload is the only recovery. `sendMessage` is a no-op when the socket is not open — it does **not** buffer, so a message sent while disconnected is lost (see [#197](https://github.com/aumputthipong/Kanban-management/issues/197)).
 
 [`BoardWebSocketContext`](../frontend/src/contexts/BoardWebSocketContext.tsx) wraps `useWebSocket` so any descendant of the board page can call `sendMessage` without re-instantiating the socket.
 

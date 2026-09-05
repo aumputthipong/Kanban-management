@@ -18,6 +18,7 @@ ADR that references the old one, not an edit.
 | [0002](0002-sqlc-over-orm.md)                 | sqlc for data access, no ORM                    | Accepted |
 | [0003](0003-single-instance-websocket-hub.md) | In-memory WebSocket hub, single instance        | Accepted |
 | [0004](0004-membership-gate-returns-404.md)   | Board membership gate returns 404, not 403      | Accepted |
+| [0005](0005-websocket-ticket-auth.md)         | WebSocket handshake uses a short-lived ticket    | Accepted |
 
 ## Adding an ADR
 

@@ -110,11 +110,10 @@ func Generate(userID, email string) (string, error) {
 	return t.SignedString(secret())
 }
 
-// Parse validates the signed token string and returns its claims. It rejects
-// any signing method other than HMAC. Returns jwt.ErrTokenInvalidClaims for
-// expired, malformed, or wrong-algorithm tokens — callers should treat any
-// non-nil error as "unauthenticated" without leaking which check failed.
-func Parse(tokenStr string) (*Claims, error) {
+// parseSigned verifies the signature and standard claims without inspecting
+// the audience. Callers pick the audience rule: Parse rejects WS tickets,
+// ParseWSTicket requires one.
+func parseSigned(tokenStr string) (*Claims, error) {
 	t, err := jwt.ParseWithClaims(tokenStr, &Claims{}, func(t *jwt.Token) (interface{}, error) {
 		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, jwt.ErrSignatureInvalid
@@ -127,6 +126,23 @@ func Parse(tokenStr string) (*Claims, error) {
 
 	claims, ok := t.Claims.(*Claims)
 	if !ok {
+		return nil, jwt.ErrTokenInvalidClaims
+	}
+	return claims, nil
+}
+
+// Parse validates a session access token and returns its claims. It rejects
+// any signing method other than HMAC, and rejects WS tickets so a ticket
+// leaked from a URL cannot be replayed against the REST API. Returns
+// jwt.ErrTokenInvalidClaims for expired, malformed, or wrong-algorithm tokens
+// — callers should treat any non-nil error as "unauthenticated" without
+// leaking which check failed.
+func Parse(tokenStr string) (*Claims, error) {
+	claims, err := parseSigned(tokenStr)
+	if err != nil {
+		return nil, err
+	}
+	if hasAudience(claims, wsTicketAudience) {
 		return nil, jwt.ErrTokenInvalidClaims
 	}
 	return claims, nil
@@ -159,4 +175,67 @@ func SetAuthCookie(w http.ResponseWriter, tokenStr string, production, crossSite
 		SameSite: sameSite,
 		MaxAge:   int(AccessTokenDuration().Seconds()),
 	})
+}
+
+// wsTicketAudience is the `aud` claim that marks a token as usable only for
+// the WebSocket handshake. Parse rejects it; ParseWSTicket requires it.
+const wsTicketAudience = "ws"
+
+// defaultWSTicketTTL is the lifetime of a WS ticket. The ticket travels in the
+// WebSocket URL (browsers cannot set headers on a WS connection), so it lands
+// in upstream access logs we do not control — keep the replay window short.
+// It only has to survive one handshake, so seconds are enough.
+const defaultWSTicketTTL = 30 * time.Second
+
+var (
+	wsTicketTTLOnce sync.Once
+	wsTicketTTL     time.Duration
+)
+
+// WSTicketDuration returns the WS-ticket lifetime, read once from
+// WS_TICKET_TTL (a Go duration string such as "30s").
+func WSTicketDuration() time.Duration {
+	wsTicketTTLOnce.Do(func() {
+		wsTicketTTL = parseDurationEnv("WS_TICKET_TTL", defaultWSTicketTTL)
+	})
+	return wsTicketTTL
+}
+
+// GenerateWSTicket signs a short-lived token that authenticates one WebSocket
+// handshake. See docs/adr/0005-websocket-ticket-auth.md for why the handshake
+// cannot use the auth cookie.
+func GenerateWSTicket(userID string) (string, error) {
+	claims := Claims{
+		UserID: userID,
+		RegisteredClaims: jwt.RegisteredClaims{
+			Audience:  jwt.ClaimStrings{wsTicketAudience},
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(WSTicketDuration())),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+		},
+	}
+	t := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	return t.SignedString(secret())
+}
+
+// ParseWSTicket validates a WS ticket and returns its claims. A session access
+// token is rejected: the ticket path is deliberately not a second way to
+// present a long-lived credential.
+func ParseWSTicket(tokenStr string) (*Claims, error) {
+	claims, err := parseSigned(tokenStr)
+	if err != nil {
+		return nil, err
+	}
+	if !hasAudience(claims, wsTicketAudience) {
+		return nil, jwt.ErrTokenInvalidClaims
+	}
+	return claims, nil
+}
+
+func hasAudience(claims *Claims, want string) bool {
+	for _, aud := range claims.Audience {
+		if aud == want {
+			return true
+		}
+	}
+	return false
 }

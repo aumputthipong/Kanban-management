@@ -212,6 +212,7 @@ Commit on a branch → PR → merge, same as always.
 | Backend exits: `migrations failed` | bad `DB_URL`, or Neon not reachable |
 | Google login → "redirect_uri_mismatch" | the URI in Google console ≠ `GOOGLE_REDIRECT_URL` exactly |
 | WebSocket won't connect | `NEXT_PUBLIC_WS_URL` must be `wss://…/ws` (not `https`), and rebuilt on Vercel |
+| WS handshake → 401 | `FRONTEND_URL` on Render must match the browser `Origin` exactly. The handshake authenticates with a ticket from `/api/ws-ticket`, not the cookie — see [ADR 0005](adr/0005-websocket-ticket-auth.md) |
 | First load very slow | Render cold start — expected on free; step 8 mitigates |
 
 More detail and rollback steps: [`DEPLOY.md`](DEPLOY.md).

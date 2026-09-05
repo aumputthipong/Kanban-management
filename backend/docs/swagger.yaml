@@ -104,6 +104,23 @@ definitions:
     type: object
   github_com_aumputthipong_mini-erp-kanban_backend_internal_dto.CreateBoardRequest:
     properties:
+      color:
+        type: string
+      description:
+        description: |-
+          Appearance is optional at create time. Omit/null = column default
+          (description '', color '#1E40AF', icon 'board'). Same validation as the
+          PATCH path so a board can be born with its chosen identity in one request.
+        maxLength: 160
+        type: string
+      icon:
+        enum:
+        - board
+        - rocket
+        - target
+        - bolt
+        - bug
+        type: string
       title:
         maxLength: 120
         minLength: 1
@@ -148,6 +165,8 @@ definitions:
         type: string
       column_name:
         type: string
+      completed_subtasks:
+        type: integer
       due_date:
         type: string
       estimated_hours:
@@ -162,6 +181,8 @@ definitions:
         type: string
       title:
         type: string
+      total_subtasks:
+        type: integer
     type: object
   github_com_aumputthipong_mini-erp-kanban_backend_internal_dto.MyWorkCounts:
     properties:
@@ -360,6 +381,13 @@ definitions:
     - email
     - full_name
     - password
+    type: object
+  internal_handler.wsTicketResponse:
+    properties:
+      expires_in:
+        type: integer
+      ticket:
+        type: string
     type: object
 host: localhost:8080
 info:
@@ -867,6 +895,24 @@ paths:
       summary: Restore stashed board
       tags:
       - stash
+  /api/ws-ticket:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_handler.wsTicketResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_aumputthipong_mini-erp-kanban_backend_internal_httputil.ErrorResponse'
+      security:
+      - CookieAuth: []
+      summary: Issue a WebSocket auth ticket
+      tags:
+      - auth
   /healthz:
     get:
       produces:

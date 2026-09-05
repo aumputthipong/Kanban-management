@@ -10,11 +10,12 @@ import (
 )
 
 // sensitivePathPrefixes are request paths whose query string must be redacted
-// before being logged. Today only the OAuth callback carries short-lived but
-// sensitive material (`code`, `state`) in its query string; extend this list
-// rather than adding ad-hoc redactions per call site.
+// before being logged. The OAuth callback carries `code` / `state`, and the
+// WebSocket handshake carries a short-lived auth ticket it cannot send as a
+// header; extend this list rather than adding ad-hoc redactions per call site.
 var sensitivePathPrefixes = []string{
 	"/api/auth/google/callback",
+	"/ws/",
 }
 
 // RequestLogger is a drop-in replacement for chi's stdlib Logger that emits

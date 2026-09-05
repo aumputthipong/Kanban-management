@@ -61,3 +61,30 @@ func RequireAuth(next http.Handler) http.Handler {
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
+
+// RequireWSTicket authenticates a WebSocket handshake from the `ticket` query
+// parameter and stores the user ID under UserIDKey, exactly as RequireAuth
+// does — so the board-membership gate composes on top of it unchanged.
+//
+// The handshake cannot use the auth cookie: browsers do not let a WebSocket
+// carry custom headers, and on a split-domain deploy the cookie is
+// first-party to the frontend origin and is never sent to the API host.
+// See docs/adr/0005-websocket-ticket-auth.md.
+func RequireWSTicket(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ticket := r.URL.Query().Get("ticket")
+		if ticket == "" {
+			httputil.RespondError(w, http.StatusUnauthorized, "Unauthorized")
+			return
+		}
+
+		claims, err := token.ParseWSTicket(ticket)
+		if err != nil {
+			httputil.RespondError(w, http.StatusUnauthorized, "Unauthorized")
+			return
+		}
+
+		ctx := context.WithValue(r.Context(), UserIDKey, claims.UserID)
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}

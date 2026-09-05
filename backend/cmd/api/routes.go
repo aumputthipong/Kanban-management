@@ -44,8 +44,9 @@ func setupRoutes(d routerDeps) http.Handler {
 
 	// Global middleware. SentryRecoverer captures the panic before chi's
 	// stdlib Recoverer turns it into a 500 — both run, in this order.
-	// RequestLogger replaces chi's default Logger so OAuth callback query
-	// strings (`code`, `state`) are redacted before they reach any log sink.
+	// RequestLogger replaces chi's default Logger so sensitive query strings
+	// (OAuth `code` / `state`, the WS auth ticket) are redacted before they
+	// reach any log sink.
 	r.Use(chiMiddleware.RequestID)
 	r.Use(middleware.RequestLogger)
 	r.Use(observability.SentryRecoverer())
@@ -87,23 +88,36 @@ func setupRoutes(d routerDeps) http.Handler {
 		r.Get("/google/callback", httputil.MakeHandler(d.oauthHandler.HandleGoogleCallback))
 	})
 
+	requireBoardMember := middleware.RequireBoardMember(d.boardService)
+
+	// /ws/{boardID} authenticates from a `ticket` query param instead of the
+	// auth cookie: a browser cannot put a header on a WebSocket, and on a
+	// split-domain deploy the cookie is first-party to the frontend origin and
+	// never reaches this host (docs/adr/0005-websocket-ticket-auth.md).
+	// Membership is still gated — otherwise any authenticated user could join
+	// an arbitrary board's room, receive every broadcast, and send mutating WS
+	// messages (handlers don't re-check authz beyond board scoping).
+	r.Group(func(r chi.Router) {
+		r.Use(middleware.GeneralRateLimit())
+		r.Use(middleware.RequireWSTicket)
+
+		r.With(requireBoardMember).Get("/ws/{boardID}", func(w http.ResponseWriter, r *http.Request) {
+			boardID := chi.URLParam(r, "boardID")
+			websocket.ServeWs(d.hub, w, r, boardID)
+		})
+	})
+
 	// Protected routes
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.GeneralRateLimit())
 		r.Use(middleware.RequireAuth)
 
-		requireBoardMember := middleware.RequireBoardMember(d.boardService)
-
-		// /ws/{boardID} — must be gated by board membership; otherwise any
-		// authenticated user could join an arbitrary board's room, receive
-		// every broadcast, and send mutating WS messages (handlers don't
-		// re-check authz beyond board scoping).
-		r.With(requireBoardMember).Get("/ws/{boardID}", func(w http.ResponseWriter, r *http.Request) {
-			boardID := chi.URLParam(r, "boardID")
-			websocket.ServeWs(d.hub, w, r, boardID)
-		})
-
 		r.Get("/api/auth/me", httputil.MakeHandler(d.authHandler.Me))
+
+		// Mints the ticket the browser then puts in the WS URL. It lives on the
+		// cookie-authed path because that is the only place the auth cookie is
+		// actually available to us.
+		r.Get("/api/ws-ticket", httputil.MakeHandler(d.authHandler.WSTicket))
 
 		// Accept an invite link — authenticated but NOT board-gated (the caller
 		// is joining, not yet a member). A valid token is the authorization.

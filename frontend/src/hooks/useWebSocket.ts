@@ -3,6 +3,7 @@
 import { useBoardStore } from "@/store/useBoardStore";
 import { useActivityStore } from "@/store/useActivityStore";
 import { logger } from "@/lib/logger";
+import { fetchWsTicket } from "@/lib/wsTicket";
 import { WS_EVENT } from "@/types/wsEvents";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -44,6 +45,11 @@ const MAX_RECONNECT_ATTEMPTS = 8;
  * the only recovery. Cancellation on unmount is safe — pending timers and
  * the open socket are torn down before the effect resolves.
  *
+ * Every attempt first mints a short-lived auth ticket and appends it to the
+ * URL as `?ticket=` — the handshake carries no cookie of its own (see
+ * docs/adr/0005-websocket-ticket-auth.md). A failed ticket fetch counts as a
+ * failed attempt and feeds the same backoff.
+ *
  * @param url Full ws:// or wss:// URL including the boardID path segment.
  * @returns   `{ sendMessage, status }` — sendMessage is a no-op if the
  *            socket is not OPEN (it logs a warning instead of buffering).
@@ -52,7 +58,6 @@ export const useWebSocket = (url: string) => {
   const socketRef = useRef<WebSocket | null>(null);
   const attemptRef = useRef(0);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const cancelledRef = useRef(false);
 
   const [status, setStatus] = useState<WSStatus>("connecting");
 
@@ -61,7 +66,7 @@ export const useWebSocket = (url: string) => {
       return;
     }
 
-    cancelledRef.current = false;
+    let cancelled = false;
 
     const clearReconnectTimer = () => {
       if (reconnectTimerRef.current) {
@@ -130,17 +135,48 @@ export const useWebSocket = (url: string) => {
       }
     };
 
-    const connect = () => {
-      if (cancelledRef.current) return;
+    const scheduleReconnect = () => {
+      if (cancelled) return;
+
+      if (attemptRef.current >= MAX_RECONNECT_ATTEMPTS) {
+        logger.warn(`[WS] gave up after ${MAX_RECONNECT_ATTEMPTS} attempts`);
+        setStatus("closed");
+        return;
+      }
+
+      const delay = Math.min(
+        RECONNECT_BASE_MS * 2 ** attemptRef.current,
+        RECONNECT_MAX_MS,
+      );
+      attemptRef.current += 1;
+      setStatus("reconnecting");
+      reconnectTimerRef.current = setTimeout(() => void connect(), delay);
+    };
+
+    const connect = async () => {
+      if (cancelled) return;
 
       const isReconnect = attemptRef.current > 0;
       setStatus(isReconnect ? "reconnecting" : "connecting");
 
-      const socket = new WebSocket(url);
+      // A fresh ticket per attempt: it expires in seconds, and the backoff
+      // climbs to 30s, so a ticket held across a wait would arrive dead.
+      let ticket: string;
+      try {
+        ticket = await fetchWsTicket();
+      } catch {
+        scheduleReconnect();
+        return;
+      }
+      // The await is a suspension point — the effect may have been torn down
+      // (unmount, or a boardID change) while the ticket was in flight.
+      if (cancelled) return;
+
+      const socket = new WebSocket(`${url}?ticket=${encodeURIComponent(ticket)}`);
       socketRef.current = socket;
 
       socket.onopen = () => {
-        if (cancelledRef.current) {
+        if (cancelled) {
           socket.close();
           return;
         }
@@ -149,7 +185,7 @@ export const useWebSocket = (url: string) => {
       };
 
       socket.onmessage = (event) => {
-        if (cancelledRef.current) return;
+        if (cancelled) return;
         handleMessage(event);
       };
 
@@ -159,31 +195,18 @@ export const useWebSocket = (url: string) => {
       };
 
       socket.onclose = () => {
-        if (cancelledRef.current) return;
+        if (cancelled) return;
         if (socketRef.current === socket) {
           socketRef.current = null;
         }
-
-        if (attemptRef.current >= MAX_RECONNECT_ATTEMPTS) {
-          logger.warn(`[WS] gave up after ${MAX_RECONNECT_ATTEMPTS} attempts`);
-          setStatus("closed");
-          return;
-        }
-
-        const delay = Math.min(
-          RECONNECT_BASE_MS * 2 ** attemptRef.current,
-          RECONNECT_MAX_MS,
-        );
-        attemptRef.current += 1;
-        setStatus("reconnecting");
-        reconnectTimerRef.current = setTimeout(connect, delay);
+        scheduleReconnect();
       };
     };
 
-    connect();
+    void connect();
 
     return () => {
-      cancelledRef.current = true;
+      cancelled = true;
       clearReconnectTimer();
       const socket = socketRef.current;
       if (

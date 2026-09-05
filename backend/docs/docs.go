@@ -815,6 +815,36 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/ws-ticket": {
+            "get": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Issue a WebSocket auth ticket",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.wsTicketResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_aumputthipong_mini-erp-kanban_backend_internal_httputil.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/healthz": {
             "get": {
                 "produces": [
@@ -1001,6 +1031,24 @@ const docTemplate = `{
                 "title"
             ],
             "properties": {
+                "color": {
+                    "type": "string"
+                },
+                "description": {
+                    "description": "Appearance is optional at create time. Omit/null = column default\n(description '', color '#1E40AF', icon 'board'). Same validation as the\nPATCH path so a board can be born with its chosen identity in one request.",
+                    "type": "string",
+                    "maxLength": 160
+                },
+                "icon": {
+                    "type": "string",
+                    "enum": [
+                        "board",
+                        "rocket",
+                        "target",
+                        "bolt",
+                        "bug"
+                    ]
+                },
                 "title": {
                     "type": "string",
                     "maxLength": 120,
@@ -1062,6 +1110,9 @@ const docTemplate = `{
                 "column_name": {
                     "type": "string"
                 },
+                "completed_subtasks": {
+                    "type": "integer"
+                },
                 "due_date": {
                     "type": "string"
                 },
@@ -1082,6 +1133,9 @@ const docTemplate = `{
                 },
                 "title": {
                     "type": "string"
+                },
+                "total_subtasks": {
+                    "type": "integer"
                 }
             }
         },
@@ -1362,6 +1416,17 @@ const docTemplate = `{
                     "type": "string",
                     "maxLength": 128,
                     "minLength": 8
+                }
+            }
+        },
+        "internal_handler.wsTicketResponse": {
+            "type": "object",
+            "properties": {
+                "expires_in": {
+                    "type": "integer"
+                },
+                "ticket": {
+                    "type": "string"
                 }
             }
         }

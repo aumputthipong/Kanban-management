@@ -266,3 +266,36 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) error {
 	})
 	return nil
 }
+
+// wsTicketResponse is the body of GET /api/ws-ticket.
+type wsTicketResponse struct {
+	Ticket    string `json:"ticket"`
+	ExpiresIn int    `json:"expires_in"`
+}
+
+// WSTicket issues a short-lived, WebSocket-only token for the handshake.
+//
+// @Summary  Issue a WebSocket auth ticket
+// @Tags     auth
+// @Produce  json
+// @Security CookieAuth
+// @Success  200 {object} wsTicketResponse
+// @Failure  401 {object} httputil.ErrorResponse
+// @Router   /api/ws-ticket [get]
+func (h *AuthHandler) WSTicket(w http.ResponseWriter, r *http.Request) error {
+	userID, ok := r.Context().Value(middleware.UserIDKey).(string)
+	if !ok || userID == "" {
+		return httputil.NewAPIError(http.StatusUnauthorized, "Unauthorized", nil)
+	}
+
+	ticket, err := token.GenerateWSTicket(userID)
+	if err != nil {
+		return httputil.NewAPIError(http.StatusInternalServerError, "Failed to issue ticket", err)
+	}
+
+	httputil.RespondJSON(w, http.StatusOK, wsTicketResponse{
+		Ticket:    ticket,
+		ExpiresIn: int(token.WSTicketDuration().Seconds()),
+	})
+	return nil
+}

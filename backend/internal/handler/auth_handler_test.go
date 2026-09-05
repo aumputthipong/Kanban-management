@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -15,6 +16,7 @@ import (
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/service/mock"
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/token"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // TestMain seeds JWT_SECRET so issueSession can sign tokens. The handler's
@@ -501,4 +503,45 @@ func TestMe_ServiceError_Returns500(t *testing.T) {
 	httputil.MakeHandler(h.Me)(w, req)
 
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
+}
+
+// ────────────────────────────────────────────────
+// WSTicket
+// ────────────────────────────────────────────────
+
+func TestWSTicket_Success_ReturnsWSOnlyTicket(t *testing.T) {
+	h := newTestAuthHandler(&mock.MockAuthService{})
+
+	req := withUserID(httptest.NewRequest(http.MethodGet, "/ws-ticket", nil), validUserID)
+	w := httptest.NewRecorder()
+
+	httputil.MakeHandler(h.WSTicket)(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+
+	var body struct {
+		Ticket    string `json:"ticket"`
+		ExpiresIn int    `json:"expires_in"`
+	}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
+	assert.Positive(t, body.ExpiresIn)
+
+	claims, err := token.ParseWSTicket(body.Ticket)
+	require.NoError(t, err)
+	assert.Equal(t, validUserID, claims.UserID)
+
+	// The issued ticket must not double as a session credential.
+	_, err = token.Parse(body.Ticket)
+	assert.Error(t, err)
+}
+
+func TestWSTicket_MissingUserID_Returns401(t *testing.T) {
+	h := newTestAuthHandler(&mock.MockAuthService{})
+
+	req := httptest.NewRequest(http.MethodGet, "/ws-ticket", nil) // no userID in context
+	w := httptest.NewRecorder()
+
+	httputil.MakeHandler(h.WSTicket)(w, req)
+
+	assert.Equal(t, http.StatusUnauthorized, w.Code)
 }

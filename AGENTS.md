@@ -205,12 +205,43 @@ The **Team** tab (`overview/TeamTabContent` → `TeamOwnershipList`) answers **"
 
 ## Comment & doc conventions
 
-Code comments are **English**, concise, and explain the *why* the code can't — not a translation of the next line. (User-facing copy still follows the Thai/English UI rule above; this is about code comments only.)
+Code comments are **English** and explain what the code cannot — not a translation of the next line. (User-facing copy still follows the Thai/English UI rule above; this is about code comments only.)
 
-- **Exported Go symbols:** a godoc comment of **1–2 lines stating WHAT** it does. No bullet lists inside godoc, no step-by-step narration.
-- **Unexported / local code:** comment only when the logic is non-obvious. A comment that restates the code (`// loop over cards`) should be deleted; fix an unclear name instead of annotating it.
-- **Rationale for a design decision belongs in an ADR** (`docs/adr/`), not in a long code comment. Leave a one-line pointer (`// ... see docs/adr/000N`) and move the reasoning there.
-- **No** emoji, changelog markers (`[เพิ่มใหม่]`), commented-out code, or "Best Practice:" narration in source.
+The problem we are solving is **frequency, not length**. A 4-line block that appears twenty times reads as "pay attention here". The same block two hundred times becomes wallpaper, and people learn to skip comments — including the one that would have stopped a bad change. Fewer comments make the remaining ones work.
+
+### Budget
+
+| | Limit |
+|---|---|
+| Any comment block | **≤ 3 content lines** |
+| Block documenting a trap (see below) | **≤ 4 content lines** |
+| File / package header | **≤ 4 content lines** |
+| Blocks of 4 lines, per file | **at most 1** — if a file needs three warnings, the file is doing too much |
+| Swagger annotations (`@Summary`, `@Router`, …) | **exempt** — machine-readable, they generate `backend/docs` |
+
+**Counting:** content lines only. `/**`, `*/` and bare `*` are free. If the content fits on one line, write a one-line `/** … */` rather than a three-line block.
+
+Anything longer than the budget does not get shortened by deleting information — it **moves**, and the code keeps a one-line pointer.
+
+### The four kinds
+
+| Kind | Example | What to do |
+|---|---|---|
+| **API doc** — the contract for callers | godoc / JSDoc on an exported symbol | **Keep.** 1–2 lines stating *what*. No bullet lists, no step-by-step narration |
+| **Trap** — changing this breaks something non-obviously | "404 not 403 is anti-enumeration", "WS handlers must be idempotent", "ref not state or it re-fires" | **Keep it at the line where someone would make the mistake.** Never move a trap to docs — the reader is not in the docs, they are in the code |
+| **Design rationale** — why this way and not another | why no Redis, PATCH semantics, position-gap strategy | **Move** to `docs/adr/` or the relevant `docs/*.md`. Leave `// … see docs/adr/000N` |
+| **Narration** — restates the code | `// loop over cards` | **Delete.** If it explains what a name means, rename the thing instead |
+
+The test: *would a teammate as competent as me fail to guess this?* If they would guess it, delete it.
+
+### Never
+
+- Duplicating a rule that already lives in AGENTS.md or `docs/` — two copies drift, and the stale one actively misleads (this has already happened once, see [ADR 0006](docs/adr/0006-comment-budget.md))
+- Emoji, changelog markers (`[เพิ่มใหม่]`), commented-out code, "Best Practice:" narration
+
+### Density as a check, not a target
+
+Backend ≤ 12%, frontend ≤ 8%, measured as comment lines over non-blank lines. Use it to notice drift — never chase the number. A percentage cannot tell a trap from wallpaper, which is why the budget above is about block size and placement instead.
 
 ## Testing & verification
 

@@ -28,11 +28,9 @@ import {
 import { useCanManageBoard } from "@/hooks/useBoardRole";
 import { UNASSIGNED_FILTER } from "@/store/useBoardStore";
 
-// Collapse state for DONE columns is remembered per board+column in localStorage.
-// DONE columns default to collapsed (design: keep finished work out of the way,
-// but the strip stays a live drop target). Read lazily — these components only
-// mount client-side once the board store has loaded, so there is no SSR/hydration
-// render to mismatch against.
+// DONE-column collapse state is remembered per board+column in localStorage and
+// defaults to collapsed — finished work stays out of the way, but the strip is still a
+// live drop target. Read lazily; these mount client-side only, so no hydration risk.
 const collapseKey = (boardId: string, columnId: string) =>
   `turtask:col-collapsed:${boardId}:${columnId}`;
 

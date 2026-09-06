@@ -1,8 +1,6 @@
 /**
- * Pool of Tailwind background classes used for placeholder avatars + board
- * group dots. Picked to feel distinct at a glance without clashing with
- * priority/urgency semantics (red/amber are intentionally muted to rose/amber
- * to leave pure-red for "overdue" cues).
+ * Placeholder avatar and group-dot colours, kept clear of priority semantics so pure
+ * red stays available for "overdue".
  */
 export const AVATAR_COLORS = [
   "bg-blue-500",
@@ -14,10 +12,8 @@ export const AVATAR_COLORS = [
 ];
 
 /**
- * Deterministic colour pick for a user / board / tag id. Same id always maps
- * to the same colour so a user looks consistent across views, but no real
- * hashing — just first-char modulo. Don't rely on uniform distribution; if
- * two ids start with the same letter they collide.
+ * Deterministic colour for an id — same id, same colour across views. First-char
+ * modulo, not a hash: ids starting with the same letter collide.
  */
 export function getAvatarColor(userId: string): string {
   return AVATAR_COLORS[userId.charCodeAt(0) % AVATAR_COLORS.length];

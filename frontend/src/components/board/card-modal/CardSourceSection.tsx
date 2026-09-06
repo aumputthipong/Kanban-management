@@ -1,10 +1,8 @@
 "use client";
 
-// CardSourceSection — the "source" block inside the card detail modal.
-// Renders only for cards that were promoted from a planning session.
-// Hidden during load + when the card has no source so the modal layout
-// doesn't shift; a small Skeleton appears only while we wait, which
-// matches the convention used elsewhere (no spinners, no "Loading…").
+// The "source" block in the card detail modal, rendered only for cards promoted from a
+// planning session. Hidden while loading and when there is no source so the layout does
+// not shift; a Skeleton covers the wait.
 import { memo } from "react";
 import Link from "next/link";
 import { ArrowUpRight, HelpCircle } from "lucide-react";

@@ -96,11 +96,8 @@ export interface CardUpdateForm {
   priority: string;
   estimated_hours: string;
   tags: Tag[];
-  // Free-text fields edited in the card detail modal. Initialised from the
-  // card prop and round-tripped through the PATCH endpoint. Stored as "" in
-  // form state (textareas hate undefined) and sent as "" when explicitly
-  // cleared — the backend's COALESCE pattern handles unchanged-omit so the
-  // PromoteItem-copied value isn't wiped by an unrelated title edit.
+  // Stored as "" in form state (textareas hate undefined) and sent as "" when cleared.
+  // Backend COALESCE handles unchanged-omit, so a title edit cannot wipe promoted AC.
   acceptance_criteria: string;
   implementation_note: string;
 }

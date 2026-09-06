@@ -1,10 +1,8 @@
 "use client";
 
-// ItemTypeChip — display-only REQ/DEC/Q chip on each row (icon + English code).
-// Changing the type is no longer triggered from this chip: that action moved
-// into the row's "⋯" menu (alongside rename) so every row action lives in one
-// predictable place. The chip is purely informational here; the full Thai
-// meaning is still on hover via TYPE_TOOLTIP.
+// Display-only REQ/DEC/Q chip. Changing the type moved into the row's overflow menu so
+// every row action lives in one place — do not re-add a click handler here. The full
+// Thai meaning stays on hover via TYPE_TOOLTIP.
 import type { PlanningItemType } from "@/types/planning";
 import { TYPE_CHIP, TYPE_ICON, TYPE_TOOLTIP } from "./planningTypeMeta";
 

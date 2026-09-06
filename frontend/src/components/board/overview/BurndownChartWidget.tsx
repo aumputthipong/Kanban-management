@@ -27,11 +27,9 @@ interface BurndownPoint {
 }
 
 /**
- * Rolling window burn-down.
- * actual[i] = cards that, at end of day i, already existed (created_at ≤ dayEnd)
- *             AND were not yet done (is_done=false OR completed_at > dayEnd).
- * ideal = linear from actual[0] → 0 across the window.
- * Future days have actual=null so the line stops at "today".
+ * Rolling-window burn-down. actual[i] counts cards that existed at end of day i and
+ * were not yet done; ideal is linear from actual[0] to 0. Future days are null so the
+ * line stops at today.
  */
 function buildBurndownData(cards: Card[], days: number): BurndownPoint[] {
   const now = new Date();

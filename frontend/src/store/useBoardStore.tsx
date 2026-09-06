@@ -6,6 +6,7 @@ import { create } from "zustand";
  * driven both by optimistic user actions and by WS broadcasts, so they must stay
  * idempotent — that is what lets a writer skip filtering its own echo.
  */
+
 /**
  * The viewed board's visual identity, hydrated on load. Separate from `columns`
  * because GET /boards/:id returns columns only — title/icon/color come from the list.

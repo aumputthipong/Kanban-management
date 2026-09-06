@@ -1,7 +1,5 @@
-// Shape of GET /api/my-tasks (the cross-board personal inbox).
-//
-// `cards` is pre-filtered server-side; `counts` always reflects the full
-// inbox so filter chips can render counters from a single request.
+// Shape of GET /api/my-tasks. `cards` is pre-filtered server-side; `counts` always
+// covers the full inbox so the filter chips render from one request.
 
 export type MyWorkStatus = "todo" | "in_progress" | "done";
 

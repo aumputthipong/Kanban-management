@@ -2,9 +2,8 @@ import { API_URL } from "@/lib/constants";
 import { useToastStore } from "@/store/useToastStore";
 
 /**
- * Same as fetch's RequestInit but with an opinionated `data` field that gets
- * JSON-stringified into the body. Use `data` for any non-GET request — it
- * also flips the default method to POST when set.
+ * fetch RequestInit plus `data`, which is JSON-stringified into the body and
+ * flips the default method to POST.
  */
 interface FetchOptions extends Omit<RequestInit, "body"> {
   data?: unknown;
@@ -19,9 +18,8 @@ export class ApiError extends Error {
 
 const REFRESH_ENDPOINT = "/api/auth/refresh";
 
-// Single-flight guard: while a refresh is in progress, every other 401
-// hooks onto the same promise instead of firing N concurrent refresh calls.
-// On settle, the latch resets — a later session is free to refresh again.
+// Single-flight: concurrent 401s share one refresh call instead of firing N.
+// The latch self-resets on settle.
 let refreshInFlight: Promise<boolean> | null = null;
 
 async function tryRefresh(): Promise<boolean> {
@@ -42,8 +40,7 @@ async function tryRefresh(): Promise<boolean> {
 function redirectToLogin() {
   if (typeof window === "undefined") return;
   if (window.location.pathname.startsWith("/login")) return;
-  // Carry where we were so login can send the user back (e.g. clicking an
-  // invite link while logged out -> login -> land back on /invite/<token>).
+  // Carry where we were so login can send the user back (e.g. an invite link).
   const here = window.location.pathname + window.location.search;
   const dest =
     here && here !== "/" ? `/login?redirect=${encodeURIComponent(here)}` : "/login";
@@ -51,18 +48,9 @@ function redirectToLogin() {
 }
 
 /**
- * Single entry point for all backend HTTP calls.
- *
- * Conventions baked in:
- *  - `credentials: "include"` so auth cookies ride along.
- *  - JSON content-type set automatically; `data` is stringified into body.
- *  - Method defaults to POST when `data` is given, GET otherwise.
- *  - 401 → silently rotate the refresh token once and retry; if that fails,
- *    bounce to /login. 403 → toast (single source of permission UX).
- *
- * The refresh dance is single-flight: concurrent 401s share one refresh call
- * and then all retry. Refresh is skipped for the refresh endpoint itself to
- * avoid a recursion loop on a dead session.
+ * Single entry point for all backend HTTP calls: cookies, JSON body, and the
+ * 401 refresh dance. 403 toasts here, so handlers must not repeat it. Refresh
+ * skips the refresh endpoint itself, or a dead session recurses forever.
  */
 export async function apiClient<T = unknown>(
   endpoint: string,
@@ -124,11 +112,7 @@ export async function apiClient<T = unknown>(
   }
 }
 
-/**
- * Test hook: clear the single-flight latch between vitest cases. Production
- * code never needs this — the latch self-resets when the refresh promise
- * settles.
- */
+/** Test hook: clear the single-flight latch between vitest cases. */
 export function __resetRefreshStateForTests() {
   refreshInFlight = null;
 }

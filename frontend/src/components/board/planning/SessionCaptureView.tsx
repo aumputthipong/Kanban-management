@@ -23,18 +23,10 @@ interface Props {
   sessionId: string;
 }
 
-// The capture surface. Single text input at the bottom (Enter commits as new
-// item) plus a segmented control for choosing the item type. All other
-// actions — Select / Drop / Delete — are click-only buttons on each row.
-//
-// Keyboard support is intentionally minimal (Enter / Esc / arrows). Earlier
-// versions used ⌘1-3 / ⌘D / ⌘S / ⌘↵ but every one of those collides with a
-// browser default (tab switching / bookmark / save / new line), which made
-// the shortcuts unreliable and the wider UX feel like it required a manual.
-//
-// Items state + mutations live in useSessionItems. This component only owns
-// the local UI state (draft text, current type, which row is focused, export
-// modal open/close) plus the layout.
+// The capture surface: one text input (Enter commits) plus a type segmented control.
+// Items state and mutations live in useSessionItems; this owns local UI state only.
+// Keyboard support stays minimal on purpose — the old cmd-1/D/S bindings each
+// collided with a browser default, so they were unreliable. Do not reintroduce them.
 export function SessionCaptureView({ boardId, sessionId }: Props) {
   const {
     detail,
@@ -55,28 +47,17 @@ export function SessionCaptureView({ boardId, sessionId }: Props) {
   const [draft, setDraft] = useState("");
   const [focusIndex, setFocusIndex] = useState<number>(-1);
   const [showExport, setShowExport] = useState(false);
-  // Bulk select-mode: an ephemeral set of ids (a tick no longer persists a
-  // "selected" status). Entering the mode reveals a checkbox on every row;
-  // committing promotes the ticked ids in one go, cancelling just discards.
+  // Ephemeral id set — a tick no longer persists a "selected" status. Committing
+  // promotes the ticked ids in one go.
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  // Filter is local state, synced to a `?filter=` query param so a copy-
-  // paste of the URL preserves the view. Initial value reads from the
-  // URL directly (avoids useSearchParams, which would force a Suspense
-  // boundary at the page level in Next 16).
+  // Synced to ?filter= so the URL survives copy-paste. Read from the URL directly:
+  // useSearchParams would force a Suspense boundary at the page level in Next 16.
   const [filter, setFilter] = useState<SessionFilter>(() => readFilterFromURL());
   const inputRef = useRef<HTMLInputElement | null>(null);
 
-  // Deep-link target from #item-<id> — when the card detail modal's "source"
-  // section links here, focus the source item so the user lands directly
-  // on the row that became this card. Runs exactly once after items load.
-  //
-  // Using the setState-during-render pattern (gate flag + conditional set
-  // in render body) instead of a useEffect: React 19's
-  // react-hooks/set-state-in-effect flags sync setState inside effects as
-  // a cascading render, and a deep-link is conceptually "derive focus
-  // from initial URL", not "subscribe to URL changes" — exactly the case
-  // the rule wants out of effects.
+  // Deep-link from #item-<id>, run once after items load. setState-during-render,
+  // not an effect — see AGENTS.md, "Data fetching & loading states".
   const [deepLinkHandled, setDeepLinkHandled] = useState(false);
   if (!deepLinkHandled && items.length > 0) {
     setDeepLinkHandled(true);
@@ -86,9 +67,7 @@ export function SessionCaptureView({ boardId, sessionId }: Props) {
       const targetIdx = items.findIndex((it) => it.id === match[1]);
       if (targetIdx >= 0) {
         setFocusIndex(targetIdx);
-        // requestAnimationFrame defers DOM read to after paint, so reading
-        // a ref-less element by id is safe here even though we're in the
-        // render path.
+        // rAF defers the DOM read to after paint, so reading by id here is safe.
         requestAnimationFrame(() => {
           const el = document.getElementById(`item-${match[1]}`);
           el?.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -104,9 +83,7 @@ export function SessionCaptureView({ boardId, sessionId }: Props) {
     [items],
   );
 
-  // Jump to a question's row from the callout: make sure it's visible under
-  // the current filter, then scroll to it. #item-<id> anchors live on each
-  // ItemRow already (used by the card-modal deep-link too).
+  // Make sure the row is visible under the current filter before scrolling to it.
   const jumpToItem = (itemId: string) => {
     if (filter !== "all" && filter !== "q") handleFilterChange("q");
     requestAnimationFrame(() => {
@@ -312,9 +289,8 @@ export function SessionCaptureView({ boardId, sessionId }: Props) {
   );
 }
 
-// URL helpers — read once on mount, write via history.replaceState so the
-// filter survives reload + copy-paste without triggering a Next router
-// re-render (the filter is a pure client-side concern).
+// Filter lives in the URL via history.replaceState — survives reload and copy-paste
+// without triggering a Next router re-render.
 const VALID_FILTERS: SessionFilter[] = ["all", "req", "dec", "q", "dropped"];
 
 function readFilterFromURL(): SessionFilter {

@@ -11,11 +11,8 @@ import type {
   MyWorkResponse,
 } from "@/types/myWork";
 
-// How long a ticked-off task stays undoable before its server call fires.
-// Delayed commit ("Undo Send" pattern): an accidental tick on this daily-use
-// page costs nothing because nothing is sent until the window elapses — and a
-// completion actually moves the card into a DONE column, which has no clean
-// reversal, so we'd rather never send it than try to undo it server-side.
+// Delayed commit ("Undo Send"): completing moves the card into a DONE column,
+// which has no clean server-side reversal — better to never send it than to undo.
 const COMPLETE_UNDO_MS = 5000;
 
 const GROUP_TO_COUNT: Record<MyWorkGroup, keyof Omit<MyWorkCounts, "total">> = {
@@ -26,8 +23,7 @@ const GROUP_TO_COUNT: Record<MyWorkGroup, keyof Omit<MyWorkCounts, "total">> = {
   no_date: "no_date",
 };
 
-// Keep the toast readable — long card titles get truncated so the message +
-// "back" action still fit on one line.
+// Truncate so the toast message and its "back" action still fit on one line.
 function shortTitle(title: string, max = 40): string {
   const t = title.trim();
   return t.length > max ? `${t.slice(0, max).trimEnd()}…` : t;
@@ -40,9 +36,8 @@ interface UseMyWorkActionsArgs {
   setError: Dispatch<SetStateAction<string | null>>;
 }
 
-// Owns the two mutating flows of the My Work inbox — mark-done (delayed
-// commit + undo) and snooze (optimistic drop + refetch + undo) — plus the
-// session-local "done today" counter that drives the hero progress meter.
+// Owns the two mutating flows of the My Work inbox — mark-done (delayed commit +
+// undo) and snooze (optimistic drop + refetch + undo) — plus the done-today counter.
 export function useMyWorkActions({
   data,
   setData,
@@ -51,25 +46,21 @@ export function useMyWorkActions({
 }: UseMyWorkActionsArgs) {
   const showToast = useToastStore((s) => s.show);
 
-  // Tasks the user ticked off today, this session. The API doesn't report
-  // "done today", so this resets on reload.
+  // Session-local: the API has no "done today", so this resets on reload.
   const [doneToday, setDoneToday] = useState(0);
-  // Tasks ticked done but still inside their undo window — the server call is
-  // deferred, so this map holds the card (to restore on undo) + its timer.
+  // Ticked but not yet sent: holds the card (to restore on undo) and its timer.
   const pendingCompletions = useRef<
     Map<string, { card: MyWorkCard; timer: ReturnType<typeof setTimeout> }>
   >(new Map());
 
-  // Drop any card mid-undo from a fetched list so a refetch doesn't resurrect
-  // a row we're about to complete.
+  // Drop mid-undo cards from a fetched list so a refetch cannot resurrect them.
   const filterPending = useCallback((cards: MyWorkCard[]) => {
     const pending = pendingCompletions.current;
     return pending.size > 0 ? cards.filter((c) => !pending.has(c.id)) : cards;
   }, []);
 
-  // Keep the inbox counts (stat hero + filter chips) in sync optimistically
-  // rather than refetching — a refetch would resurrect other still-pending
-  // completions.
+  // Adjust counts optimistically rather than refetching — a refetch would resurrect
+  // other still-pending completions.
   const adjustCounts = useCallback(
     (group: MyWorkGroup, delta: number) => {
       setCounts((c) =>
@@ -94,7 +85,6 @@ export function useMyWorkActions({
     [adjustCounts, setData],
   );
 
-  // Fires when the undo window elapses — actually send the completion.
   const commitComplete = useCallback(
     async (cardId: string) => {
       const entry = pendingCompletions.current.get(cardId);
@@ -127,8 +117,7 @@ export function useMyWorkActions({
       const card = data.cards.find((c) => c.id === cardId);
       if (!card) return;
 
-      // Optimistic: drop the row, decrement its count bucket, bump today's
-      // progress. Nothing is sent yet — the timer below commits it.
+      // Nothing is sent yet — the timer below commits it.
       setData({ ...data, cards: data.cards.filter((c) => c.id !== cardId) });
       adjustCounts(card.group, -1);
       if (card.group === "today") setDoneToday((n) => n + 1);
@@ -146,8 +135,7 @@ export function useMyWorkActions({
     [data, adjustCounts, setData, showToast, commitComplete, undoComplete],
   );
 
-  // Commit any task still in its undo window when the page unmounts, so
-  // navigating away finishes the action instead of silently dropping it.
+  // Commit anything still in its undo window on unmount, rather than dropping it.
   useEffect(() => {
     const pending = pendingCompletions.current;
     return () => {
@@ -159,9 +147,8 @@ export function useMyWorkActions({
     };
   }, []);
 
-  // Revert a snooze back to the card's previous due_date. "" restores a card
-  // that had no date (the backend treats an empty due_date as a clear). Reuses
-  // the same PATCH endpoint as the forward snooze.
+  // Reverts a snooze. "" restores a card that had no date: the backend treats an
+  // empty due_date as a clear.
   const undoSnooze = useCallback(
     async (cardId: string, originalDueDate: string) => {
       try {
@@ -180,11 +167,9 @@ export function useMyWorkActions({
     async (cardId: string, dueDate: string, label: string) => {
       if (!data) return;
       const prev = data;
-      // Capture the original date before the optimistic drop so Undo can
-      // restore it (the refetch below replaces `data`, losing the old value).
+      // Capture the original date before the drop — the refetch replaces `data`.
       const original = prev.cards.find((c) => c.id === cardId)?.due_date ?? "";
-      // Optimistic: drop the card; refetch repopulates it into its new bucket
-      // and refreshes the counts so the hero + panels stay in sync.
+      // Optimistic drop; the refetch below repopulates it into its new bucket.
       setData({ ...prev, cards: prev.cards.filter((c) => c.id !== cardId) });
       try {
         await snoozeCardDueDate(cardId, dueDate);

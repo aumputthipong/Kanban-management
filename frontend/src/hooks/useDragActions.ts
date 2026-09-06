@@ -15,8 +15,7 @@ import {
  * position math: docs/ARCHITECTURE.md, "Optimistic UI pattern".
  */
 export function useDragActions() {
-  // Select the action only: subscribing to board state here re-renders the
-  // whole card modal on every store mutation (subtask toggle, WS, drag).
+  // Action only — selecting board state here re-renders the card modal on every mutation.
   const moveCard = useBoardStore((s) => s.moveCard);
   const { sendMessage } = useBoardWebSocket();
 
@@ -38,7 +37,6 @@ export function useDragActions() {
     if (!resolved) return;
     const { overColumnId, overCardId } = resolved;
 
-    // ref guard: skip if we've already moved to this column (prevents a loop).
     if (dragOverColumnRef.current === overColumnId) return;
 
     const currentCol = freshColumns.find((col) =>
@@ -73,10 +71,8 @@ export function useDragActions() {
     if (!resolved) return;
     const { overColumnId, overCardId } = resolved;
 
-    // Determine whether to place BEFORE or AFTER the over card.
-    // Compare translated center of the dragged card vs center of the over card —
-    // if the drag is past the midpoint, treat it as "after". Handles both
-    // same-column downward moves and cross-column drops onto a bottom card.
+    // Past the midpoint = place after; covers same-column downward moves and
+    // cross-column drops onto a bottom card.
     let placeAfter = false;
     const activeTranslated = active.rect.current.translated;
     if (overCardId && over.rect && activeTranslated) {
@@ -106,6 +102,5 @@ export function useDragActions() {
     });
   };
 
-  // Re-export POSITION_GAP so useCardActions can use it without re-importing
   return { handleDragStart, handleDragOver, handleDragEnd, POSITION_GAP };
 }

@@ -2,25 +2,13 @@ import { BoardMember, Card, Column, Subtask } from "@/types/board";
 import { create } from "zustand";
 
 /**
- * Single source of truth for one viewed board's columns + cards + members.
- *
- * Mutations come from two places:
- *   1. User actions through API responses — handlers call `set*` / `update*` /
- *      `addCardToStore` etc. directly (optimistic UI).
- *   2. WebSocket broadcasts — `useWebSocket` dispatches CARD_*, COLUMN_*,
- *      ACTIVITY_* messages straight into these setters. They are designed
- *      to be **idempotent** so receiving an event for state that already
- *      reflects it is a no-op (this is what lets the writer skip filtering
- *      out their own broadcasts).
- *
- * `currentUserId` and `boardMembers` are set once on board load and used by
- * permission-aware UI (hiding manager-only buttons, etc.).
+ * Single source of truth for one board's columns, cards and members. Setters are
+ * driven both by optimistic user actions and by WS broadcasts, so they must stay
+ * idempotent — that is what lets a writer skip filtering its own echo.
  */
 /**
- * The viewed board's visual identity (title + accent colour + glyph key),
- * hydrated once on board load so the header can show "which project am I in".
- * Kept separate from `columns` because GET /boards/:id returns columns only —
- * the board row's title/icon/color come from the list endpoint.
+ * The viewed board's visual identity, hydrated on load. Separate from `columns`
+ * because GET /boards/:id returns columns only — title/icon/color come from the list.
  */
 export interface BoardMeta {
   title: string;
@@ -28,9 +16,8 @@ export interface BoardMeta {
   icon?: string;
 }
 
-// Sentinel for `filterAssigneeId` meaning "cards with no assignee". null is
-// already taken by "All" (no filter), and real assignees are UUIDs, so this
-// string can never collide with a user id.
+// Sentinel for `filterAssigneeId` meaning "no assignee". null already means "All",
+// and real assignees are UUIDs, so this string cannot collide with a user id.
 export const UNASSIGNED_FILTER = "unassigned";
 
 interface BoardState {
@@ -149,8 +136,7 @@ export const useBoardStore = create<BoardState>((set) => ({
 
   addCardToStore: (newCard) =>
     set((state) => {
-      // Idempotent: ignore if a card with this id already exists (e.g. our own
-      // WS echo).
+      // Idempotent — ignore a card id we already hold (e.g. our own WS echo).
       const isAlreadyExists = state.columns.some((col) =>
         col.cards.some((card) => card.id === newCard.id),
       );
@@ -225,7 +211,6 @@ export const useBoardStore = create<BoardState>((set) => ({
                 st.id === subtaskId ? { ...st, ...updatedData } : st,
               )
             : card.subtasks;
-          // Adjust the completed_subtasks count when is_done changed.
           let completedDelta = 0;
           if (updatedData.is_done !== undefined && card.subtasks) {
             const old = card.subtasks.find((st) => st.id === subtaskId);

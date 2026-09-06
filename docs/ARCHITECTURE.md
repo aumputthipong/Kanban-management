@@ -229,7 +229,11 @@ lines without joining back to the source tables.
 
 - Page: `frontend/src/app/(project)/board/[boardId]/planning/[sessionId]/page.tsx`
 - Data hook: `useSessionItems(boardId, sessionId)` — initial fetch + optimistic CRUD over the items array, plus claim/release helpers.
-- Per-item thread hook: `usePlanningComments(itemId, currentUserId)` — lazy, never fetches until the consumer calls `load()`. Multi-instance design documented in the hook header.
+- Per-item thread hook: `usePlanningComments(itemId, currentUserId)` — lazy, never fetches until the consumer calls `load()`.
+
+**Why one comment hook per row is cheap.** `ItemRow` instantiates `usePlanningComments` once per visible item, so a 50-item session holds 50 instances. Cost stays flat because the hook never fetches until `load()` is called (an unexpanded thread costs only local state) and the visibility listener is only attached after `loaded` becomes true. Threads a user actually expands are a handful. If an "expand all" affordance ever ships, revisit by hoisting the visibility listener to one shared subscriber.
+
+Its optimistic flows: **create** appends a `__pending_` placeholder and swaps it for the server row (dropping it plus a toast on failure); **edit** patches local state and reverts on failure; **delete** flips `body` to null and `deleted_at` to now locally, reverting if the server rejects.
 - Composition: `SessionCaptureView` orchestrates filter chips, items list, capture input, sidebar, deep-link scroll. `ItemRow` extracts a popover, claim affordance, action button cluster, and details panel (see `frontend/src/components/board/planning/`).
 
 ---

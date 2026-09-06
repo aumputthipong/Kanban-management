@@ -1,25 +1,6 @@
-// Fetches and mutates the comment thread for one planning item. The hook
-// is intentionally lazy — it does NOT load on mount; the consumer calls
-// `load()` when the user opens the thread (and again on tab focus). This
-// matches the project's "polling refresh on visibility" pattern without
-// pulling in a background timer.
-//
-// Optimistic flow:
-//   - create: append a placeholder row with a __pending_ id, swap to the
-//     server row on success, drop the placeholder + toast on failure.
-//   - edit:   patch local state immediately, revert on failure.
-//   - delete: flip body→null + deleted_at→now() locally, revert if the
-//             server rejects.
-//
-// Multi-instance note (per-row mounting): ItemRow instantiates this hook
-// once per visible item, so a session with 50 items has 50 instances.
-// Memory + render cost stay flat because (1) the hook never fetches
-// until load() is called — unloaded threads cost only the hook's local
-// state, (2) the visibility listener is only added after `loaded`
-// becomes true, so non-expanded rows don't attach listeners. The handful
-// of threads a user actually expands keep this well under any meaningful
-// budget. If a future "expand all" affordance ships, revisit by hoisting
-// the visibility listener to a shared subscriber.
+// Comment thread for one planning item. Lazy on purpose: nothing loads until the
+// consumer calls load(). ItemRow mounts one instance per visible row — see
+// docs/ARCHITECTURE.md, "Planning section", for why that stays cheap.
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useToastStore } from "@/store/useToastStore";
 import { planningApi } from "@/lib/planningApi";
@@ -36,9 +17,7 @@ const tempId = () => `__pending_${Math.random().toString(36).slice(2)}`;
 export function usePlanningComments(itemId: string, currentUserId: string | null) {
   const [state, setState] = useState<State>({ comments: [], isLoading: false, loaded: false });
   const showToast = useToastStore((s) => s.show);
-  // Track whether we've kicked off a load so re-renders don't spawn
-  // duplicate fetches. ref avoids the cascading-render trap of a flag in
-  // state for this case.
+  // ref, not state — a render-triggering flag here would cascade.
   const requestRef = useRef(0);
 
   const load = useCallback(async () => {
@@ -55,8 +34,7 @@ export function usePlanningComments(itemId: string, currentUserId: string | null
     }
   }, [itemId, showToast]);
 
-  // Refetch when the user comes back to the tab — sessions are
-  // collaborative enough that a stale thread would be confusing, but a
+  // Refetch on tab focus — collaborative enough that a stale thread confuses, but a
   // background poll would burn requests on idle tabs.
   useEffect(() => {
     if (!state.loaded) return;

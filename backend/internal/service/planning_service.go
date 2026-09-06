@@ -1,15 +1,7 @@
-// internal/service/planning_service.go
-//
-// Planning sessions own a flat list of items (REQ / DEC / Q). Items move
-// through statuses (live → selected → promoted, or live → dropped) but the
-// rows are never destroyed — drop is reversible, promote leaves a link to
-// the resulting Kanban card so the audit trail "this card came from session
-// X" stays intact even after the session is renamed.
-//
-// Promotion is the one cross-table operation here: it inserts a card into
-// the same board's first TODO column and stamps the planning item with
-// status='promoted' + promoted_to_card_id. Single transaction so a half-
-// promoted item can't exist.
+// Planning sessions own a flat list of items (REQ/DEC/Q). Items change status but rows
+// are never destroyed: drop is reversible and promote keeps a link to the resulting
+// card. Promotion is the one cross-table write — card insert plus item stamp in a
+// single transaction, so a half-promoted item cannot exist.
 package service
 
 import (
@@ -24,9 +16,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// planningPositionGap mirrors useBoardStore.POSITION_GAP on the FE — large
-// enough that ordinary appends never collide and the FE can drag-to-reorder
-// by computing midpoints without renumbering.
+// planningPositionGap mirrors the FE POSITION_GAP — wide enough that appends never
+// collide and reorders can use midpoints without renumbering.
 const planningPositionGap = 65536.0
 
 type PlanningService struct {
@@ -39,21 +30,16 @@ func NewPlanningService(pool *pgxpool.Pool, queries *db.Queries) *PlanningServic
 }
 
 var (
-	// ErrPlanningItemAlreadyPromoted prevents a double-promote — the second
-	// promote should be a 409, not a duplicate card.
+	// ErrPlanningItemAlreadyPromoted makes a second promote a 409, not a duplicate card.
 	ErrPlanningItemAlreadyPromoted = errors.New("planning item already promoted")
-	// ErrPlanningItemDropped is returned when promoting an item that the user
-	// explicitly dropped. Promoting a dropped item would contradict the
-	// previous decision; the user must un-drop it first.
+	// ErrPlanningItemDropped is returned when promoting an item the user dropped; it
+	// contradicts that decision, so they must un-drop first.
 	ErrPlanningItemDropped = errors.New("planning item is dropped")
-	// ErrPlanningNoTodoColumn is returned when the owning board has no TODO
-	// column to receive the promoted card. This is user-actionable (add a
-	// TODO column) so handlers should surface it as 422, not 500.
+	// ErrPlanningNoTodoColumn is user-actionable (add a TODO column) — handlers map it to 422.
 	ErrPlanningNoTodoColumn = errors.New("board has no TODO column")
-	// ErrPlanningNotFound is returned when a session/item lookup hits zero rows.
+	// ErrPlanningNotFound is returned when a session or item lookup hits zero rows.
 	ErrPlanningNotFound = errors.New("planning resource not found")
-	// ErrPlanningCommentDeleted is returned when an edit / delete targets
-	// a comment that has already been soft-deleted. Surface as 409 so the
+	// ErrPlanningCommentDeleted targets an already soft-deleted comment; 409 so the
 	// optimistic UI can revert.
 	ErrPlanningCommentDeleted = errors.New("planning comment already deleted")
 )
@@ -146,10 +132,8 @@ func (s *PlanningService) DeleteItem(ctx context.Context, itemID string) error {
 	return s.queries.DeletePlanningItem(ctx, itemID)
 }
 
-// CardSource is the data behind the card detail modal's "source" section
-// — the planning session + item that produced this card, plus a few of
-// the session's still-open questions so the dev opening the card can see
-// "what else came up in this meeting that's not yet decided".
+// CardSource backs the card modal's "source" section: the session and item that
+// produced this card, plus a few still-open questions from the same meeting.
 type CardSource struct {
 	SessionID        string
 	SessionTitle     string
@@ -168,13 +152,9 @@ type CardSourcePendingQuestion struct {
 	Title string
 }
 
-// GetCardSource returns the planning origin of a card, or nil if the card
-// was never promoted from planning (or the source session/item has been
-// deleted — FK is ON DELETE SET NULL on planning_items.promoted_to_card_id,
-// so a deleted card can still leave dangling items, but a deleted item
-// orphans the link from the card side, which we treat as "no source"). The
-// pendingLimit caps how many open questions we surface — pass 3 to match
-// the modal's render budget.
+// GetCardSource returns the planning origin of a card, or nil when it was never
+// promoted or the source item is gone (promoted_to_card_id is ON DELETE SET NULL, so a
+// deleted card orphans the link). pendingLimit caps the open questions surfaced.
 func (s *PlanningService) GetCardSource(ctx context.Context, cardID string, pendingLimit int32) (*CardSource, error) {
 	row, err := s.queries.GetPlanningSourceByCard(ctx, &cardID)
 	if err != nil {

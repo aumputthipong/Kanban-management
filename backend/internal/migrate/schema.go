@@ -12,16 +12,10 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// Bootstrap prepares a database for the app.
-//
-// sqlc is generated from schema.sql (see sqlc.yaml), so schema.sql — not the
-// migrations — is the source of truth for the current schema. The migrations
-// are the historical, incremental path used to evolve an existing database.
-//
-// On a FRESH database it applies schema.sql and stamps the migration version to
-// the latest, so the historical migrations aren't replayed on top (which would
-// conflict, since schema.sql already reflects their end state). On an EXISTING
-// database it just applies any pending migrations.
+// Bootstrap prepares a database for the app. schema.sql is the source of truth (sqlc
+// generates from it); migrations are the historical path for an existing database. A
+// FRESH database gets schema.sql plus a version stamp so history is not replayed over
+// its own end state; an EXISTING one just gets pending migrations.
 func Bootstrap(ctx context.Context, dbURL, schemaPath, migrationsPath string) error {
 	fresh, err := applyBaseSchema(ctx, dbURL, schemaPath)
 	if err != nil {

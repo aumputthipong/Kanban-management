@@ -12,29 +12,16 @@ import (
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 )
 
-// fileSourceURL turns an OS filesystem path into a "file://" URL golang-
-// migrate's source driver can parse. A naive "file://" + path breaks on
-// Windows: a path like `C:\Users\...\migrations` has backslashes url.Parse
-// treats as opaque, so the whole path — including the "C:" — gets read as
-// the URL authority, and Parse tries (and fails) to read what follows the
-// colon as a port number.
-//
-// filepath.ToSlash is the whole fix. It turns the Windows path into
-// `C:/Users/...`; url.Parse then reads "C:" as the host and "/Users/..." as
-// the path, and golang-migrate's own parseURL concatenates host+path back
-// into the original "C:/Users/..." — which os.DirFS accepts. On Unix
-// ToSlash is a no-op (already forward slashes), so this changes nothing
-// there: an absolute path already starts with "/", giving the same
-// "file:///home/..." this produced before.
+// fileSourceURL turns an OS path into a "file://" URL golang-migrate can parse.
+// filepath.ToSlash is the whole fix and must stay: with Windows backslashes url.Parse
+// reads the drive letter as the authority and fails on the "port". With slashes it
+// reads C: as host and golang-migrate rejoins host+path. On Unix ToSlash is a no-op.
 func fileSourceURL(sourcePath string) string {
 	return "file://" + filepath.ToSlash(sourcePath)
 }
 
-// Run applies all pending up-migrations from the given source path against
-// the given Postgres URL. It is idempotent — already-applied migrations are skipped.
-//
-// sourcePath: filesystem path to the migrations directory (e.g. "database/migrations").
-// dbURL:      Postgres connection URL. Will be normalized to the pgx/v5 driver.
+// Run applies all pending up-migrations from sourcePath against dbURL. Idempotent —
+// already-applied migrations are skipped. dbURL is normalized to the pgx/v5 driver.
 func Run(sourcePath, dbURL string) error {
 	migrationsURL := fileSourceURL(sourcePath)
 	driverURL := normalizeDBURL(dbURL)

@@ -1,9 +1,6 @@
-// Package observability wraps Sentry initialization + the chi-compatible
-// recovery middleware that ships panics off to it.
-//
-// Designed to be **env-gated and no-op when SENTRY_DSN is empty** — local dev
-// and CI work without a Sentry project, the same code paths just don't ship
-// events.
+// Package observability wraps Sentry initialisation and the chi recovery middleware
+// that ships panics to it. Env-gated: with SENTRY_DSN empty every path is a no-op, so
+// local dev and CI need no Sentry project.
 package observability
 
 import (
@@ -17,15 +14,9 @@ import (
 	sentryhttp "github.com/getsentry/sentry-go/http"
 )
 
-// InitSentry initialises the global Sentry hub from env. Returns true if
-// Sentry was configured (i.e. SENTRY_DSN was set), false otherwise.
-//
-// Reads:
-//   - SENTRY_DSN          — the project DSN; empty disables Sentry entirely.
-//   - SENTRY_ENVIRONMENT  — defaults to ENV if unset, "development" otherwise.
-//   - SENTRY_RELEASE      — version tag for releases (defaults to caller-provided).
-//   - SENTRY_SAMPLE_RATE  — float 0..1, defaults to 1.0 (capture all errors).
-//   - SENTRY_TRACES_SAMPLE_RATE — float 0..1, defaults to 0.1 (10% perf traces).
+// InitSentry initialises the global Sentry hub from env and reports whether it was
+// configured. SENTRY_DSN empty disables Sentry entirely; the other SENTRY_* knobs are
+// documented in .env.example.
 func InitSentry(release string) bool {
 	dsn := os.Getenv("SENTRY_DSN")
 	if dsn == "" {

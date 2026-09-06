@@ -1,14 +1,6 @@
-// Item comment thread handlers, split from planning_handler.go so the
-// planning file stays focused on the session + item surface. Permissions
-// follow the same 404-not-403 anti-enumeration pattern as the rest of the
-// planning routes:
-//   - non-member of the comment's board → 404
-//   - edit not-own → 404 (not 403)
-//   - delete not-own + not owner/manager → 404
-//
-// Body preview for activity payloads is truncated to 80 chars so the feed
-// stays scannable without joining back to the comments table at render
-// time.
+// Item comment thread handlers, split out so planning_handler.go stays focused on the
+// session and item surface. Permissions follow the 404-not-403 anti-enumeration pattern
+// (docs/adr/0004). Activity body previews are truncated to 80 chars.
 package handler
 
 import (
@@ -36,9 +28,8 @@ func commentToResponse(row db.ListPlanningItemCommentsRow) dto.PlanningCommentRe
 		CreatedAt:  row.CreatedAt.Format(timeFormat),
 		UpdatedAt:  row.UpdatedAt.Format(timeFormat),
 	}
-	// Soft-deleted rows surface deleted_at + nil body so the frontend can
-	// render a "deleted" placeholder + the original author + time. Returning
-	// the body even for deleted rows would leak content after delete.
+	// Soft-deleted rows return deleted_at with a nil body so the UI can render a
+	// placeholder. Returning the body would leak content after a delete.
 	if row.DeletedAt != nil {
 		ts := row.DeletedAt.Format(timeFormat)
 		out.DeletedAt = &ts
@@ -124,8 +115,7 @@ func (h *PlanningHandler) CreateComment(w http.ResponseWriter, r *http.Request) 
 		service.PlanningCommentCreatedPayload{ItemID: itemID, BodyPreview: bodyPreview(req.Body)},
 	)
 
-	// Hydrate author_name for the response so the frontend can append the
-	// returned row directly to the list without a refetch.
+	// Hydrate author_name so the frontend can append the row without a refetch.
 	body := row.Body
 	resp := dto.PlanningCommentResponse{
 		ID:         row.ID,
@@ -171,9 +161,7 @@ func (h *PlanningHandler) EditComment(w http.ResponseWriter, r *http.Request) er
 	if _, apiErr := h.requireMembership(r, boardID, userID); apiErr != nil {
 		return apiErr
 	}
-	// Edit-own only. 404 (not 403) keeps the response identical to
-	// "comment doesn't exist" — an attacker probing other people's
-	// comment IDs gets no signal about whether they exist.
+	// Edit-own only, and a 404 so probing other people's comment IDs reveals nothing.
 	if existing.AuthorID != userID {
 		return httputil.NewAPIError(http.StatusNotFound, "Not found", nil)
 	}
@@ -236,8 +224,7 @@ func (h *PlanningHandler) DeleteComment(w http.ResponseWriter, r *http.Request) 
 	if apiErr != nil {
 		return apiErr
 	}
-	// Delete = own OR board owner/manager. Anything else → 404 (not 403)
-	// to keep the anti-enumeration contract intact.
+	// Delete = own, or board owner/manager. Anything else is a 404 (see ADR 0004).
 	isOwn := existing.AuthorID == userID
 	canForceDelete := role == core.RoleOwner || role == core.RoleManager
 	if !isOwn && !canForceDelete {

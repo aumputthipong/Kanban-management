@@ -1,6 +1,5 @@
-// Package token issues and verifies the JWT used for session auth, plus the
-// helper that sets the `auth_token` HttpOnly cookie. The signing secret is
-// loaded once from the JWT_SECRET environment variable; the process aborts
+// Package token issues and verifies the session-auth JWT and sets the auth_token
+// HttpOnly cookie. The signing secret is read once from JWT_SECRET; the process aborts
 // on startup if it is empty.
 package token
 
@@ -14,14 +13,9 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-// defaultAccessTTL is how long an issued access token stays valid when
-// ACCESS_TOKEN_TTL is not set. A leaked access JWT cannot be revoked, so this
-// is the exposure window — but it is also the window after which a plain page
-// reload (Next middleware reads the auth_token cookie) bounces an idle user to
-// /login, because the refresh token is scoped to the refresh endpoint and is
-// not visible to server-side navigation. 8h keeps a normal work session alive
-// without a relogin while still expiring same-day. Tighten in production via
-// ACCESS_TOKEN_TTL and lean on the rotating refresh token for renewal.
+// defaultAccessTTL is the exposure window for a leaked access JWT (they cannot be
+// revoked) and also how long an idle tab survives a reload before bouncing to /login.
+// 8h keeps a work session alive; tighten via ACCESS_TOKEN_TTL and lean on refresh.
 const defaultAccessTTL = 8 * time.Hour
 
 var (

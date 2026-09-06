@@ -88,10 +88,9 @@ type UpdateMemberRoleRequest struct {
 	Role string `json:"role" validate:"required,oneof=owner manager member"`
 }
 
-// StashedBoardDTO is one row in the stash. stashed_at is the
-// time the board was stashed — backed by the generic boards.deleted_at column.
-// Appearance fields mirror the project-list cards so the row renders the same
-// glyph + description.
+// StashedBoardDTO is one row in the stash; stashed_at is backed by the generic
+// boards.deleted_at column. Appearance fields mirror the project-list cards so the row
+// renders the same glyph and description.
 type StashedBoardDTO struct {
 	ID          string    `json:"id"`
 	Title       string    `json:"title"`

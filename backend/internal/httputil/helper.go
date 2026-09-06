@@ -34,17 +34,9 @@ func NewAPIError(statusCode int, message string, err error) *APIError {
 // APIFunc is an http.HandlerFunc variant that returns an error.
 type APIFunc func(w http.ResponseWriter, r *http.Request) error
 
-// MakeHandler wraps an APIFunc, centralising error handling, logging, and error
-// reporting. Every handler error funnels through here, so this is the single
-// place that ties a failure back to its request:
-//
-//   - logs via slog (structured, matches the rest of the pipeline) with the
-//     request_id, so an error line can be correlated with the access-log line
-//     and the Sentry event for the same request;
-//   - 5xx are logged at Error and reported to Sentry (panics are already
-//     captured by SentryRecoverer; this covers the far more common handled-500
-//     path — DB errors and the like). 4xx are client-driven, logged at Info and
-//     not sent to Sentry.
+// MakeHandler wraps an APIFunc so every handler error funnels through one place: it
+// logs via slog with the request_id, so an error correlates with its access-log line
+// and Sentry event. 5xx log at Error and go to Sentry; 4xx log at Info and do not.
 func MakeHandler(h APIFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		err := h(w, r)

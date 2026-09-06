@@ -31,10 +31,9 @@ func RequireBoardMember(svc service.BoardServicer) func(http.Handler) http.Handl
 	return boardMembershipGate(svc.GetBoardMemberRole)
 }
 
-// RequireStashedBoardMember is the mirror of RequireBoardMember for the
-// /api/stash routes: it matches only when the board is stashed, so restore /
-// permanent-delete operate on stashed boards. RequireBoardMember 404s for
-// stashed boards, keeping their normal routes unreachable.
+// RequireStashedBoardMember mirrors RequireBoardMember for /api/stash: it matches only
+// stashed boards, so restore and permanent-delete work while the normal routes stay
+// unreachable (RequireBoardMember 404s for stashed boards).
 func RequireStashedBoardMember(svc service.BoardServicer) func(http.Handler) http.Handler {
 	return boardMembershipGate(svc.GetStashedBoardMemberRole)
 }
@@ -57,11 +56,9 @@ func boardMembershipGate(resolve roleResolver) func(http.Handler) http.Handler {
 				return
 			}
 
-			// A malformed board ID can't reference a real board. Treat it as
-			// not-found (404) rather than letting the bad value reach the UUID
-			// column, where Postgres would reject it with a 22P02 error that
-			// surfaces as a 500. This keeps malformed / nonexistent / not-a-member
-			// all indistinguishable — see the anti-enumeration note above.
+			// A malformed board ID cannot reference a real board. 404 rather than letting it
+			// reach the uuid column, where Postgres 22P02 would surface as a 500 — malformed,
+			// nonexistent and not-a-member must stay indistinguishable.
 			if _, err := uuid.Parse(boardID); err != nil {
 				httputil.RespondError(w, http.StatusNotFound, "Not found")
 				return

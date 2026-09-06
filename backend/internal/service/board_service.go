@@ -239,10 +239,8 @@ func (s *BoardService) GetBoardIDByCard(ctx context.Context, cardID string) (str
 	return s.queries.GetBoardIDByCard(ctx, cardID)
 }
 
-// MyTaskData mirrors the row shape returned to the frontend's My Work page.
-// `Status` is derived in SQL: "todo" for the first TODO column, "in_progress"
-// otherwise. `Group` is the date bucket (overdue/today/this_week/later/no_date)
-// also computed in SQL against the caller's "today".
+// MyTaskData mirrors the My Work row shape. `Status` and `Group` are both derived in
+// SQL — Group is the date bucket computed against the caller's "today".
 type MyTaskData struct {
 	ID                string
 	Title             string
@@ -321,10 +319,8 @@ func MyWorkToday(now time.Time, tz string) time.Time {
 	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, loc)
 }
 
-// GetMyWork lists the caller's inbox across boards. The query returns all
-// matching cards in one shot; counts are computed in Go (one pass) and the
-// filter is applied after counting so the chip totals always reflect the full
-// inbox.
+// GetMyWork lists the caller's inbox across boards in one query. Counts are computed in
+// Go before the filter is applied, so chip totals always reflect the full inbox.
 func (s *BoardService) GetMyWork(ctx context.Context, opts MyWorkOptions) (MyWorkResult, error) {
 	rows, err := s.queries.GetMyTasks(ctx, db.GetMyTasksParams{
 		Today:             opts.Today,
@@ -400,10 +396,9 @@ type CompleteMyTaskResult struct {
 	CardTitle string
 }
 
-// CompleteMyTask marks a card done + moves it to the board's first DONE column.
-// Returns OK=false if the caller is not the assignee (so handler can 404). The
-// returned BoardID + CardTitle let the REST handler record an activity row
-// after-the-fact without another DB hit.
+// CompleteMyTask marks a card done and moves it to the board's first DONE column,
+// returning OK=false when the caller is not the assignee so the handler can 404. BoardID
+// and CardTitle let the handler record the activity without another read.
 func (s *BoardService) CompleteMyTask(ctx context.Context, cardID, userID string) (CompleteMyTaskResult, error) {
 	boardID, err := s.queries.GetBoardIDByCard(ctx, cardID)
 	if err != nil {

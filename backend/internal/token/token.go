@@ -1,6 +1,5 @@
-// Package token issues and verifies the JWT used for session auth, plus the
-// helper that sets the `auth_token` HttpOnly cookie. The signing secret is
-// loaded once from the JWT_SECRET environment variable; the process aborts
+// Package token issues and verifies the session-auth JWT and sets the auth_token
+// HttpOnly cookie. The signing secret is read once from JWT_SECRET; the process aborts
 // on startup if it is empty.
 package token
 
@@ -14,14 +13,9 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-// defaultAccessTTL is how long an issued access token stays valid when
-// ACCESS_TOKEN_TTL is not set. A leaked access JWT cannot be revoked, so this
-// is the exposure window — but it is also the window after which a plain page
-// reload (Next middleware reads the auth_token cookie) bounces an idle user to
-// /login, because the refresh token is scoped to the refresh endpoint and is
-// not visible to server-side navigation. 8h keeps a normal work session alive
-// without a relogin while still expiring same-day. Tighten in production via
-// ACCESS_TOKEN_TTL and lean on the rotating refresh token for renewal.
+// defaultAccessTTL is the exposure window for a leaked access JWT (they cannot be
+// revoked) and also how long an idle tab survives a reload before bouncing to /login.
+// 8h keeps a work session alive; tighten via ACCESS_TOKEN_TTL and lean on refresh.
 const defaultAccessTTL = 8 * time.Hour
 
 var (
@@ -74,10 +68,9 @@ var (
 	jwtSecret     []byte
 )
 
-// secret returns the JWT signing key, initialising it on first use.
-// It aborts the process if JWT_SECRET is missing or too short — this is
-// intentional because running with an empty secret would silently accept
-// forged tokens.
+// secret returns the JWT signing key, initialising it on first use. It aborts the
+// process when JWT_SECRET is missing or too short — running with an empty secret would
+// silently accept forged tokens.
 func secret() []byte {
 	jwtSecretOnce.Do(func() {
 		s := os.Getenv("JWT_SECRET")
@@ -131,12 +124,9 @@ func parseSigned(tokenStr string) (*Claims, error) {
 	return claims, nil
 }
 
-// Parse validates a session access token and returns its claims. It rejects
-// any signing method other than HMAC, and rejects WS tickets so a ticket
-// leaked from a URL cannot be replayed against the REST API. Returns
-// jwt.ErrTokenInvalidClaims for expired, malformed, or wrong-algorithm tokens
-// — callers should treat any non-nil error as "unauthenticated" without
-// leaking which check failed.
+// Parse validates a session access token, rejecting non-HMAC signing and WS tickets — a
+// ticket leaked from a URL must not open the REST API. Any non-nil error means
+// "unauthenticated"; it never says which check failed.
 func Parse(tokenStr string) (*Claims, error) {
 	claims, err := parseSigned(tokenStr)
 	if err != nil {
@@ -148,12 +138,9 @@ func Parse(tokenStr string) (*Claims, error) {
 	return claims, nil
 }
 
-// AuthCookieSameSite returns the SameSite mode and Secure flag for an auth
-// cookie. A cross-site deploy (frontend and backend on different sites, e.g.
-// Vercel + Render) needs SameSite=None, which browsers only accept together
-// with Secure. Otherwise the stricter same-site default is kept and Secure
-// follows production. dflt is this cookie's same-site default (Lax for the
-// access cookie, Strict for refresh).
+// AuthCookieSameSite returns the SameSite mode and Secure flag for an auth cookie. A
+// cross-site deploy needs SameSite=None, which browsers only accept with Secure; the
+// stricter default is kept otherwise. dflt is the cookie's own default.
 func AuthCookieSameSite(dflt http.SameSite, production, crossSite bool) (http.SameSite, bool) {
 	if crossSite {
 		return http.SameSiteNoneMode, true
@@ -181,10 +168,9 @@ func SetAuthCookie(w http.ResponseWriter, tokenStr string, production, crossSite
 // the WebSocket handshake. Parse rejects it; ParseWSTicket requires it.
 const wsTicketAudience = "ws"
 
-// defaultWSTicketTTL is the lifetime of a WS ticket. The ticket travels in the
-// WebSocket URL (browsers cannot set headers on a WS connection), so it lands
-// in upstream access logs we do not control — keep the replay window short.
-// It only has to survive one handshake, so seconds are enough.
+// defaultWSTicketTTL is the lifetime of a WS ticket. It travels in the URL and so lands
+// in upstream access logs we do not control — keep the replay window short; it only has
+// to survive one handshake.
 const defaultWSTicketTTL = 30 * time.Second
 
 var (

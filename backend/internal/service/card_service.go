@@ -36,10 +36,9 @@ func (s *BoardService) GetCard(ctx context.Context, cardID string) (db.Card, err
 	return s.queries.GetCard(ctx, cardID)
 }
 
-// CardDetailData is a fully enriched single card for the detail view (the My
-// Work modal). GetCard alone returns only the raw card row; this also resolves
-// the assignee's name and loads subtasks + tags so the response carries
-// everything the modal shows (description, dev notes, subtasks, tags).
+// CardDetailData is a fully enriched card for the detail view. GetCard alone returns the
+// raw row; this also resolves the assignee name and loads subtasks and tags so the
+// response carries everything the modal shows.
 type CardDetailData struct {
 	Card         db.Card
 	AssigneeName *string

@@ -102,11 +102,9 @@ func TestRequireBoardRole_EmptyRoleString_Returns403(t *testing.T) {
 	assert.False(t, called)
 }
 
-// TestRequireBoardRole_UnknownRole_Returns403 — if the DB ever returned a
-// role string outside the known enum (data corruption, future role not yet
-// deployed, etc.), it ranks 0 and must be rejected against any non-zero gate.
-// Failing closed prevents silent privilege escalation if an attacker can ever
-// influence the role column.
+// A role string outside the known enum (corruption, or a role not yet deployed) ranks 0
+// and must lose against any non-zero gate. Failing closed prevents privilege escalation
+// if the role column is ever influenced.
 func TestRequireBoardRole_UnknownRole_Returns403(t *testing.T) {
 	var called bool
 	h := RequireBoardRole(core.RoleMember)(okHandler(&called))

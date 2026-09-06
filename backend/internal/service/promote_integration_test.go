@@ -1,13 +1,8 @@
 //go:build integration
 
-// Integration tests for PlanningService.PromoteItem against a real Postgres.
-//
-// PromoteItem is the project's only cross-table transactional path
-// (planning_items.status flip + cards.insert in one tx). Mocking the DB
-// layer can't catch the bugs we actually care about here: a race that
-// double-promotes, a partial commit on the cards side, or schema drift
-// breaking the TODO-column lookup. These tests use a real container via
-// testutil to exercise the actual SQL and concurrency.
+// Integration tests for PlanningService.PromoteItem against a real Postgres. It is the
+// project's only cross-table transactional path, and mocks cannot catch what matters
+// here: a double-promote race, a partial commit, or schema drift in the column lookup.
 package service_test
 
 import (
@@ -141,23 +136,9 @@ func TestPromoteItem_NotFound_ReturnsSentinel(t *testing.T) {
 	require.ErrorIs(t, err, service.ErrPlanningNotFound)
 }
 
-// TestPromoteItem_ConcurrentPromote_ExactlyOneSucceeds is the test that
-// motivated this whole infra investment. Without a real DB you cannot
-// observe what happens when N goroutines hit PromoteItem on the same
-// item at once: the current implementation does a read-check-write
-// pattern inside a tx, and Postgres default isolation (READ COMMITTED)
-// means two txns can both see status='live' before either commits.
-//
-// What we expect:
-//   - All N goroutines eventually return without panicking.
-//   - At least 1 succeeds (item promoted, card created).
-//   - The remaining N-1 either succeed-and-create-a-second-card (BUG) or
-//     fail with ErrPlanningItemAlreadyPromoted (correct).
-//
-// This test will FAIL on the current implementation if there's a race —
-// that's the bug we want to surface. If it passes, the read-modify-write
-// is somehow safe (maybe via row locks we're not seeing in code review),
-// and we have confidence.
+// Concurrency is the reason this package needs a real database: PromoteItem does a
+// read-check-write inside a tx, and under READ COMMITTED two transactions can both see
+// status='live'. Exactly one promote must win; the rest get ErrPlanningItemAlreadyPromoted.
 func TestPromoteItem_ConcurrentPromote_ExactlyOneSucceeds(t *testing.T) {
 	ctx := context.Background()
 	f := newFixture(t)

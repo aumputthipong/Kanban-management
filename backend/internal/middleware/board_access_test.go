@@ -114,12 +114,9 @@ func TestRequireBoardMember_NonExistentBoard_Returns404(t *testing.T) {
 	assert.False(t, called)
 }
 
-// TestRequireBoardMember_MalformedBoardID_Returns404 is the regression for a
-// mistyped / malformed board ID (e.g. a UUID with an extra char). Before the
-// gate validated the UUID, the bad value reached the uuid column and Postgres
-// rejected it (22P02) as a non-ErrNoRows error -> 500 "Failed to check board
-// access", which both looked broken and leaked "this ID is shaped wrong" vs
-// "this board doesn't exist". Both must now be an indistinguishable 404.
+// Regression for a malformed board ID. Before the gate validated the UUID, the bad value
+// reached the uuid column and Postgres 22P02 surfaced as a 500 — which both looked broken
+// and leaked "wrong shape" versus "no such board". Both must now be the same 404.
 func TestRequireBoardMember_MalformedBoardID_Returns404(t *testing.T) {
 	svc := &mock.MockBoardService{
 		GetBoardMemberRoleFn: func(ctx context.Context, boardID, userID string) (string, error) {

@@ -23,10 +23,8 @@ var (
 	ErrRefreshExpired = errors.New("refresh token expired")
 )
 
-// IssueRefreshToken mints a new opaque refresh token, stores its sha256 hash,
-// and returns the raw token for the caller to put in a Set-Cookie header.
-// userAgent and ip are best-effort attribution — useful for audit but not
-// trusted for authorisation.
+// IssueRefreshToken mints an opaque refresh token, stores its sha256 hash, and returns
+// the raw value for a Set-Cookie header. userAgent and ip are audit-only, never trusted.
 func (s *AuthService) IssueRefreshToken(ctx context.Context, userID, userAgent, ip string) (string, error) {
 	raw, err := token.GenerateRefreshToken()
 	if err != nil {
@@ -54,25 +52,15 @@ type RefreshRotationResult struct {
 	RawToken  string
 }
 
-// rotationRaceWindow is how long after a rotation a replay of the superseded
-// token is read as two clients racing rather than as theft. Browser tabs share
-// one cookie jar but refresh independently, so a second tab can present the
-// token it read a moment before the first tab rotated it. Inside the window
-// that caller is rejected (401) but the user's other sessions are left alone;
-// outside it, or for a token revoked by logout rather than by rotation, the
-// whole family still burns. See docs/adr/0001.
+// rotationRaceWindow is how long after a rotation a replay reads as two tabs racing
+// rather than as theft — inside it only that caller is rejected, outside it (or for a
+// logout revoke) the whole token family burns. See docs/adr/0001.
 const rotationRaceWindow = 30 * time.Second
 
-// RotateRefreshToken validates the presented raw token, revokes it, inserts a
-// replacement, and returns the new token plus the user identity. Replay of an
-// already-rotated token is treated as theft and revokes every refresh token
-// for the user — the legitimate client is forced to log in again, but so is
-// the attacker.
-//
-// The whole rotation runs in one transaction and locks the token row: without
-// the lock two concurrent refreshes of the same token both read it as unused
-// and both mint a replacement, which quietly breaks the single-use property
-// that replay detection depends on.
+// RotateRefreshToken validates the raw token, revokes it, inserts a replacement and
+// returns the new token plus the user identity. Replaying an already-rotated token is
+// treated as theft and burns every refresh token for the user. The rotation runs in one
+// transaction and locks the row: without the lock two concurrent refreshes both mint.
 func (s *AuthService) RotateRefreshToken(ctx context.Context, rawToken, userAgent, ip string) (RefreshRotationResult, error) {
 	if rawToken == "" {
 		return RefreshRotationResult{}, ErrRefreshInvalid
@@ -91,9 +79,8 @@ func (s *AuthService) RotateRefreshToken(ctx context.Context, rawToken, userAgen
 		return RefreshRotationResult{}, ErrRefreshInvalid
 	}
 
-	// Replay: the token was rotated before. The genuine client should be using
-	// the replacement by now, so seeing the old one means it was captured
-	// somewhere — unless it lands inside the race window (see above).
+	// Replay: the token was rotated before, so the genuine client should already be
+	// using its replacement — unless this lands inside the race window.
 	if row.RevokedAt != nil {
 		raced := row.ReplacedBy != nil && time.Since(*row.RevokedAt) < rotationRaceWindow
 		if !raced {

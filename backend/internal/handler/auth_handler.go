@@ -22,11 +22,9 @@ func NewAuthHandler(authService service.AuthServicer, production, crossSite bool
 	return &AuthHandler{authService: authService, production: production, crossSite: crossSite}
 }
 
-// issueSession signs the short-lived access JWT and provisions a fresh refresh
-// token, setting both cookies on w. It is shared by Register, Login, and the
-// programmatic OAuth callback. Refresh-token issuance failure is logged but
-// not fatal — the user still gets a (short) access token; they will simply
-// have to re-login when it expires.
+// issueSession signs the access JWT, provisions a refresh token, and sets both cookies.
+// Shared by Register, Login and the OAuth callback. A refresh-issuance failure is logged
+// but not fatal: the user still gets a short access token and re-logins when it expires.
 func (h *AuthHandler) issueSession(w http.ResponseWriter, r *http.Request, userID, email string) error {
 	accessTok, err := token.Generate(userID, email)
 	if err != nil {

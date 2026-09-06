@@ -21,11 +21,9 @@ type BoardHandler struct {
 	activity        service.ActivityRecorder
 }
 
-// NewBoardHandler wires the board handler. settingsService is required for
-// the /my-tasks (My Work) endpoint, which reads the caller's timezone and
-// "show all cards" preference. activity is used by CompleteMyTask to log a
-// card.done_toggled event; passing nil keeps the mutation working but skips
-// the audit row, which is fine for unit tests that don't assert on the feed.
+// NewBoardHandler wires the board handler. settingsService backs /my-tasks, which reads
+// the caller's timezone and "show all cards" preference. A nil activity keeps mutations
+// working but skips the audit row — acceptable only in unit tests.
 func NewBoardHandler(
 	boardService service.BoardServicer,
 	settingsService service.UserSettingsServicer,

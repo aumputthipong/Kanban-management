@@ -20,10 +20,8 @@ const (
 	EventColumnRenamed   = "column.renamed"
 	EventMemberAdded     = "member.added"
 
-	// Planning section. Sessions hold meeting notes; items are the REQ/DEC/Q
-	// rows inside a session. PromoteItem turns an item into a Kanban card —
-	// we log only the planning side (planning.item_promoted) to avoid
-	// duplicating the card-created noise on the audit feed.
+	// Planning section. PromoteItem turns an item into a card, but only the planning side
+	// is logged (planning.item_promoted) so the feed does not carry duplicate card noise.
 	EventPlanningSessionCreated = "planning.session_created"
 	EventPlanningSessionUpdated = "planning.session_updated"
 	EventPlanningSessionDeleted = "planning.session_deleted"
@@ -39,11 +37,8 @@ const (
 	EventPlanningCommentEdited  = "planning.comment_edited"
 	EventPlanningCommentDeleted = "planning.comment_deleted"
 
-	// Claim events — a soft "I'm looking at this" lock on a planning item.
-	// AutoReleased is emitted by PromoteItem so the feed can distinguish
-	// "X let go of it" from "the item was promoted to a card, claim
-	// auto-cleared" without the reader having to correlate timestamps
-	// with a separate promote event.
+	// Claim events — a soft "I'm looking at this" lock. AutoReleased is emitted by
+	// PromoteItem so the feed can tell "X let go" from "promoted, claim auto-cleared".
 	EventPlanningItemClaimed           = "planning.item_claimed"
 	EventPlanningItemReleased          = "planning.item_released"
 	EventPlanningItemClaimAutoReleased = "planning.claim_auto_released_on_promote"
@@ -77,10 +72,9 @@ func NewActivityService(queries *db.Queries) *ActivityService {
 	return s
 }
 
-// worker drains queued RecordAsync jobs. Each job runs with a fresh background
-// context so a slow audit insert doesn't get cancelled when the HTTP request
-// that scheduled it returns. On Stop we drain whatever's still in the buffer
-// then return; new sends after Stop are dropped (see RecordAsync).
+// worker drains queued RecordAsync jobs, each on a fresh background context so a slow
+// insert is not cancelled when the request that scheduled it returns. Stop drains the
+// buffer and returns; sends after Stop are dropped.
 func (s *ActivityService) worker() {
 	for {
 		select {
@@ -117,14 +111,10 @@ func (s *ActivityService) Stop() {
 	}
 }
 
-// RecordAsync enqueues an audit insert and returns immediately. Use it from
-// REST mutation handlers where the response shouldn't be held up by the audit
-// row's round-trip. If the queue is full the job is dropped with a warning —
-// audit is best-effort by design (see AGENTS.md).
-//
-// Do NOT use this from the WebSocket path: the broadcast payload uses the
-// returned activity's ID and created_at, so that path needs Record's sync
-// return.
+// RecordAsync enqueues an audit insert and returns immediately, for REST handlers that
+// should not wait on the audit round-trip. A full queue drops the job with a warning —
+// audit is best-effort. Do NOT use it from the WebSocket path: that broadcast needs the
+// ID and created_at only Record's synchronous return provides.
 func (s *ActivityService) RecordAsync(p RecordParams) {
 	select {
 	case s.jobs <- p:
@@ -254,11 +244,9 @@ type ColumnRenamedPayload struct {
 	NewTitle string `json:"new_title"`
 }
 
-// Planning payloads. Item-level events carry both title and type so the
-// feed can render "REQ: Add 2FA" without re-fetching the row. The Updated
-// payloads include a `fields` slice (same shape as CardUpdatedPayload) so
-// one event covers any partial PATCH — drop/undrop/select/rename/retype
-// all fold into "planning.item_updated" with fields=["status"] etc.
+// Planning payloads. Item events carry title and type so the feed renders without a
+// re-fetch, and the Updated payloads carry a `fields` slice so one event covers any
+// partial PATCH (drop, select, rename, retype all fold into planning.item_updated).
 type PlanningSessionCreatedPayload struct {
 	Title string `json:"title"`
 }
@@ -311,10 +299,9 @@ type PlanningItemUpdatedPayload struct {
 	Type   string   `json:"type"`
 	Title  string   `json:"title"`
 	Fields []string `json:"fields"`
-	// PreviousType is set only when "type" is in Fields — lets the feed and
-	// the item-row chip tooltip render its "previously Q, changed X ago" note
-	// without a second query. Omitted from JSON when empty so non-retype
-	// updates stay byte-identical to the old payload shape.
+	// PreviousType is set only when "type" is in Fields, so the chip tooltip can render
+	// its history without a second query. Omitted when empty, keeping non-retype updates
+	// byte-identical to the previous payload shape.
 	PreviousType string `json:"previous_type,omitempty"`
 }
 

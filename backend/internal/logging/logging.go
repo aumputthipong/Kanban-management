@@ -1,12 +1,6 @@
-// Package logging configures the process-wide structured logger.
-//
-// Behaviour:
-//   - In production (ENV=production): JSON output to stderr, level WARN by default.
-//   - Otherwise: human-readable text output, level INFO by default.
-//
-// Override the level with LOG_LEVEL=debug|info|warn|error. The initialised
-// logger is set as slog.Default() so any package can call slog.Info/Error/...
-// without taking a *slog.Logger dependency.
+// Package logging configures the process-wide structured logger: JSON at WARN in
+// production, human-readable text at INFO otherwise, overridable with LOG_LEVEL. It is
+// installed as slog.Default() so no package needs a *slog.Logger dependency.
 package logging
 
 import (
@@ -15,8 +9,7 @@ import (
 	"strings"
 )
 
-// Init configures slog.Default based on environment variables.
-// Safe to call once at boot.
+// Init configures slog.Default from the environment. Safe to call once at boot.
 func Init() {
 	production := os.Getenv("ENV") == "production"
 	level := parseLevel(os.Getenv("LOG_LEVEL"), production)

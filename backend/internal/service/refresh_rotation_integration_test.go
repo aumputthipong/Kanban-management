@@ -1,13 +1,8 @@
 //go:build integration
 
-// Integration tests for AuthService.RotateRefreshToken against a real Postgres.
-//
-// Rotation is a read-check-write across two rows (revoke the presented token,
-// insert its replacement). Mocking the DB cannot observe what these tests care
-// about: whether two concurrent refreshes of the same token both mint a
-// replacement, and whether a failed step leaves the old token usable. Both
-// break the single-use property that replay detection rests on
-// (docs/adr/0001), so they need a real database and real transactions.
+// Integration tests for AuthService.RotateRefreshToken against a real Postgres. Rotation
+// is a read-check-write across two rows, and a mock cannot observe whether concurrent
+// refreshes both mint, or whether a failed step leaves the old token usable (ADR 0001).
 package service_test
 
 import (
@@ -73,12 +68,9 @@ func TestRotateRefreshToken_HappyPath_OldTokenStopsWorking(t *testing.T) {
 	assert.Equal(t, 1, f.liveTokenCount(ctx, t), "exactly one token should be live after rotation")
 }
 
-// TestRotateRefreshToken_ConcurrentRefresh_OnlyOneMintsAReplacement is the test
-// that motivated the transaction + FOR UPDATE. Without the row lock, both
-// callers read the token as un-revoked before either commits, both insert a
-// replacement, and the user ends up with two independently valid sessions from
-// one token — exactly the state replay detection is supposed to make
-// impossible.
+// The test that motivated the transaction plus FOR UPDATE. Without the row lock both
+// callers read the token as un-revoked, both insert a replacement, and one token yields
+// two valid sessions — the state replay detection exists to make impossible.
 func TestRotateRefreshToken_ConcurrentRefresh_OnlyOneMintsAReplacement(t *testing.T) {
 	ctx := context.Background()
 	f := newRefreshFixture(t)

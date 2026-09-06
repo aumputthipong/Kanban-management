@@ -1,10 +1,6 @@
-// Package service holds the business-logic layer: it owns transactions,
-// permission checks beyond simple membership/role gates, and the mapping
-// between sqlc-generated DB rows and the domain types handlers consume.
-//
-// Each *Service struct is paired with a *Servicer interface so handlers
-// depend on the interface and can be tested with the generated mocks in
-// internal/service/mock.
+// Package service holds the business-logic layer: transactions, permission checks beyond
+// the membership gates, and the mapping between sqlc rows and domain types. Each Service
+// is paired with a Servicer interface so handlers can be tested against internal/service/mock.
 package service
 
 import (
@@ -63,11 +59,9 @@ type SubtaskServicer interface {
 	GetSubtaskByID(ctx context.Context, subtaskID string) (db.CardSubtask, error)
 }
 
-// PlanningServicer is the contract used by the planning handler. Sessions are
-// the meeting-notes container; items are the REQ/DEC/Q rows inside a session.
-// All board-scope checks happen in the handler via boardID resolved through
-// GetSessionBoardID / GetItemBoardID — the service trusts its caller did the
-// permission gate.
+// PlanningServicer is the contract the planning handler uses. Board-scope checks happen
+// in the handler via GetSessionBoardID / GetItemBoardID — the service trusts its caller
+// already ran the permission gate.
 type PlanningServicer interface {
 	ListSessionsByBoard(ctx context.Context, boardID string) ([]db.ListPlanningSessionsByBoardRow, error)
 	GetSession(ctx context.Context, sessionID string) (db.PlanningSession, error)

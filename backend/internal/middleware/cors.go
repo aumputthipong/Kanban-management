@@ -2,24 +2,17 @@ package middleware
 
 import "net/http"
 
-// CORS allows a single trusted origin (the public frontend URL) and answers
-// preflight OPTIONS requests directly. Credentials are allowed because auth
-// rides on a cookie. Wildcard origins are NOT supported on purpose — when
-// `Access-Control-Allow-Credentials` is true, browsers reject `*` for the
-// allow-origin header anyway.
-//
-// This is wired on the *outermost* middleware layer in main.go so the
-// preflight response is returned before any auth or rate-limit logic runs.
+// CORS allows a single trusted origin and answers preflight directly. Wildcards are
+// unsupported on purpose: with Access-Control-Allow-Credentials true, browsers reject
+// `*` anyway. Wired outermost in main.go so preflight returns before auth or rate limits.
 func CORS(frontendURL string, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", frontendURL)
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 		w.Header().Set("Access-Control-Allow-Credentials", "true")
-		// Cache preflight for 10 minutes to skip the OPTIONS round-trip on
-		// subsequent calls. Handlers set their own Content-Type via
-		// httputil.RespondJSON; CORS used to force application/json here but
-		// that mis-typed Swagger UI assets and HTML error pages.
+		// Cache preflight for 10 minutes. Handlers set their own Content-Type;
+		// forcing application/json here mis-typed Swagger assets and HTML error pages.
 		w.Header().Set("Access-Control-Max-Age", "600")
 
 		if r.Method == http.MethodOptions {

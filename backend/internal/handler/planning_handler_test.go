@@ -151,15 +151,9 @@ func TestPromoteItem_NotMember_Returns404(t *testing.T) {
 	assert.Empty(t, act.Calls)
 }
 
-// ────────────────────────────────────────────────
-// PATCH empty-string convention — UpdateSession + UpdateItem
-//
-// Per planning_dto.go's PATCH semantics block:
-//   omit / null     → no change  (service receives nil pointer)
-//   "" required     → 400        (title)
-//   "" nullable     → service receives &"" (SQL stores ""; equivalent to NULL for app)
-//   value           → update
-// ────────────────────────────────────────────────
+// PATCH empty-string convention for UpdateSession and UpdateItem, per AGENTS.md:
+// omit or null means no change, "" on a required field is a 400, "" on a nullable one
+// reaches the service as &"".
 
 func TestUpdateSession_TitleEmpty_Returns400(t *testing.T) {
 	plan, _, act, h := newPromoteTestRig()
@@ -232,10 +226,9 @@ func TestUpdateSession_EmptyLabel_PassedThroughToService(t *testing.T) {
 	assert.Equal(t, "", *capturedLabel)
 }
 
-// stubItemAndBoard wires the GetItem + GetSessionBoardID pair that
-// UpdateItem now calls. Default returns a live REQ item under validBoardID;
-// pass overrides via the optional mutator to model promoted / dropped /
-// different-type items in retype tests.
+// stubItemAndBoard wires the GetItem + GetSessionBoardID pair UpdateItem calls.
+// Defaults to a live REQ item under validBoardID; the mutator models promoted, dropped
+// or different-type items for retype tests.
 func stubItemAndBoard(plan *mock.MockPlanningService, mutate ...func(*db.PlanningItem)) {
 	plan.GetItemFn = func(ctx context.Context, itemID string) (db.PlanningItem, error) {
 		it := db.PlanningItem{
@@ -433,10 +426,9 @@ func TestGetCardSource_BadCardID_Returns400(t *testing.T) {
 // ────────────────────────────────────────────────
 
 func TestUpdateItem_RetypeOnLiveItem_RecordsPreviousType(t *testing.T) {
-	// Q → DEC on a live item is the common "we finally decided this" flow.
-	// Activity payload must carry both the new type (item.Type) AND the
-	// previous_type so the chip-history tooltip can render
-	// "previously Q, changed X ago" without a second query.
+	// Q to DEC on a live item is the common "we finally decided" flow. The payload must
+	// carry both the new type and previous_type so the chip tooltip renders without a
+	// second query.
 	plan, _, act, h := newPromoteTestRig()
 	stubItemAndBoard(plan, func(it *db.PlanningItem) { it.Type = "Q" })
 	plan.UpdateItemFn = func(ctx context.Context, itemID string, itemType, title *string, description *string, status *string, position *float64, acceptanceCriteria, implementationNote *string) (db.PlanningItem, error) {
@@ -462,11 +454,8 @@ func TestUpdateItem_RetypeOnLiveItem_RecordsPreviousType(t *testing.T) {
 }
 
 func TestUpdateItem_RetypeOnPromoted_Returns400(t *testing.T) {
-	// Promoted items are frozen for retype — a card already lives on the
-	// Kanban board with the original semantics. Allowing REQ → Q would
-	// disconnect the card from the user's intent without renaming. The
-	// handler must reject with a Thai-friendly 400 so the optimistic UI
-	// can revert and toast.
+	// Promoted items are frozen for retype — the card already carries the original
+	// semantics. The handler must reject with a Thai-friendly 400 so the UI reverts.
 	plan, _, act, h := newPromoteTestRig()
 	stubItemAndBoard(plan, func(it *db.PlanningItem) {
 		it.Type = "REQ"
@@ -514,10 +503,9 @@ func TestUpdateItem_RetypeSameType_NoPreviousTypeInPayload(t *testing.T) {
 // ────────────────────────────────────────────────
 
 func TestUpdateItem_SetAcceptanceCriteria_PassesThroughAndLogsField(t *testing.T) {
-	// Confirms the new PATCH fields actually reach the service layer and
-	// show up in the activity payload's Fields list. Without this, a UI
-	// regression that drops the body field would silently no-op and the
-	// audit feed would lie about what changed.
+	// Confirms the new PATCH fields reach the service and appear in the activity Fields
+	// list. Without it a UI regression dropping a field would no-op while the audit feed
+	// still claimed the change landed.
 	plan, _, act, h := newPromoteTestRig()
 	stubItemAndBoard(plan)
 	var capturedAC, capturedNote *string

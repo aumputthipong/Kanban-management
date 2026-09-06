@@ -25,11 +25,9 @@ func NewBoardCommandService(pool *pgxpool.Pool, queries *db.Queries) *BoardComma
 	return &BoardCommandService{pool: pool, queries: queries}
 }
 
-// ErrEntityBoardMismatch is returned when a WS handler tries to mutate a card
-// or column that does not belong to the board the client is connected to.
-// This is a defense-in-depth check on top of route-level board membership —
-// without it, a member of board A could send WS messages that mutate cards in
-// board B by referencing their UUIDs.
+// ErrEntityBoardMismatch is returned when a WS handler tries to mutate a card or column
+// belonging to another board. Defence-in-depth over the route-level membership gate:
+// without it a member of board A could mutate board B by referencing its UUIDs.
 var ErrEntityBoardMismatch = errors.New("entity does not belong to this board")
 
 // VerifyCardInBoard returns nil iff the given card belongs to boardID.
@@ -97,10 +95,9 @@ func (s *BoardCommandService) MoveCard(ctx context.Context, cardID, newColumnID 
 	return MoveCardResult{CardTitle: title, IsDone: isDone, CompletedAt: completedAt}, nil
 }
 
-// CreateCardWS creates a card through the WS flow, computing a position if the
-// client sent none. The card and its subtasks are created in one transaction,
-// so a failed subtask rolls the card back too. Optional fields are nil when
-// unset; quick-add passes nil/empty for all of them.
+// CreateCardWS creates a card through the WS flow, computing a position when the client
+// sent none. Card and subtasks share one transaction, so a failed subtask rolls the card
+// back. Quick-add passes nil for every optional field.
 func (s *BoardCommandService) CreateCardWS(ctx context.Context, columnID, creatorID, title, priority string, position float64, assigneeID, dueDate, description *string, subtaskTitles []string) (db.CreateCardRow, []db.CardSubtask, error) {
 	if position <= 0 {
 		maxPos, err := s.queries.GetMaxPositionInColumn(ctx, columnID)

@@ -42,11 +42,9 @@ type routerDeps struct {
 func setupRoutes(d routerDeps) http.Handler {
 	r := chi.NewRouter()
 
-	// Global middleware. SentryRecoverer captures the panic before chi's
-	// stdlib Recoverer turns it into a 500 — both run, in this order.
-	// RequestLogger replaces chi's default Logger so sensitive query strings
-	// (OAuth `code` / `state`, the WS auth ticket) are redacted before they
-	// reach any log sink.
+	// SentryRecoverer runs before chi's Recoverer so a panic is captured before it
+	// becomes a 500. RequestLogger replaces chi's Logger to redact sensitive query
+	// strings (OAuth code/state, the WS ticket) before they reach any sink.
 	r.Use(chiMiddleware.RequestID)
 	r.Use(middleware.RequestLogger)
 	r.Use(observability.SentryRecoverer())
@@ -65,10 +63,8 @@ func setupRoutes(d routerDeps) http.Handler {
 	// (firewall / k8s NetworkPolicy) is what restricts access.
 	r.Handle("/metrics", observability.MetricsHandler())
 
-	// API docs (Swagger UI). Spec is regenerated via `swag init` — see Makefile.
-	// Disabled in production: a public API map gives attackers a free roadmap of
-	// endpoints, parameter names, and auth flows. Set ENV != "production" locally
-	// or behind a private network to enable.
+	// Swagger UI, regenerated via `swag init` (see Makefile). Disabled in production: a
+	// public API map hands attackers a roadmap of endpoints, parameters and auth flows.
 	if !d.production {
 		r.Get("/docs/*", httpSwagger.Handler(httpSwagger.URL("/docs/doc.json")))
 	}
@@ -90,13 +86,10 @@ func setupRoutes(d routerDeps) http.Handler {
 
 	requireBoardMember := middleware.RequireBoardMember(d.boardService)
 
-	// /ws/{boardID} authenticates from a `ticket` query param instead of the
-	// auth cookie: a browser cannot put a header on a WebSocket, and on a
-	// split-domain deploy the cookie is first-party to the frontend origin and
-	// never reaches this host (docs/adr/0005-websocket-ticket-auth.md).
-	// Membership is still gated — otherwise any authenticated user could join
-	// an arbitrary board's room, receive every broadcast, and send mutating WS
-	// messages (handlers don't re-check authz beyond board scoping).
+	// /ws/{boardID} authenticates from a `ticket` query param, not the cookie — a browser
+	// cannot header a WebSocket and on a split-domain deploy the cookie never reaches this
+	// host (docs/adr/0005). Membership is still gated: otherwise any authenticated user
+	// could join an arbitrary board's room and send mutating WS messages.
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.GeneralRateLimit())
 		r.Use(middleware.RequireWSTicket)
@@ -180,10 +173,9 @@ func setupRoutes(d routerDeps) http.Handler {
 					})
 				})
 
-				// Planning section — sessions live under their board. Item-
-				// level endpoints sit at the top level (/api/planning/...)
-				// because the URL only carries the item ID; the handler
-				// re-resolves the board for membership check.
+				// Sessions live under their board; item-level endpoints sit at the top
+				// level because the URL carries only the item ID and the handler
+				// re-resolves the board for the membership check.
 				r.Route("/planning/sessions", func(r chi.Router) {
 					r.Get("/", httputil.MakeHandler(d.planningHandler.ListSessions))
 					r.Post("/", httputil.MakeHandler(d.planningHandler.CreateSession))

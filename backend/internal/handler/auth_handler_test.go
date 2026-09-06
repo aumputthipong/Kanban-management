@@ -19,10 +19,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestMain seeds JWT_SECRET so issueSession can sign tokens. The handler's
-// token.Generate fatals on empty secret — this would crash the test binary
-// rather than fail a single test, so we set it before any test runs. Must be
-// ≥32 bytes: the security hardening rejects shorter secrets at startup.
+// TestMain seeds JWT_SECRET before any test signs a token — token.Generate fatals on an
+// empty secret, which would kill the whole binary rather than fail one case. Must be at
+// least 32 bytes; startup rejects anything shorter.
 func TestMain(m *testing.M) {
 	if os.Getenv("JWT_SECRET") == "" {
 		os.Setenv("JWT_SECRET", "test-secret-do-not-use-in-prod-0123456789")

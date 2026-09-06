@@ -1,13 +1,8 @@
 //go:build integration
 
-// Integration tests for AuthService (Register / Login / UpsertOAuthUser).
-//
-// AuthService has no test seam of its own — every method hits *db.Queries
-// directly, so there's nothing to mock without hitting a real Postgres. Unlike
-// a handler test, mocking here would only prove "the mock returns what the
-// mock was told to return" — it can't verify the bcrypt hash round-trips, that
-// the DB's UNIQUE(email) constraint actually backstops the register race, or
-// that ON CONFLICT upsert behaves the way UpsertOAuthUser assumes.
+// Integration tests for AuthService. Every method hits *db.Queries directly, so there
+// is no seam to mock — and a mock could not verify that bcrypt round-trips, that
+// UNIQUE(email) backstops the register race, or that ON CONFLICT upsert behaves.
 package service_test
 
 import (
@@ -74,13 +69,9 @@ func TestRegister_DuplicateEmail_ReturnsErrEmailTaken(t *testing.T) {
 	assert.ErrorIs(t, err, service.ErrEmailTaken)
 }
 
-// Register does GetUserByEmail then CreateUser as two separate statements —
-// the same read-then-write shape as the member/invite races the earlier audit
-// flagged (T4). This test doesn't assert the outcome is "correct" (the app
-// layer's ErrEmailTaken check can't win this race); it documents what actually
-// happens: the database's own UNIQUE(email) constraint is the real backstop,
-// not the code. Exactly one registration must succeed either way — that
-// invariant is what must never break.
+// Register does GetUserByEmail then CreateUser as two statements, so ErrEmailTaken
+// cannot win this race. This documents what actually holds the line: the database's own
+// UNIQUE(email). Exactly one registration must succeed — that is the invariant.
 func TestRegister_ConcurrentSameEmail_ExactlyOneSucceeds(t *testing.T) {
 	ctx := context.Background()
 	f := newAuthFixture(t)
@@ -185,11 +176,9 @@ func TestUpsertOAuthUser_FirstLogin_CreatesUser(t *testing.T) {
 	assert.Equal(t, "google", user.Provider)
 }
 
-// The underlying query is INSERT ... ON CONFLICT (email) DO UPDATE, so a
-// returning user must update the same row (same id, refreshed full_name),
-// not insert a second one under the same email — the DB's UNIQUE(email)
-// would reject a plain duplicate insert, but ON CONFLICT is what makes the
-// *second login* succeed instead of erroring.
+// The query is INSERT ... ON CONFLICT (email) DO UPDATE, so a returning user must update
+// the same row rather than insert a duplicate — ON CONFLICT is what makes the *second*
+// login succeed instead of erroring on UNIQUE(email).
 func TestUpsertOAuthUser_ReturningUser_UpdatesSameRowNotDuplicate(t *testing.T) {
 	ctx := context.Background()
 	f := newAuthFixture(t)

@@ -1,10 +1,8 @@
 //go:build integration
 
-// Integration tests for the planning comment thread. The mock-level tests
-// in handler/planning_comment_handler_test.go cover the permission matrix;
-// these tests prove the SQL contract — soft delete preserves position,
-// list returns deleted rows, and edit-on-already-deleted returns the
-// sentinel.
+// Integration tests for the planning comment thread. Handler tests cover the permission
+// matrix; these prove the SQL contract — soft delete preserves position, list returns
+// deleted rows, and editing an already-deleted row returns the sentinel.
 package service_test
 
 import (
@@ -20,11 +18,8 @@ import (
 )
 
 func TestComments_SoftDeletePreservesPosition(t *testing.T) {
-	// A delete in the middle of a thread must NOT shift later comments
-	// up — the thread's reading order is part of the conversation. The
-	// list endpoint returns deleted rows (with body intact at the SQL
-	// level; the handler nils it out before the response) so the UI can
-	// render them as "deleted" placeholders in their original slot.
+	// A delete mid-thread must not shift later comments up — reading order is part of the
+	// conversation. The list returns deleted rows so the UI can place a placeholder.
 	ctx := context.Background()
 	pool := testutil.NewTestDB(t)
 	seed := testutil.NewSeed(t, pool)
@@ -55,11 +50,9 @@ func TestComments_SoftDeletePreservesPosition(t *testing.T) {
 }
 
 func TestEditComment_OnSoftDeleted_ReturnsSentinel(t *testing.T) {
-	// The UpdatePlanningItemComment query is guarded by
-	// "deleted_at IS NULL" so an edit landing after a delete falls
-	// through to zero rows updated. The service maps that to a typed
-	// sentinel so handlers can return 409 cleanly — without the guard,
-	// an edit would resurrect the body on a tombstoned row.
+	// UpdatePlanningItemComment is guarded by "deleted_at IS NULL", so an edit landing
+	// after a delete updates zero rows and the service maps that to a sentinel for a 409.
+	// Without the guard the edit would resurrect the body on a tombstoned row.
 	ctx := context.Background()
 	pool := testutil.NewTestDB(t)
 	seed := testutil.NewSeed(t, pool)

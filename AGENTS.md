@@ -241,7 +241,9 @@ The test: *would a teammate as competent as me fail to guess this?* If they woul
 
 ### Density as a check, not a target
 
-Backend ≤ 12%, frontend ≤ 8%, measured as comment lines over non-blank lines. Use it to notice drift — never chase the number. A percentage cannot tell a trap from wallpaper, which is why the budget above is about block size and placement instead.
+Backend ≤ 13%, frontend ≤ 8%, measured as comment lines over non-blank lines. Use it to notice drift — never chase the number. A percentage cannot tell a trap from wallpaper, which is why the budget above is about block size and placement instead.
+
+The two thresholds differ because Go asks for a doc comment on every exported symbol, which puts a structural floor under a package that exports a lot. Trimming to meet a TypeScript-shaped number would mean deleting the godoc this same section asks you to keep.
 
 ## Testing & verification
 

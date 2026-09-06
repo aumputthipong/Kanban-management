@@ -18,12 +18,9 @@ var sensitivePathPrefixes = []string{
 	"/ws/",
 }
 
-// RequestLogger is a drop-in replacement for chi's stdlib Logger that emits
-// structured logs via slog and redacts query strings on sensitive paths.
-// chi's default logger prints the full URL including raw query — OAuth
-// auth-codes would land in stdout, Sentry breadcrumbs, and any log aggregator
-// downstream. Redacting at the logger keeps the rest of the pipeline honest
-// without having to trust every sink.
+// RequestLogger replaces chi's stdlib Logger, emitting structured slog output and
+// redacting query strings on sensitive paths. chi's logger prints the raw query, so
+// OAuth codes and WS tickets would land in stdout, Sentry breadcrumbs and any aggregator.
 func RequestLogger(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()

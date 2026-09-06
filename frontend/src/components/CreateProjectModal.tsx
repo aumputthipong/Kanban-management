@@ -17,14 +17,9 @@ interface CreateProjectModalProps {
 }
 
 /**
- * Create-project modal — name (required) + description (optional) + appearance
- * (icon + colour, defaulting to the first set). Mirrors the create-task modal:
- * everything needed to spin up a board lives here so a board is born with its
- * chosen identity in a single POST /boards (no create-then-PATCH round trip).
- *
- * The icon/colour controls reuse BoardAppearancePicker — the same widget the
- * board settings page uses — so "what you pick when creating" matches "what you
- * edit later" pixel-for-pixel.
+ * Create-project modal: name, description, and appearance, so a board is born with its
+ * identity in a single POST /boards. Reuses BoardAppearancePicker so what you pick here
+ * matches what board settings edits later.
  */
 export function CreateProjectModal({ onClose }: CreateProjectModalProps) {
   const router = useRouter();

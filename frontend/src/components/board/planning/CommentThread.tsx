@@ -1,14 +1,8 @@
 "use client";
 
-// CommentThread — comment list + compose row for one planning item. Lives
-// inline below the row when expanded; capped width so multi-paragraph
-// posts wrap naturally next to the parent item without taking over the
-// session view.
-//
-// Deleted comments render as an italic "deleted" placeholder with the original author
-// + timestamp so the thread position stays stable (no scroll jumps when
-// someone removes a row). Edit / delete icons are own-comment-only —
-// permission is enforced on the server too (404 if non-author tries).
+// Comment list plus compose row for one planning item, inline under the row. Deleted
+// comments keep their slot as an italic placeholder so the thread does not jump.
+// Edit and delete are own-comment-only; the server enforces it too (404 otherwise).
 import { KeyboardEvent, useState } from "react";
 import { Pencil, Trash2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -43,8 +37,7 @@ export function CommentThread({
   };
 
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
-    // Cmd/Ctrl+Enter sends, mirroring Slack/Linear conventions. Plain
-    // Enter inserts a newline so multi-line comments are still natural.
+    // Cmd/Ctrl+Enter sends (Slack/Linear convention); plain Enter inserts a newline.
     if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
       e.preventDefault();
       handleSubmit();
@@ -109,9 +102,7 @@ function CommentRow({ comment, isOwn, onEdit, onDelete }: RowProps) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(comment.body ?? "");
 
-  // Soft-deleted comments keep their slot in the thread for context, but
-  // body + edit/delete are hidden. The italic label tells the user this
-  // is a placeholder, not a missing render.
+  // Soft-deleted comments keep their slot for context; the italic label says why.
   if (comment.deleted_at) {
     return (
       <li className="flex flex-col gap-0.5 text-xs">

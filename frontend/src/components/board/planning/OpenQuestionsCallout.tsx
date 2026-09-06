@@ -9,17 +9,9 @@ interface Props {
   onJump: (itemId: string) => void;
 }
 
-// Pinned summary of the session's open questions — the requirement owner's
-// main follow-up job. Surfaces the full question text at the top of the
-// session so unanswered items don't get buried in the list. Read-only by
-// design: there is no "answered" status or "waiting on X" field in the data
-// model yet, so this only chases visibility — clicking a row jumps to the
-// item to act on it inline.
-//
-// Collapsible: the header toggles the list. On a short session the questions
-// also appear as rows just below, so being able to fold this away keeps it
-// from feeling like duplicated noise; the header (with its count) always stays
-// as the pinned reminder.
+// Pinned summary of the session's open questions so they do not get buried. Read-only
+// by design — the data model has no "answered" status or "waiting on X" field yet, so
+// this only chases visibility; clicking a row jumps to the item. Collapsible, count stays.
 export function OpenQuestionsCallout({ questions, onJump }: Props) {
   const [open, setOpen] = useState(true);
 

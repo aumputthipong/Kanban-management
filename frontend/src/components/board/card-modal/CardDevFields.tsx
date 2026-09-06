@@ -1,13 +1,8 @@
 "use client";
 
-// CardDevFields — the optional "dev" fields (Acceptance Criteria + Dev Note)
-// for the two-pane task modal (design A · "clean default").
-//
-// Default/empty state keeps the modal quiet: both fields collapse into a
-// "more (optional)" row of ghost "+ Add" buttons. A field expands into a
-// tinted card (with a remove affordance) only when the user opts in OR the
-// card already carries that value. Read-only viewers see filled fields only —
-// never the ghosts.
+// Optional dev fields (Acceptance Criteria + Dev Note) for the task modal. Empty by
+// default they collapse into ghost "+ Add" buttons, expanding into a tinted card when
+// the user opts in or the card already has a value. Read-only viewers never see ghosts.
 
 import { memo, useState } from "react";
 import { Check, Code2, Plus, X } from "lucide-react";
@@ -34,9 +29,8 @@ function CardDevFieldsImpl({
   onCommit,
   canEdit,
 }: CardDevFieldsProps) {
-  // Seed "open" from existing content so a field that already has a value stays
-  // expanded — and won't collapse mid-edit if the user clears the textarea.
-  // The modal remounts per card (key={card.id}), so these initialise fresh.
+  // Seed "open" from existing content so a filled field stays expanded and does not
+  // collapse mid-edit. The modal remounts per card (key={card.id}), so these start fresh.
   const [openAC, setOpenAC] = useState(acceptanceValue.trim().length > 0);
   const [openNote, setOpenNote] = useState(noteValue.trim().length > 0);
 

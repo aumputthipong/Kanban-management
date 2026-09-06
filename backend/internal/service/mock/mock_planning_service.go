@@ -114,10 +114,9 @@ func (m *MockPlanningService) DeleteComment(ctx context.Context, commentID strin
 	return m.DeleteCommentFn(ctx, commentID)
 }
 
-// MockActivityRecorder records each Record() invocation in a slice so tests
-// can assert "exactly one activity row was written for event_type X". The
-// pattern matches the function-field convention but keeping a capture slice
-// is simpler than reimplementing arg-equality checks per test.
+// MockActivityRecorder captures each Record() call so tests can assert exactly one row
+// was written for an event type. A capture slice is simpler than reimplementing
+// arg-equality per test.
 type MockActivityRecorder struct {
 	Calls []service.RecordParams
 	// RecordFn is optional — set it to override the default (record + return

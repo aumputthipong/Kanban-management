@@ -64,14 +64,9 @@ func FlushSentry(timeout time.Duration) {
 	sentry.Flush(timeout)
 }
 
-// SentryRecoverer is a chi-compatible middleware that catches panics from
-// downstream handlers and sends them to Sentry before re-raising.
-//
-// Mount this BEFORE chi's stdlib `Recoverer` so Sentry captures the panic
-// and the stdlib middleware still produces the 500 response.
-//
-// When Sentry is disabled (no DSN), the underlying middleware is a no-op
-// pass-through — chi.Recoverer still handles the response.
+// SentryRecoverer catches panics from downstream handlers and reports them before
+// re-raising. Mount it BEFORE chi's Recoverer so Sentry sees the panic and the stdlib
+// middleware still writes the 500. With no DSN it is a pass-through.
 func SentryRecoverer() func(http.Handler) http.Handler {
 	if os.Getenv("SENTRY_DSN") == "" {
 		return func(next http.Handler) http.Handler { return next }

@@ -90,10 +90,9 @@ func TestAddBoardMember_InvalidBoardID_Returns400(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 }
 
-// TestAddBoardMember_InvalidRole_Returns400 — validator's `oneof` blocks
-// arbitrary role strings before they hit the DB. AGENTS.md notes that the
-// backend is the source of truth for permissions, so this guard is critical:
-// a missing validator here would let any string land in the role column.
+// The validator's `oneof` blocks arbitrary role strings before they reach the DB. The
+// backend is the source of truth for permissions, so without this guard any string could
+// land in the role column.
 func TestAddBoardMember_InvalidRole_Returns400(t *testing.T) {
 	svc := &mock.MockBoardService{
 		AddBoardMemberByEmailFn: func(ctx context.Context, boardID, email, role string) error {
@@ -300,11 +299,9 @@ func TestUpdateMemberRole_Success(t *testing.T) {
 	assert.Equal(t, "manager", gotRole)
 }
 
-// TestUpdateMemberRole_PromoteToOwner_Returns400 — owner is a singleton role
-// assigned at board creation. Allowing PATCH role=owner would either create
-// two owners (breaking the "owner cannot leave" guarantee) or silently demote
-// the existing owner. The handler explicitly rejects this; if someone removes
-// the guard, this test must scream.
+// Owner is a singleton role assigned at board creation. PATCH role=owner would either
+// create two owners (breaking "owner cannot leave") or silently demote the existing one,
+// so the handler rejects it. If the guard ever goes, this test must scream.
 func TestUpdateMemberRole_PromoteToOwner_Returns400(t *testing.T) {
 	svc := &mock.MockBoardService{
 		UpdateMemberRoleFn: func(ctx context.Context, boardID, userID, role string) error {

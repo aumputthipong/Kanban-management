@@ -1,15 +1,9 @@
 //go:build integration
 
-// Package testutil spins up a real Postgres for integration tests.
-//
-// Design: one testcontainers Postgres per test binary (sync.Once), one
-// "template" database with migrations applied once, and each NewTestDB(t)
-// call clones that template via `CREATE DATABASE ... TEMPLATE template`.
-// Postgres template-clone is near-instant (~10ms), so per-test isolation
-// stays cheap even with the full migration set applied.
-//
-// Tests opt in via the `integration` build tag — `make test` (the fast
-// path mirroring CI) skips this package; `make test-integration` runs it.
+// Package testutil spins up a real Postgres for integration tests: one container per
+// test binary, one template database with migrations applied once, and a near-instant
+// TEMPLATE clone per NewTestDB. Guarded by the `integration` build tag, so `make test`
+// skips this package and `make test-integration` runs it.
 package testutil
 
 import (
@@ -39,12 +33,9 @@ var (
 	templateErr error
 )
 
-// NewTestDB returns a *pgxpool.Pool pointing at a fresh database cloned
-// from the migrated template. The DB is dropped on test cleanup.
-//
-// Race tests and concurrent commits work because the returned pool talks
-// to a real Postgres instance — no in-memory shortcuts, no shared state
-// with other tests.
+// NewTestDB returns a pool on a fresh database cloned from the migrated template,
+// dropped on cleanup. It is a real Postgres, so race tests and concurrent commits
+// behave as they do in production.
 func NewTestDB(t *testing.T) *pgxpool.Pool {
 	t.Helper()
 	ctx := context.Background()
@@ -122,7 +113,6 @@ func bootstrap(ctx context.Context) error {
 	// DSNs by swapping the path segment.
 	adminDSN = base
 
-	// Create template DB then run migrations against it.
 	adminPool, err := pgxpool.New(ctx, adminDSN)
 	if err != nil {
 		return fmt.Errorf("admin pool: %w", err)
@@ -133,23 +123,15 @@ func bootstrap(ctx context.Context) error {
 		return fmt.Errorf("create template: %w", err)
 	}
 
-	// Mirror production's bootstrap exactly (internal/migrate.Bootstrap):
-	// schema.sql already reflects every migration's end state, so on this
-	// fresh template DB it applies schema.sql and stamps the version table
-	// to latest — it does NOT also replay the migrations. Calling
-	// applySchemaFile followed by migrate.Run here used to do both
-	// unconditionally, which re-ran every migration against a DB that
-	// schema.sql had already brought to the same end state, and failed on
-	// the first CREATE TABLE schema.sql and a migration both contain
-	// (e.g. "tags" already exists, added in schema.sql and again in
-	// migration 000004).
+	// Mirror production bootstrap exactly. Do NOT also call migrate.Run: schema.sql
+	// already reflects every migration's end state, so replaying them fails on the first
+	// CREATE TABLE both contain (tags, in schema.sql and again in migration 000004).
 	if err := migrate.Bootstrap(ctx, dsnForDB(templateDB), schemaFilePath(), migrationsDir()); err != nil {
 		return fmt.Errorf("template bootstrap: %w", err)
 	}
 
-	// Mark template as a template so CREATE DATABASE ... TEMPLATE is allowed
-	// without superuser privileges on the source DB beyond what we already
-	// have. ALLOW_CONNECTIONS=false + datistemplate prevents writes after.
+	// Marking it a template allows CREATE DATABASE ... TEMPLATE without superuser, and
+	// datallowconn=false prevents writes afterwards.
 	if _, err := adminPool.Exec(ctx, fmt.Sprintf(
 		"UPDATE pg_database SET datistemplate=true, datallowconn=false WHERE datname='%s'",
 		templateDB,
@@ -160,15 +142,13 @@ func bootstrap(ctx context.Context) error {
 	return nil
 }
 
-// migrationsDir resolves backend/database/migrations regardless of where
-// the test is invoked from. runtime.Caller gives the source path of this
-// file (testutil/db.go), and migrations live two directories up.
+// migrationsDir resolves backend/database/migrations from this file's own source path,
+// so it works regardless of where the test was invoked from.
 func migrationsDir() string {
 	return filepath.Join(backendDir(), "database", "migrations")
 }
 
-// schemaFilePath returns backend/database/schema.sql — the pre-migration
-// baseline.
+// schemaFilePath returns backend/database/schema.sql, the pre-migration baseline.
 func schemaFilePath() string {
 	return filepath.Join(backendDir(), "database", "schema.sql")
 }

@@ -1,7 +1,6 @@
-// Handlers for card-domain WS messages. Each handler only validates the
-// payload, calls BoardCommandService, composes the broadcast, and records an
-// activity; all business logic (isDone derivation, position calc, etc.) lives
-// in the service layer.
+// Handlers for card-domain WS messages: validate the payload, call BoardCommandService,
+// compose the broadcast, record an activity. All business logic (isDone derivation,
+// position calc) stays in the service layer.
 package websocket
 
 import (
@@ -244,11 +243,9 @@ func (c *Client) handleCardDeleted(payload map[string]interface{}, rawMsg []byte
 	})
 }
 
-// handleCardUpdated applies a full-value update. Unlike the REST PATCH path
-// (pointer fields + COALESCE), the WS payload always carries every field's
-// current value — "" means "clear", not "no change" — because the client
-// sends its full card state. Don't reuse this payload shape for partial
-// updates.
+// handleCardUpdated applies a full-value update: unlike the REST PATCH path the WS
+// payload always carries every field, so "" means "clear", not "no change". Do not reuse
+// this payload shape for partial updates.
 func (c *Client) handleCardUpdated(payload map[string]interface{}, rawMsg []byte) {
 	cardIDStr, ok := payload["card_id"].(string)
 	if !ok {

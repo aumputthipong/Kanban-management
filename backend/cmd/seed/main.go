@@ -1,9 +1,6 @@
-// Command seed populates a database with a demo account and a sample board so
-// the deployed app opens onto real content instead of an empty screen. It is
-// idempotent: if the demo user already exists it exits without changes, so it
-// is safe to run on every deploy.
-//
-// Run:  DB_URL=postgres://... go run ./cmd/seed
+// Command seed populates a database with a demo account and sample board so the
+// deployed app opens onto real content. Idempotent — it exits unchanged if the demo
+// user exists, so it is safe on every deploy. Run: DB_URL=postgres://... go run ./cmd/seed
 package main
 
 import (

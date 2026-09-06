@@ -1,12 +1,8 @@
 //go:build integration
 
-// Integration tests for BoardService's card methods (card_service.go).
-// UpdateCard runs a transaction (card fields + replacing tags) and its SQL
-// mixes two update strategies on purpose — most columns are overwritten
-// outright, but acceptance_criteria/implementation_note use COALESCE so an
-// unrelated edit can't wipe what PromoteItem copied in. Mocking *db.Queries
-// can't verify either the transaction's atomicity or that COALESCE actually
-// behaves as documented, so this needs a real Postgres.
+// Integration tests for BoardService's card methods. UpdateCard is transactional and its
+// SQL mixes strategies on purpose: most columns are overwritten, but acceptance_criteria
+// and implementation_note use COALESCE so an unrelated edit cannot wipe promoted content.
 package service_test
 
 import (
@@ -85,11 +81,9 @@ func TestUpdateCard_Success_UpdatesGivenFields(t *testing.T) {
 	assert.Equal(t, "New description", *updated.Description)
 }
 
-// title/description/due_date/assignee_id/priority/estimated_hours are plain
-// SET, not COALESCE (see the SQL's own comment) — the caller is expected to
-// have already merged in the existing values for anything it isn't
-// changing. This pins that behaviour: passing a nil Description really does
-// null it out, it does not "leave description alone".
+// These columns are plain SET, not COALESCE — the caller is expected to have merged in
+// existing values for anything it is not changing. Pins that a nil Description really
+// does null the column rather than leaving it alone.
 func TestUpdateCard_NilDescription_ClearsIt_NotCOALESCEd(t *testing.T) {
 	ctx := context.Background()
 	f := newCardFixture(t)
@@ -187,11 +181,9 @@ func TestUpdateCard_ReplaceTagIDs_SwapsToExactlyTheNewSet(t *testing.T) {
 	assert.Equal(t, []string{newTag}, f.cardTags(ctx, t))
 }
 
-// The >5 check runs AFTER qtx.UpdateCard has already applied the title/field
-// change, inside the same transaction — this is the whole reason UpdateCard
-// needs a transaction at all. Confirms both halves of that: the tag-count
-// error surfaces, AND the title change from earlier in the same call rolls
-// back with it rather than silently landing on its own.
+// The >5 tag check runs AFTER qtx.UpdateCard applied the field change, in the same
+// transaction — the whole reason UpdateCard needs one. Confirms both halves: the error
+// surfaces and the earlier title change rolls back with it.
 func TestUpdateCard_MoreThanFiveTags_ErrorsAndRollsBackEntireUpdate(t *testing.T) {
 	ctx := context.Background()
 	f := newCardFixture(t)

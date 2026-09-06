@@ -1,7 +1,6 @@
-// Prometheus metrics. Exposed at /metrics; the recommended scrape interval
-// is 15s. Tracks HTTP latency, in-flight requests, and pgx pool gauges so
-// p95 latency and "is the pool saturated?" can be answered without a tracing
-// vendor.
+// Prometheus metrics, exposed at /metrics (15s scrape recommended). Tracks HTTP latency,
+// in-flight requests and pgx pool gauges, so p95 and pool saturation can be answered
+// without a tracing vendor.
 package observability
 
 import (

@@ -7,16 +7,8 @@ import (
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/service"
 )
 
-// MockBoardService implements service.BoardServicer using the "function field"
-// pattern, so each test can set the behaviour it needs directly.
-//
-// Example:
-//
-//	mock := &mock.MockBoardService{
-//	    GetAllBoardsFn: func(ctx context.Context) ([]service.BoardSummaryData, error) {
-//	        return []service.BoardSummaryData{{ID: "abc", Title: "Test"}}, nil
-//	    },
-//	}
+// MockBoardService implements service.BoardServicer with the function-field pattern:
+// a test sets only the methods it exercises.
 type MockBoardService struct {
 	GetAllBoardsFn              func(ctx context.Context, userID string) ([]service.BoardSummaryData, error)
 	GetBoardWithCardsFn         func(ctx context.Context, boardID string) ([]service.ColumnData, error)

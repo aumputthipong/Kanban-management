@@ -16,15 +16,9 @@ import (
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/testutil"
 )
 
-// TestMigrations_DownUpRoundTrip is the regression the down-migration audit
-// flagged as missing: `make test` only ever runs the schema forward, so a
-// broken or out-of-order DOWN migration stays invisible until a real
-// production rollback. This walks every migration all the way DOWN and back
-// UP against a real Postgres — failing if any down (or the re-up) errors.
-//
-// testutil hands back a DB cloned from the fully-migrated template, so it
-// starts at the latest version. A clean Down()→Up() proves the down files
-// revert in the right order and leave the schema in a state Up can reapply.
+// `make test` only ever runs the schema forward, so a broken or out-of-order DOWN
+// migration stays invisible until a real rollback. This walks every migration all the
+// way down and back up against a real Postgres, failing if any step errors.
 func TestMigrations_DownUpRoundTrip(t *testing.T) {
 	pool := testutil.NewTestDB(t)
 
@@ -36,12 +30,8 @@ func TestMigrations_DownUpRoundTrip(t *testing.T) {
 	require.NoError(t, m.Up(), "re-applying up after a full down must succeed")
 }
 
-// toFileURL turns an OS path into a "file://" URL (mirrors
-// migrate.fileSourceURL, which is unexported). A naive "file://"+path
-// breaks on Windows: backslashes make url.Parse read the whole path,
-// colon included, as the authority, and fail trying to parse a port.
-// filepath.ToSlash is the fix — see fileSourceURL's doc comment for why
-// that alone is enough (host ends up "C:", url.Parse can handle that).
+// toFileURL mirrors migrate.fileSourceURL, which is unexported. filepath.ToSlash is
+// load-bearing on Windows — see that function's doc for why.
 func toFileURL(path string) string {
 	return "file://" + filepath.ToSlash(path)
 }

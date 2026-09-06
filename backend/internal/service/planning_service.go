@@ -1,7 +1,6 @@
-// Planning sessions own a flat list of items (REQ/DEC/Q). Items change status but rows
-// are never destroyed: drop is reversible and promote keeps a link to the resulting
-// card. Promotion is the one cross-table write — card insert plus item stamp in a
-// single transaction, so a half-promoted item cannot exist.
+// Planning sessions own a flat list of items (REQ/DEC/Q). Rows are never destroyed:
+// drop is reversible and promote keeps a link to the resulting card. Promotion is the
+// one cross-table write — see PromoteItem for why it needs a transaction.
 package service
 
 import (
@@ -256,13 +255,9 @@ func (s *PlanningService) PromoteItem(ctx context.Context, itemID, userID string
 	defer tx.Rollback(ctx)
 	qtx := s.queries.WithTx(tx)
 
-	// Lock the row for the duration of the tx. Without FOR UPDATE, two
-	// concurrent promoters on the same item both see status='live' at
-	// READ COMMITTED, both pass the "already promoted?" check below,
-	// and both go on to create a card — producing duplicate Kanban
-	// cards from a single planning item. The lock serializes them so
-	// the second caller sees the freshly written status='promoted'
-	// once the first commits.
+	// FOR UPDATE for the rest of the tx. Without it two concurrent promoters both read
+	// status='live' at READ COMMITTED, both pass the check below, and both create a card —
+	// duplicate Kanban cards from one planning item.
 	item, err := qtx.LockPlanningItemForUpdate(ctx, itemID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -290,22 +285,17 @@ func (s *PlanningService) PromoteItem(ctx context.Context, itemID, userID string
 		Category: "TODO",
 	})
 	if err != nil {
-		// pgx.ErrNoRows here means the board has no column with
-		// category='TODO'. Surface as a typed error so the handler can
-		// turn it into a 422 with an actionable message instead of a
-		// generic 500.
+		// No column with category='TODO'. Typed error so the handler returns an actionable
+		// 422 rather than a generic 500.
 		if errors.Is(err, pgx.ErrNoRows) {
 			return db.PlanningItem{}, db.CreateCardRow{}, ErrPlanningNoTodoColumn
 		}
 		return db.PlanningItem{}, db.CreateCardRow{}, fmt.Errorf("find TODO column: %w", err)
 	}
 
-	// Position 0 lands the card at the column's logical top so the user
-	// can triage promoted ideas without scrolling.
-	// Carry AC + Note forward so the dev opening the resulting card sees the
-	// same context the requirement owner captured during planning. Nil
-	// passthrough — the columns stay NULL on cards that had nothing
-	// attached.
+	// Position 0 puts the card at the column's top so promoted ideas are triaged without
+	// scrolling. AC and Note carry forward (nil passthrough) so the dev opening the card
+	// sees the context captured during planning.
 	card, err := qtx.CreateCard(ctx, db.CreateCardParams{
 		ColumnID:           col.ID,
 		Title:              item.Title,

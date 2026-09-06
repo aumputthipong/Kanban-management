@@ -1,12 +1,8 @@
 //go:build integration
 
-// Integration tests for BoardCommandService (board_command_service.go) — the
-// write path invoked from the WebSocket layer. CreateCardWS runs a
-// transaction; MoveCard/ToggleCardDone derive is_done from the target
-// column's category; CreateColumn computes a position by reading two other
-// columns' positions with no lock. None of that is observable through a
-// mock, and the position-calc race in particular needs real concurrent
-// connections to a real Postgres to demonstrate at all.
+// Integration tests for BoardCommandService — the write path the WebSocket layer calls.
+// CreateCardWS is transactional, MoveCard derives is_done from the target column, and
+// CreateColumn computes a position unlocked. None of that is observable through a mock.
 package service_test
 
 import (
@@ -49,10 +45,8 @@ func newCommandFixture(t *testing.T) *commandFixture {
 	}
 }
 
-// columnPosition reads a single column's current position — there's no
-// GetColumnByID query in the codebase (nothing production needs it), so this
-// goes straight at the table the same way liveTokenCount does in the refresh
-// token tests.
+// columnPosition reads one column's position. There is no GetColumnByID query (nothing
+// in production needs one), so this goes at the table directly, like liveTokenCount.
 func (f *commandFixture) columnPosition(ctx context.Context, t *testing.T, columnID string) float64 {
 	t.Helper()
 	var pos float64
@@ -131,13 +125,9 @@ func TestCreateCardWS_ZeroPosition_LandsAfterExistingCards(t *testing.T) {
 	assert.Greater(t, second.Position, first.Position, "a zero position must be computed after the existing max, not default to the same spot")
 }
 
-// NOT TESTED: transactional rollback of CreateCardWS on a failed subtask
-// insert. card_subtasks has no constraint (no CHECK, no UNIQUE) that a
-// second subtask insert can violate while the first succeeds and the card
-// row itself is always valid by construction — there is currently no
-// reachable input that fails partway through this transaction, so there is
-// nothing honest to assert here. If a future migration adds such a
-// constraint, this is the place to add that test.
+// NOT TESTED: transactional rollback of CreateCardWS on a failed subtask insert.
+// card_subtasks has no constraint a second insert can violate while the first succeeds,
+// so there is no reachable failing input. Add the test here if a migration adds one.
 
 // ────────────────────────────────────────────────
 // ToggleCardDone
@@ -198,16 +188,10 @@ func TestCreateColumn_DoneColumnExists_InsertsBeforeIt(t *testing.T) {
 	assert.Less(t, col.Position, f.columnPosition(ctx, t, done), "a new column must land strictly before the DONE column")
 }
 
-// Documents the T6 finding from the earlier audit rather than fixing it:
-// CreateColumn reads the DONE column's position and the max non-DONE
-// position, computes a midpoint in Go, and writes — with no lock between the
-// read and the write. Two callers racing against the same board read the
-// same two source positions and compute the identical midpoint, so both
-// columns can land on the exact same position. This is what "two people
-// click + Add column at once" looks like in the database, and it's the
-// reason the fix (round 4, T6) needs to move the calculation into SQL
-// (e.g. an advisory lock or a single INSERT ... SELECT) rather than
-// read-then-write in Go.
+// Documents a known race rather than fixing it: CreateColumn reads the DONE and max
+// non-DONE positions, computes a midpoint in Go and writes, with no lock in between. Two
+// callers racing compute the identical midpoint, so both columns land on the same
+// position. The fix has to move the calculation into SQL, not read-then-write in Go.
 func TestCreateColumn_ConcurrentCreates_CanCollideOnPosition_T6(t *testing.T) {
 	ctx := context.Background()
 	f := newCommandFixture(t)
@@ -242,10 +226,9 @@ func TestCreateColumn_ConcurrentCreates_CanCollideOnPosition_T6(t *testing.T) {
 	}
 	t.Logf("T6: %d concurrent CreateColumn calls produced %d distinct positions (collisions = %d)",
 		goroutines, len(unique), goroutines-len(unique))
-	// Intentionally not asserting len(unique) == goroutines here — that
-	// invariant is exactly what T6 currently violates. This test's job is to
-	// keep proving the race exists (and stay green once T6 adds real
-	// locking, at which point the Logf above will report zero collisions).
+	// Deliberately not asserting len(unique) == goroutines: that invariant is what the
+	// race violates today. The job here is to keep proving it exists, and to stay green
+	// once real locking lands (the Logf above then reports zero collisions).
 }
 
 // ────────────────────────────────────────────────

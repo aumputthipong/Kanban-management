@@ -378,12 +378,9 @@ func TestUpdateCard_NonMember_Returns404(t *testing.T) {
 	assert.Equal(t, http.StatusNotFound, w.Code)
 }
 
-// TestUpdateCard_PATCHSemantics_OmittedTitle pins a regression that AGENTS.md
-// flags as silent-clobber-prone: when a PATCH client omits `title`, the
-// existing title must survive. The UpdateCard SQL overwrites the title column
-// directly (no COALESCE on it), so the *handler* is what preserves it — by
-// merging the omitted field from the existing row before calling the service.
-// This test asserts that merge at the handler boundary.
+// Pins the silent-clobber case AGENTS.md flags: omitting `title` from a PATCH must
+// leave it intact. UpdateCard's SQL overwrites the column directly, so the handler merge
+// is what preserves it — this asserts that merge at the handler boundary.
 func TestUpdateCard_PATCHSemantics_OmittedTitle(t *testing.T) {
 	creator := ptr(validUserID)
 	var received service.UpdateCardParams
@@ -418,11 +415,9 @@ func TestUpdateCard_PATCHSemantics_OmittedTitle(t *testing.T) {
 	assert.Equal(t, "hello", *received.Description)
 }
 
-// TestUpdateCard_PartialPatch_PreservesUntouchedFields is the My Work snooze
-// regression: a PATCH that touches only due_date must NOT wipe assignee,
-// priority, description, or estimated_hours. Before the handler-merge fix,
-// the overwrite-style SQL nulled every omitted column — clearing assignee_id
-// made the card disappear from the owner's inbox.
+// The My Work snooze regression: a PATCH touching only due_date must not wipe assignee,
+// priority, description or estimated_hours. Before the handler merge, the overwrite-style
+// SQL nulled every omitted column and the card left its owner's inbox.
 func TestUpdateCard_PartialPatch_PreservesUntouchedFields(t *testing.T) {
 	assignee := ptr(validUserID)
 	var received service.UpdateCardParams

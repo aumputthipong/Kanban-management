@@ -1,10 +1,6 @@
-// internal/handler/planning_handler.go
-//
-// Thin REST surface over PlanningService. Auth is handled by the chi route
-// group (RequireAuth + RequireBoardMember). Endpoints scope by either
-// boardID (list/create session) or by sessionID/itemID — for the latter we
-// resolve the owning board via the service and re-check membership so a
-// session/item can't be touched cross-board.
+// Thin REST surface over PlanningService; auth comes from the chi route group. Routes
+// scoped by sessionID/itemID resolve the owning board through the service and re-check
+// membership, so nothing can be touched cross-board.
 package handler
 
 import (
@@ -243,11 +239,8 @@ func (h *PlanningHandler) UpdateSession(w http.ResponseWriter, r *http.Request) 
 	if err := httputil.DecodeAndValidate(r, &req); err != nil {
 		return err
 	}
-	// Defence-in-depth check: title is required (NOT NULL). The DTO's
-	// `validate:"omitempty,min=1"` does currently reject &"" via the min
-	// rule, so this branch is normally unreachable — but keeping it makes
-	// the contract explicit even if a future tag change weakens validation
-	// (e.g. someone drops min=1 thinking omitempty already covers it).
+	// Defence-in-depth: `omitempty,min=1` already rejects &"" via the min rule, so this is
+	// normally unreachable — it keeps the contract explicit if someone weakens the tag.
 	if req.Title != nil && *req.Title == "" {
 		return httputil.NewAPIError(http.StatusBadRequest, "title cannot be empty", nil)
 	}
@@ -366,10 +359,9 @@ func (h *PlanningHandler) UpdateItem(w http.ResponseWriter, r *http.Request) err
 	if apiErr != nil {
 		return apiErr
 	}
-	// Load the current item so we can both resolve the board for the
-	// membership gate AND capture the pre-update type (needed when the
-	// request is a retype — promoted items must stay frozen, and the
-	// activity payload carries previous_type for the chip-history tooltip).
+	// Load the current item to resolve the board for the membership gate and to capture
+	// the pre-update type — retypes need it for previous_type, and promoted items must
+	// stay frozen.
 	current, err := h.planning.GetItem(r.Context(), itemID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -394,11 +386,9 @@ func (h *PlanningHandler) UpdateItem(w http.ResponseWriter, r *http.Request) err
 	if req.Title != nil && *req.Title == "" {
 		return httputil.NewAPIError(http.StatusBadRequest, "title cannot be empty", nil)
 	}
-	// Promoted items are frozen for retype: once an idea lives on the
-	// Kanban board, changing it from REQ → Q (or any other type) on the
-	// planning side leaves the card disconnected from the user's intent
-	// without renaming the card. Surface as 400 with a Thai message so the
-	// optimistic UI can revert and toast.
+	// Promoted items are frozen for retype: the card already lives on the board with the
+	// original semantics, and a retype would disconnect it from the user's intent without
+	// renaming it. 400 with a Thai message so the optimistic UI can revert and toast.
 	if req.Type != nil && *req.Type != current.Type && current.Status == "promoted" {
 		return httputil.NewAPIError(http.StatusBadRequest, "ส่งเข้า Board แล้ว เปลี่ยนประเภทไม่ได้", nil)
 	}
@@ -406,10 +396,8 @@ func (h *PlanningHandler) UpdateItem(w http.ResponseWriter, r *http.Request) err
 	if err != nil {
 		return httputil.NewAPIError(http.StatusInternalServerError, "Failed to update item", err)
 	}
-	// position-only changes (drag-reorder) generate a noisy "updated" event;
-	// they're still logged so the feed reflects the action, but a future
-	// refinement may filter position-only edits from the visible feed at
-	// query time.
+	// Position-only changes (drag-reorder) still log an "updated" event so the feed
+	// reflects the action; filtering them out belongs at query time, not here.
 	fields := make([]string, 0, 7)
 	if req.Type != nil {
 		fields = append(fields, "type")
@@ -549,13 +537,9 @@ func (h *PlanningHandler) PromoteItem(w http.ResponseWriter, r *http.Request) er
 
 // ─── Card source (reverse lookup) ──────────────────────────────────────────
 
-// GetCardSource powers the card detail modal's "source" section. It mounts
-// under /api/cards/{cardID}/source — the same shape as /subtasks — and
-// returns 200 with body `null` for cards that weren't promoted from
-// planning, so the frontend can render the section conditionally without
-// a 404 fork. Board membership is re-checked here because the parent
-// /api/cards route group has no membership middleware; treating a non-
-// member as 404 keeps the anti-enumeration behavior consistent.
+// GetCardSource powers the card modal's "source" section. It returns 200 with a null
+// body for cards that were never promoted, so the frontend needs no 404 fork. Membership
+// is re-checked here — the /api/cards group has no gate — and a non-member gets 404.
 func (h *PlanningHandler) GetCardSource(w http.ResponseWriter, r *http.Request) error {
 	cardID := chi.URLParam(r, "cardID")
 	if _, err := uuid.Parse(cardID); err != nil {

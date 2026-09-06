@@ -2,10 +2,8 @@
 // a required field = 400). See AGENTS.md, "REST API conventions".
 package dto
 
-// PlanningSessionSummary is one row in the sessions list. Counts exclude
-// dropped + promoted items so the badge shows what's still actionable
-// — anything that's been moved on (to Kanban or to the bin) doesn't add
-// to the "still open" signal.
+// PlanningSessionSummary is one row in the sessions list. Counts exclude dropped and
+// promoted items, so the badge shows only what is still actionable.
 type PlanningSessionSummary struct {
 	ID            string  `json:"id"`
 	BoardID       string  `json:"board_id"`
@@ -74,13 +72,9 @@ type UpdatePlanningItemRequest struct {
 	ImplementationNote *string  `json:"implementation_note" validate:"omitempty,max=10000"`
 }
 
-// CardSourceResponse describes which planning session/item a Kanban card
-// was promoted from. Returned by GET /api/cards/{cardID}/source — `null`
-// (not 404) when the card wasn't promoted from planning, so the modal can
-// render its "source" section conditionally without an error fork. The
-// pending_questions list is capped server-side (default 3) and excludes
-// dropped / already-promoted questions — only questions still worth
-// re-visiting are surfaced next to the resulting card.
+// CardSourceResponse describes which planning session and item a card was promoted
+// from. GET /api/cards/{cardID}/source returns null (not 404) when there is none.
+// pending_questions is capped server-side and excludes dropped and promoted questions.
 type CardSourceResponse struct {
 	Session          CardSourceSession    `json:"session"`
 	Item             CardSourceItem       `json:"item"`
@@ -106,10 +100,9 @@ type CardSourceQuestion struct {
 	Title string `json:"title"`
 }
 
-// PlanningCommentResponse is one row in an item's comment thread. Body is
-// nil when the comment has been soft-deleted — the UI renders that case
-// as an italic "deleted" placeholder + the original author + time, so the thread's
-// position doesn't shift around as comments are removed.
+// PlanningCommentResponse is one row in an item's thread. Body is nil once soft-deleted;
+// the UI renders an italic placeholder with the original author so the thread does not
+// shift as comments are removed.
 type PlanningCommentResponse struct {
 	ID         string  `json:"id"`
 	ItemID     string  `json:"item_id"`

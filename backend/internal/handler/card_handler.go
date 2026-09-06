@@ -142,15 +142,10 @@ func (h *BoardHandler) UpdateCard(w http.ResponseWriter, r *http.Request) error 
 		return httputil.NewAPIError(http.StatusForbidden, "You do not have permission to edit this card", nil)
 	}
 
-	// PATCH semantics: a nil request field means "leave unchanged". The
-	// UpdateCard SQL overwrites title/description/due_date/assignee_id/priority/
-	// estimated_hours directly (no COALESCE on those columns), so the handler
-	// must merge each omitted field from the existing row — otherwise a partial
-	// PATCH clobbers the untouched columns. This bit the My Work snooze, which
-	// sends only { due_date }: every other column was wiped and, because
-	// assignee_id went NULL, the card vanished from the user's inbox.
-	// (acceptance_criteria / implementation_note are the exception — their SQL
-	// uses COALESCE, so we still pass req.* straight through for them.)
+	// PATCH semantics: nil means "leave unchanged", but UpdateCard's SQL overwrites these
+	// columns directly (no COALESCE), so the handler must merge each omitted field from
+	// the existing row. This bit My Work snooze, which sends only { due_date }: every
+	// other column was wiped and the card left the inbox when assignee_id went NULL.
 	title := existing.Title
 	if req.Title != nil {
 		title = *req.Title

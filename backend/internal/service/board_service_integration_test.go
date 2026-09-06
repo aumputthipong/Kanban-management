@@ -1,12 +1,8 @@
 //go:build integration
 
-// Integration tests for BoardService's board-level methods (board_service.go).
-// CreateBoard runs a transaction (board + 4 default columns + owner member)
-// and UpdateBoard/GetBoardWithCards/CompleteMyTask/GetMyWork all touch
-// *db.Queries directly with real aggregation or gate logic a mock can't
-// verify — whether the transaction actually rolls back, whether COALESCE
-// defaults apply, whether a non-assignee is actually blocked by the DB WHERE
-// clause rather than trusted at the Go layer.
+// Integration tests for BoardService's board-level methods. CreateBoard is transactional
+// (board + 4 columns + owner) and the read paths hit *db.Queries with aggregation and
+// gate logic a mock cannot verify — rollback, COALESCE defaults, WHERE-clause gating.
 package service_test
 
 import (
@@ -102,11 +98,9 @@ func TestCreateBoard_NilAppearance_FallsBackToColumnDefaults(t *testing.T) {
 	assert.Equal(t, "board", board.Icon)
 }
 
-// AddBoardMember has a FK on user_id; an owner id that doesn't exist fails
-// that last step, after the board row and all 4 columns already inserted
-// earlier in the same call. This is the whole reason CreateBoard needs a
-// transaction: without it, a caller could end up with an orphan board that
-// has columns but no owner able to see it.
+// AddBoardMember has an FK on user_id, so a nonexistent owner fails after the board and
+// all four columns are already inserted. That is why CreateBoard needs a transaction:
+// otherwise a caller is left with an orphan board nobody can see.
 func TestCreateBoard_NonExistentOwner_RollsBackBoardAndColumnsToo(t *testing.T) {
 	ctx := context.Background()
 	f := newBoardFixture(t)

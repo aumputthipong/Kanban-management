@@ -1,19 +1,15 @@
-// components/board/settings/SettingsParts.tsx
 "use client";
 
 import { ReactNode } from "react";
 import { ChevronDown, FlaskConical } from "lucide-react";
 
 /**
- * Shared building blocks for the board-settings redesign. The visual language
- * mirrors `frontend/design.md` tokens: indigo primary (#1E40AF → blue-800),
- * slate neutrals, emerald success, red danger. No new accent colors are
- * introduced — the design's amber was mapped to neutral by request.
+ * Shared building blocks for board settings. Visual language follows the
+ * frontend/design.md tokens; no new accent colours are introduced here.
  */
 
 /**
- * Marks a control whose data has no backend yet. Anything wearing this badge is
- * a visual mockup: it holds local state for the demo but persists nothing.
+ * Marks a control with no backend yet — local state for the demo, persists nothing.
  */
 export function MockBadge({ className = "" }: { className?: string }) {
   return (

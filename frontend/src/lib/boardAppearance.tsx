@@ -1,15 +1,6 @@
-// lib/boardAppearance.tsx
-//
-// Single source of truth for a board's visual identity (accent colour + glyph).
-// The settings picker (GeneralSection), the project-list cards, the board
-// Header (BoardHeader), and the workspace Sidebar all read from here so a board
-// looks identical everywhere it appears — Header is "you are here", Sidebar is
-// navigation, but both share the same glyph + accent.
-//
-// The colour palette is a fixed set of per-board *identity* colours — not
-// semantic status colours. The default accent is the design-system primary
-// (#1E40AF). The icon keys mirror the backend's `oneof` validator on
-// boards.icon (board/rocket/target/bolt/bug) — keep the two in sync.
+// Single source of truth for a board's visual identity (accent + glyph), read by the
+// settings picker, project cards, board header and sidebar. Colours are per-board
+// identity, not status. Icon keys mirror the backend `boards.icon` enum — keep in sync.
 import { LayoutGrid, Rocket, Target, Zap, Bug, type LucideIcon } from "lucide-react";
 
 /** Selectable accent colours for a board. First entry = default. */
@@ -42,10 +33,8 @@ export function boardColor(color?: string | null): string {
 }
 
 /**
- * Renders a board's glyph. Resolving the icon by indexing the constant
- * BOARD_ICONS map (rather than via a function call) keeps the
- * react-hooks/static-components rule happy — the rendered component is a stable
- * reference, not one "created during render".
+ * Renders a board's glyph. Index BOARD_ICONS directly rather than resolving via a
+ * call — react-hooks/static-components needs a stable component reference.
  */
 export function BoardGlyph({
   icon,

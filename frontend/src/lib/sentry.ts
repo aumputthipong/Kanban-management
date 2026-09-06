@@ -1,12 +1,7 @@
 /**
- * Sentry browser integration — lazy, env-gated, no-op without a DSN.
- *
- * Why lazy: the SDK adds ~30 KB to the bundle. Without `NEXT_PUBLIC_SENTRY_DSN`
- * we never import it, so dev / CI / portfolio demo builds stay slim.
- *
- * Wire-up: error boundaries (`app/error.tsx`, `app/global-error.tsx`) and the
- * apiClient should call `captureException` for unexpected failures. When a DSN
- * is provided the first call also lazily initialises the SDK.
+ * Sentry browser integration — lazy, env-gated, no-op without a DSN. The SDK costs
+ * ~30 KB, so without NEXT_PUBLIC_SENTRY_DSN it is never imported and the first
+ * captureException call is what initialises it.
  */
 
 import { logger } from "@/lib/logger";
@@ -41,8 +36,7 @@ function load(): Promise<SentryModule | null> {
 }
 
 /**
- * Report an unexpected error to Sentry. No-op when SENTRY_DSN is not set —
- * safe to call from any boundary. Returns void; never throws.
+ * Report an unexpected error. No-op without a DSN, safe from any boundary, never throws.
  */
 export function captureException(err: unknown, context?: Record<string, unknown>): void {
   if (!dsn) return;
@@ -59,8 +53,5 @@ export function captureException(err: unknown, context?: Record<string, unknown>
   });
 }
 
-/**
- * Whether Sentry will actually ship this event. Useful for conditional UI like
- * "report this error" buttons.
- */
+/** Whether Sentry will actually ship events — for conditional "report this" UI. */
 export const sentryEnabled = Boolean(dsn);

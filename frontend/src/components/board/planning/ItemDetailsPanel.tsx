@@ -1,16 +1,8 @@
 "use client";
 
-// ItemDetailsPanel — the expanded section under an ItemRow holding a single
-// optional free-text note. It used to carry two structured dev fields
-// (acceptance_criteria + implementation_note); during planning capture those
-// were rarely filled and read as over-engineered for a fast jot-it-down
-// surface, so they were collapsed into one generic "details" note. The
-// detailed acceptance-criteria / impl-note split still lives on the card
-// (the work phase), where it belongs.
-//
-// Editing is optimistic + onBlur-save (no Save button): local draft, blur →
-// patch. Empty is sent as "" so the backend's COALESCE-protected field can be
-// cleared; the parent only fires the patch when the value actually changed.
+// The expanded section under an ItemRow: one optional free-text note, saved on blur.
+// It used to carry acceptance_criteria and implementation_note; during capture those
+// were rarely filled, so they now live on the card instead. Do not re-add them here.
 import { useState } from "react";
 
 interface Props {
@@ -32,10 +24,8 @@ export function ItemDetailsPanel({ note, onChangeNote }: Props) {
   );
 }
 
-// AutoSaveTextarea — drives a single textarea field with a local draft and
-// commits on blur if the value actually changed. The parent only sees the
-// new value when it would result in a net change; idempotent re-renders
-// from API echo-backs won't trigger a duplicate save.
+// One textarea with a local draft, committing on blur only when the value actually
+// changed — so an API echo-back re-render cannot trigger a duplicate save.
 function AutoSaveTextarea({
   label,
   placeholder,
@@ -50,11 +40,7 @@ function AutoSaveTextarea({
   minRows: number;
 }) {
   const [draft, setDraft] = useState(value);
-  // Track the last server-confirmed value so we can detect prop changes
-  // during render without a useEffect+setState (React 19's
-  // react-hooks/set-state-in-effect rule). When the parent updates the
-  // field (e.g. another tab edited it) we mirror it into local draft
-  // before paint — same outcome, no cascading-render warning.
+  // Mirror a parent change into the draft during render, not in an effect (AGENTS.md).
   const [syncedValue, setSyncedValue] = useState(value);
   if (syncedValue !== value) {
     setSyncedValue(value);

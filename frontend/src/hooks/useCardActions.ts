@@ -20,11 +20,9 @@ export function useCardActions(boardId: string) {
     });
   };
 
-  // opts lets the Create Task modal seed assignee / priority / due date /
-  // description / subtasks in one shot. Callers that omit opts (or pass null /
-  // empty fields) send just column_id + title + position — the original
-  // quick-add WS payload. Subtasks are titles only; the backend creates them
-  // alongside the card in one transaction (the card id doesn't exist yet).
+  // opts lets the Create Task modal seed assignee/priority/due/description/subtasks
+  // in one shot; omitting it sends the original quick-add payload. Subtasks are titles
+  // only — the backend creates them alongside the card in one transaction.
   const handleAddCard = (
     columnId: string,
     title: string,
@@ -95,8 +93,7 @@ export function useCardActions(boardId: string) {
     const { boardMembers, columns, updateCard } = useBoardStore.getState();
     const newAssigneeId = form.assignee_id || null;
     const original = columns.flatMap((c) => c.cards).find((c) => c.id === cardId);
-    // Diff form vs current card to build changed_fields — only fields that actually changed
-    // are sent as activity log entries (tags included).
+    // Only fields that actually changed become activity-log entries.
     const changedFields: string[] = [];
     if (original) {
       const newEstimated = form.estimated_hours ? parseFloat(form.estimated_hours) : null;
@@ -117,7 +114,6 @@ export function useCardActions(boardId: string) {
       ? (boardMembers.find((m) => m.user_id === newAssigneeId)?.full_name ?? null)
       : null;
 
-    // Optimistic store update (includes tags)
     updateCard({
       ...original!,
       title: form.title,
@@ -132,12 +128,9 @@ export function useCardActions(boardId: string) {
       implementation_note: form.implementation_note || null,
     });
 
-    // Persist via REST (handles tag_ids through service layer). For
-    // acceptance_criteria / implementation_note we only include the field
-    // in the body when it actually changed — backend uses COALESCE on
-    // these two, so an omitted field preserves the existing value (matters
-    // for cards that PromoteItem copied AC into; a "title only" edit must
-    // not clobber the source acceptance criteria).
+    // acceptance_criteria / implementation_note are sent only when they changed:
+    // the backend COALESCEs them, so omitting preserves the existing value. A
+    // title-only edit must not clobber AC that PromoteItem copied in.
     type CardPatchBody = {
       title: string;
       description: string | null;
@@ -168,12 +161,8 @@ export function useCardActions(boardId: string) {
         changedFields.push("implementation_note");
       }
     }
-    // The optimistic store update + WS broadcast below already reflect the
-    // change. Persist through apiClient (not raw fetch): a raw fetch only
-    // rejects on a network error, so a 4xx/5xx response used to be swallowed
-    // and the edit silently vanished on next reload. apiClient throws on any
-    // non-2xx (and toasts on 403); surface a toast for the rest so a failed
-    // save is visible and the user can retry.
+    // apiClient, not raw fetch: raw fetch only rejects on network errors, so a 4xx
+    // used to vanish silently. Toast anything apiClient has not already toasted.
     apiClient(`/cards/${cardId}`, { method: "PATCH", data: body }).catch((err) => {
       if (err instanceof ApiError && err.status === 403) return; // apiClient already toasted
       useToastStore.getState().show({

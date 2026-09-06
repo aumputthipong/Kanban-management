@@ -61,8 +61,7 @@ export const useWebSocket = (url: string) => {
         }
         if (parsedData.type === WS_EVENT.CardCreated) {
           // The broadcast carries assignee_id but not the name — resolve it from
-          // boardMembers (every client has them) so the avatar renders without a
-          // round-trip. Quick-add cards have assignee_id null → name null.
+          // boardMembers so the avatar renders without a round-trip.
           const payload = parsedData.payload;
           const { boardMembers } = useBoardStore.getState();
           const assignee_name = payload.assignee_id
@@ -144,8 +143,7 @@ export const useWebSocket = (url: string) => {
         scheduleReconnect();
         return;
       }
-      // The await is a suspension point — the effect may have been torn down
-      // (unmount, or a boardID change) while the ticket was in flight.
+      // The effect may have been torn down while the ticket was in flight.
       if (cancelled) return;
 
       const socket = new WebSocket(`${url}?ticket=${encodeURIComponent(ticket)}`);
@@ -166,8 +164,7 @@ export const useWebSocket = (url: string) => {
       };
 
       socket.onerror = () => {
-        // Browsers fire onerror followed by onclose — handle reconnection in onclose
-        // to avoid duplicate scheduling. Don't log noisy "encountered an error".
+        // Browsers fire onerror then onclose; reconnect there to avoid double-scheduling.
       };
 
       socket.onclose = () => {

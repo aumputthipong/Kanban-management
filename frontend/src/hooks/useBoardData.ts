@@ -1,4 +1,3 @@
-// hooks/useBoardData.ts
 import { useState, useEffect } from "react";
 import { useBoardStore } from "@/store/useBoardStore";
 import { apiClient, ApiError } from "@/lib/apiClient";
@@ -9,19 +8,10 @@ interface MeResponse {
 }
 
 /**
- * Bootstraps a board view by hydrating `useBoardStore` in three parallel
- * fetches: columns + cards, current user, member list. Should be called
- * once at the board page root — subsequent updates flow through WebSocket
- * broadcasts, not refetches.
- *
- * Returns `{ isLoading, error }` for the page to render skeleton / 404 /
- * generic error states. The string `"NOT_FOUND"` is used as a sentinel for
- * 404 (board missing or not a member) so the page can show a tailored
- * message instead of the generic error UI.
- *
- * Uses `apiClient` (not raw fetch) so 401 → silent token refresh works the
- * same way as the rest of the app. me/members failures fall back to
- * sensible defaults instead of failing the whole bootstrap.
+ * Bootstraps a board view by hydrating `useBoardStore` in three parallel fetches.
+ * Call once at the board page root — later updates arrive over WebSocket, not refetches.
+ * Returns `{ isLoading, error }`; error is the sentinel "NOT_FOUND" for a 404 so the
+ * page can distinguish a missing board from a generic failure.
  */
 export function useBoardData(boardId: string) {
   const { setColumns, setCurrentUser, setBoardMembers, setBoardMeta, setLoading } =
@@ -60,9 +50,8 @@ export function useBoardData(boardId: string) {
         if (meRes.status === "fulfilled" && meRes.value?.user_id) {
           setCurrentUser(meRes.value.user_id);
         }
-        // GET /boards/:id is columns-only — the board's title/icon/color come
-        // from the list endpoint (same source the settings page reads). Fall
-        // back to leaving boardMeta null so the header shows its default label.
+        // GET /boards/:id is columns-only — title/icon/color come from the list
+        // endpoint. Leaving boardMeta null makes the header fall back to its default.
         if (listRes.status === "fulfilled" && Array.isArray(listRes.value)) {
           const meta = listRes.value.find((b) => b.id === boardId);
           setBoardMeta(

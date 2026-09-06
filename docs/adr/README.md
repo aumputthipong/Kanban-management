@@ -19,6 +19,7 @@ ADR that references the old one, not an edit.
 | [0003](0003-single-instance-websocket-hub.md) | In-memory WebSocket hub, single instance        | Accepted |
 | [0004](0004-membership-gate-returns-404.md)   | Board membership gate returns 404, not 403      | Accepted |
 | [0005](0005-websocket-ticket-auth.md)         | WebSocket handshake uses a short-lived ticket    | Accepted |
+| [0006](0006-comment-budget.md)                | Comment budget by block size, not density        | Accepted |
 
 ## Adding an ADR
 

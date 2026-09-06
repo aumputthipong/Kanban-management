@@ -10,33 +10,17 @@ import {
 } from "@/utils/boardPosition";
 
 /**
- * @dnd-kit handlers for the board's drag-and-drop. Three concerns:
- *
- *   1. **Cross-column preview** during drag — moves the card optimistically in
- *      the store on `dragOver` so the user sees it land. A `useRef` tracks the
- *      last column we moved into so we don't keep re-firing the move on every
- *      pointer event (would loop with React's update cycle).
- *
- *   2. **Final commit** on `dragEnd` — recomputes the final position from the
- *      midpoint of the over-card to decide before/after placement, applies it
- *      locally, then broadcasts `CARD_MOVED` over WS. The server is the source
- *      of truth: if it rejects the move it broadcasts the corrected state and
- *      everyone (including this client) reconciles via `moveCard`'s
- *      idempotent semantics.
- *
- *   3. **Position math** is delegated to `utils/boardPosition` which uses the
- *      64k-gap strategy described in `docs/DATABASE.md` so reorders stay cheap.
+ * @dnd-kit board drag handlers: optimistic cross-column preview on dragOver,
+ * final position + CARD_MOVED broadcast on dragEnd. Reconcile contract and
+ * position math: docs/ARCHITECTURE.md, "Optimistic UI pattern".
  */
 export function useDragActions() {
-  // Select the action only — Zustand actions are stable, so this avoids
-  // subscribing to board state. Consumers (useBoardActions) would otherwise
-  // re-render on EVERY store mutation (subtask toggle, WS activity, drag),
-  // which re-rendered the whole card modal on each interaction.
+  // Select the action only: subscribing to board state here re-renders the
+  // whole card modal on every store mutation (subtask toggle, WS, drag).
   const moveCard = useBoardStore((s) => s.moveCard);
   const { sendMessage } = useBoardWebSocket();
 
-  // Tracks the column we most recently moved the card into during a drag.
-  // ref (not state) — we don't want the React update cycle on every pointer move.
+  // ref, not state — a re-render per pointer move would re-fire the dragOver move.
   const dragOverColumnRef = useRef<string | null>(null);
 
   const handleDragStart = () => {

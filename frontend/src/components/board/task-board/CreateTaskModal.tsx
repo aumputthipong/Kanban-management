@@ -74,12 +74,9 @@ function AssigneeChip({
   );
 }
 
-// "Create with essential context" modal — distinct from the auto-save edit modal
-// (CardDetailModal). The fast path is title + Enter; description and subtasks are
-// optional content (subtasks stay collapsed so quick capture never sees them),
-// and the assignee / due / priority / column meta sits in one compact zone so it
-// can't crowd out the content. Fires one CARD_CREATED, then closes. Kept as one
-// coherent unit (> the usual split threshold is fine here — it's a single form).
+// "Create with essential context", distinct from the auto-save edit modal. Fast path is
+// title + Enter; subtasks stay collapsed so quick capture never sees them. Fires one
+// CARD_CREATED then closes. Over the usual size threshold on purpose — it is one form.
 export function CreateTaskModal({ onClose, onCreate, defaultColumnId }: Props) {
   const columns = useBoardStore((s) => s.columns);
   const boardMembers = useBoardStore((s) => s.boardMembers);

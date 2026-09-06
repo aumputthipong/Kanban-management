@@ -33,13 +33,11 @@ const EMPTY_COUNTS: MyWorkCounts = {
   total: 0,
 };
 
-// Stable empty map so the project view doesn't get a new reference each render
-// before the boards list has loaded.
+// Stable reference so the project view does not re-render before boards load.
 const EMPTY_BOARD_META: Map<string, BoardMeta> = new Map();
 
-// useSearchParams() in a client component forces Next.js 16 to bail out of
-// static prerender unless we wrap the consumer in <Suspense>. The real page
-// logic lives in MyWorkPageInner so the prerender pass stops at the fallback.
+  // useSearchParams in a client component makes Next 16 bail out of static prerender
+  // unless the consumer sits behind <Suspense>, hence the split.
 export default function MyWorkPage() {
   return (
     <Suspense fallback={<MyWorkFallback />}>
@@ -49,10 +47,8 @@ export default function MyWorkPage() {
 }
 
 function PageShell({ children }: { children: React.ReactNode }) {
-  // Below lg the dashboard stacks to one column and the page scrolls
-  // (min-h-full → grows with content). At lg it becomes a fixed-height
-  // single viewport (h-full + outer overflow-hidden) so each panel scrolls
-  // internally instead of the page.
+  // Below lg the dashboard stacks and the page scrolls; at lg it is a fixed-height
+  // viewport so each panel scrolls internally instead of the page.
   return (
     <div className="h-full overflow-y-auto lg:overflow-hidden">
       <div className="mx-auto max-w-[1320px] min-h-full lg:h-full flex flex-col px-6 py-5 lg:px-8 gap-4">
@@ -76,18 +72,12 @@ function MyWorkPageInner() {
 
   const query = (searchParams.get("q") ?? "").trim();
 
-  // board_id → glyph/accent for the project containers. Fetched client-side
-  // (the layout already loads /boards for the sidebar; this is a cheap second
-  // read that avoids extending the my-tasks API).
+  // board_id -> glyph/accent. Cheap second read; avoids extending the my-tasks API.
   const [boardMeta, setBoardMeta] = useState<Map<string, BoardMeta> | null>(null);
-  // Task whose detail modal is open (clicking a row opens it instead of
-  // navigating to the board).
   const [selectedCard, setSelectedCard] = useState<MyWorkCard | null>(null);
 
   const [data, setData] = useState<MyWorkResponse | null>(null);
-  // Counts cover the full inbox regardless of the active filter, so we keep
-  // them across filter switches — the greeting + stat cards stay stable while
-  // only the panels below re-fetch.
+  // Counts cover the whole inbox, so keep them across filter switches (AGENTS.md).
   const [counts, setCounts] = useState<MyWorkCounts | null>(null);
   const [fullName, setFullName] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -98,7 +88,6 @@ function MyWorkPageInner() {
   const initialLoading = counts === null && error === null;
   const bodyLoading = data === null && error === null;
 
-  // Load board glyph/accent for the project containers (once on mount).
   useEffect(() => {
     const controller = new AbortController();
     apiClient<Board[]>("/boards", { signal: controller.signal })
@@ -108,13 +97,12 @@ function MyWorkPageInner() {
         ),
       )
       .catch(() => {
-        // Graceful: project headers fall back to the default glyph + accent.
+        // Project headers fall back to the default glyph and accent.
         setBoardMeta(new Map());
       });
     return () => controller.abort();
   }, []);
 
-  // Greeting name — fetched once, independent of the filter.
   useEffect(() => {
     const controller = new AbortController();
     apiClient<MeResponse>("/auth/me", { signal: controller.signal })

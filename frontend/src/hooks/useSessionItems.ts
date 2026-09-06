@@ -1,11 +1,6 @@
-// useSessionItems — owns the planning session's items state plus every
-// mutation the capture surface needs. Extracted out of SessionCaptureView
-// so the component file can focus on layout.
-//
-// All mutations are optimistic: the local state updates first, the API
-// fires in the background, and any 4xx/5xx surfaces as a toast. This is
-// deliberate — capture velocity matters more than confirming success for
-// trivial writes during a meeting.
+// Owns the planning session's items state and every mutation the capture surface
+// needs. All mutations are optimistic and fire-and-forget with a toast on failure:
+// during a meeting, capture velocity beats confirming trivial writes.
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useToastStore } from "@/store/useToastStore";
@@ -47,8 +42,7 @@ export function useSessionItems(
   const [savedAt, setSavedAt] = useState<string>("");
   const showToast = useToastStore((s) => s.show);
 
-  // Initial fetch. On 4xx we bounce back to the session list — the most
-  // likely cause is a deleted-from-under-us session or a stale link.
+  // Bounce to the session list on 4xx — usually a deleted session or a stale link.
   useEffect(() => {
     let cancelled = false;
     planningApi
@@ -69,8 +63,7 @@ export function useSessionItems(
     };
   }, [sessionId, boardId, router, showToast]);
 
-  // Live counts displayed in the right sidebar. Same NOT IN exclusion as
-  // the backend's session-summary aggregate so the numbers don't drift.
+  // Same NOT IN exclusion as the backend session-summary aggregate, or counts drift.
   const stats = useMemo<SessionStats>(() => {
     const s: SessionStats = { REQ: 0, DEC: 0, Q: 0, dropped: 0, promoted: 0, selected: 0 };
     for (const it of items) {
@@ -91,7 +84,6 @@ export function useSessionItems(
 
   const patchItem = useCallback(
     (id: string, patch: Partial<PlanningItem>, optimistic: Partial<PlanningItem>) => {
-      // Optimistic: write to local state right away, fire-and-forget API.
       setItems((prev) => prev.map((it) => (it.id === id ? { ...it, ...optimistic } : it)));
       setSavedAt(new Date().toISOString());
       planningApi
@@ -114,8 +106,7 @@ export function useSessionItems(
     async (title: string, type: PlanningItemType) => {
       const trimmed = title.trim();
       if (!trimmed) return;
-      // Optimistic insert. The API call returns the real id; we then swap
-      // in place so subsequent edits target the real row, not the placeholder.
+      // The API returns the real id; swap in place so later edits target the real row.
       const tempId = `__pending_${Math.random().toString(36).slice(2)}`;
       const placeholder: PlanningItem = {
         id: tempId,
@@ -146,7 +137,6 @@ export function useSessionItems(
 
   const toggleStatus = useCallback(
     (item: PlanningItem, target: PlanningItemStatus) => {
-      // If already in target status, flip back to live.
       const next: PlanningItemStatus = item.status === target ? "live" : target;
       patchItem(item.id, { status: next }, { status: next });
     },
@@ -156,10 +146,8 @@ export function useSessionItems(
   const changeType = useCallback(
     (item: PlanningItem, t: PlanningItemType) => {
       if (item.type === t) return;
-      // Type change is the one PATCH the backend can reject with a typed
-      // error (promoted items are frozen — backend returns 400 with a Thai
-      // message). Roll our own revert path here so the row visually snaps
-      // back instead of leaving the chip on the new type that never landed.
+      // The one PATCH the backend can reject (promoted items are frozen), so revert
+      // by hand or the chip stays on a type that never landed.
       const previous = item.type;
       setItems((prev) => prev.map((it) => (it.id === item.id ? { ...it, type: t } : it)));
       setSavedAt(new Date().toISOString());
@@ -195,9 +183,7 @@ export function useSessionItems(
     [showToast],
   );
 
-  // Direct per-row promote — the primary "send to board" action on a live
-  // row. Uses the same endpoint as the batch path, just for one item, so the
-  // user can send a requirement up without the select-then-promote two-step.
+  // Per-row promote — same endpoint as the batch path, without the select two-step.
   const promoteOne = useCallback(
     async (item: PlanningItem) => {
       try {
@@ -216,10 +202,8 @@ export function useSessionItems(
     [showToast],
   );
 
-  // Bulk-promote by explicit ids — the "select mode" surface holds the chosen
-  // ids in ephemeral client state (a tick no longer persists a "selected"
-  // status), so the caller passes them in here when committing. Already-promoted
-  // ids are skipped so a stale selection can't double-promote.
+  // Bulk-promote by explicit ids from select mode. Already-promoted ids are skipped
+  // so a stale selection cannot double-promote.
   const promoteMany = useCallback(
     async (ids: string[]) => {
       const idSet = new Set(ids);

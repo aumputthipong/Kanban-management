@@ -1,4 +1,3 @@
-// components/board/members/MemberGroup.tsx
 import { Crown, Shield, Users } from "lucide-react";
 import type { BoardMember } from "@/types/board";
 import { MemberItem } from "./MemberItem";

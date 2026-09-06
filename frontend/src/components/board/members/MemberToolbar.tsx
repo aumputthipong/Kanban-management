@@ -1,4 +1,3 @@
-// components/board/members/MemberToolbar.tsx
 import { Search } from "lucide-react";
 
 export type MemberFilter = "all" | "owner" | "manager" | "member";

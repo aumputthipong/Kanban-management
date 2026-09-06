@@ -17,16 +17,11 @@ interface Props {
   promotedItems: PlanningItem[];
 }
 
-// Right-side rail: an at-a-glance summary panel (a big total + the per-type
-// breakdown) on top, then the list of titles already promoted to Board.
-//
-// The breakdown overlaps the filter chips' numbers, but it reads differently
-// here — a headline total + a labelled legend with full Thai names, not a row
-// of compact filter pills — so it earns its place as the session's summary card
-// rather than a filter control.
+// Right rail: a summary panel (total + per-type breakdown) above the list of titles
+// already promoted. The breakdown repeats the chip counts on purpose — a labelled
+// legend reads as a summary, not a filter control.
 export function SessionSidebar({ stats, promotedItems }: Props) {
-  // Everything still "in the note" (live items + already promoted), matching the
-  // "All" filter — paused items have their own line below.
+  // Matches the "All" filter: live plus promoted. Paused items get their own line.
   const total = stats.REQ + stats.DEC + stats.Q + stats.promoted;
 
   return (

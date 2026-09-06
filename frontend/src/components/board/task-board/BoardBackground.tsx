@@ -1,4 +1,3 @@
-// components/board/BoardBackground.tsx
 export function BoardBackground() {
   return (
     <div

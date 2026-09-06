@@ -1,4 +1,3 @@
-// components/board/KanbanBoard.tsx
 "use client";
 
 import { useState, useCallback } from "react";
@@ -57,11 +56,9 @@ export function KanbanBoard({ boardId }: { boardId: string }) {
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
   );
 
-  // Custom collision detection:
-  // 1. pointerWithin — honors the literal pointer location; picks an empty column
-  //    directly under the cursor instead of a neighboring card in a dense column.
-  // 2. rectIntersection — fallback when the pointer sits on a boundary.
-  // 3. closestCorners — final fallback (e.g. when dragging past the edge of the board).
+  // pointerWithin first so an empty column under the cursor wins over a neighbouring
+  // card in a dense one; rectIntersection covers boundaries, closestCorners covers
+  // dragging past the edge of the board.
   const collisionDetection: CollisionDetection = useCallback((args) => {
     const pointerCollisions = pointerWithin(args);
     if (pointerCollisions.length > 0) {

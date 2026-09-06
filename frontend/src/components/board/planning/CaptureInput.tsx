@@ -23,11 +23,9 @@ interface Props {
   inputRef: RefObject<HTMLInputElement | null>;
 }
 
-// Capture row — segmented type picker plus the free-text input. Clicking a
-// type button sets the type and refocuses the input, so the user can stay in
-// flow: click → type → Enter. The only keyboard handling here is Enter
-// (commit) and ArrowDown (jump down into the item list, which sits below this
-// box); both come from the parent so it can decide what "commit"/"jump" mean.
+// Capture row: segmented type picker plus the input. Picking a type refocuses the
+// input so the user stays in flow. Enter (commit) and ArrowDown (jump into the list)
+// are handled by the parent, which decides what those mean.
 export function CaptureInput({
   draft,
   onDraftChange,

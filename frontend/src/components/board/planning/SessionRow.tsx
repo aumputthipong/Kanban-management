@@ -58,11 +58,9 @@ function sessionStat(s: PlanningSessionSummary) {
   return { live, total, pct, state };
 }
 
-// A session is "not yet named" while it still carries the date-based title
-// minted by defaultSessionTitle ("Note <date>") — the row uses this to nudge
-// the user to give it a real name instead of just showing a quiet pencil.
-// The legacy Thai note-title prefix is still matched so notes created
-// before the rename keep behaving as auto-titled.
+// A session is "not yet named" while it still carries the date-based title from
+// defaultSessionTitle, so the row can nudge for a real name. The legacy Thai prefix is
+// still matched so notes created before the rename stay auto-titled.
 function isAutoTitle(title: string) {
   return /^(Note|บันทึก)\s+\d/.test(title.trim());
 }

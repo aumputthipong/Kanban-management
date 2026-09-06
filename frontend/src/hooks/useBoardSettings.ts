@@ -1,4 +1,3 @@
-// hooks/useBoardSettings.ts
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { API_URL } from "@/lib/constants";

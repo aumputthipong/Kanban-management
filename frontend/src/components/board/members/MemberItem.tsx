@@ -1,4 +1,3 @@
-// components/board/members/MemberItem.tsx
 import { useState } from "react";
 import { Crown, ChevronDown, UserMinus, Loader2 } from "lucide-react";
 import type { BoardMember } from "@/types/board";

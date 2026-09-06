@@ -1,4 +1,3 @@
-// components/kanban/card-modal/CardFormFields.tsx
 "use client";
 
 import { useState } from "react";

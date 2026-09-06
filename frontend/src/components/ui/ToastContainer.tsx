@@ -5,11 +5,9 @@ import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { useToastStore } from "@/store/useToastStore";
 
-// Returns false on the server and during the first client render (so the
-// hydrated tree matches), then true on the second render. Use this — not
-// `typeof window` — to gate client-only DOM access; bare typeof checks
-// produce a different output on server vs. client and trip a hydration
-// mismatch.
+// False on the server and on the first client render so the hydrated tree matches,
+// true afterwards. Use this, not a bare `typeof window` check, to gate client-only DOM
+// access — the bare check renders differently on each side and trips hydration.
 const subscribe = () => () => {};
 function useIsClient(): boolean {
   return useSyncExternalStore(

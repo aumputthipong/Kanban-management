@@ -1,13 +1,8 @@
 "use client";
 
-// ItemActionMenu — the row's secondary actions, folded into a single "⋯"
-// overflow menu so the row reads as one clear primary ("send to board") plus a
-// quiet "more" affordance, instead of a row of ambiguous grey icons.
-//
-// Each item carries a Thai text label (the bare icons were unreadable without
-// hovering for a tooltip). Batch "select to send" is NOT here — it's a
-// dedicated select-mode toggled from the toolbar (checkboxes appear on every
-// row), so the per-row menu only holds the single-item actions.
+// The row's secondary actions behind a single overflow menu, so the row reads as one
+// primary action plus a quiet "more". Items carry Thai labels — bare icons needed a
+// hover to decode. Batch send lives in select-mode from the toolbar, not here.
 import { useEffect, useRef, useState } from "react";
 import {
   Ban,
@@ -55,8 +50,7 @@ export function ItemActionMenu({
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement | null>(null);
 
-  // Dismiss on outside mousedown (before the click lands) so clicking the row
-  // to close the menu doesn't also re-focus / edit the row.
+  // Dismiss on outside mousedown, before the click lands, so closing does not edit the row.
   useEffect(() => {
     if (!open) return;
     const onMouseDown = (e: MouseEvent) => {

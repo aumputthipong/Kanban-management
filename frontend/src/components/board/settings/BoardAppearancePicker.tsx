@@ -1,4 +1,3 @@
-// components/board/settings/BoardAppearancePicker.tsx
 "use client";
 
 import { Loader2 } from "lucide-react";

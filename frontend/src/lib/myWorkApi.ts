@@ -22,12 +22,8 @@ export function completeMyTask(cardId: string): Promise<void> {
 }
 
 /**
- * Snooze a card by setting its due_date to a new value. Uses the existing
- * PATCH /api/cards/:id endpoint — the assignee can edit their own card by
- * the inline permission gate already in place on that handler.
- *
- * @param cardId  card to update
- * @param dueDate ISO date string (YYYY-MM-DD) for the new due date
+ * Snooze a card by setting `due_date`. Reuses PATCH /cards/:id — the assignee can
+ * already edit their own card through that handler's inline permission gate.
  */
 export function snoozeCardDueDate(cardId: string, dueDate: string): Promise<unknown> {
   return apiClient(`/cards/${cardId}`, {

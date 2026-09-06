@@ -8,23 +8,9 @@ interface ExtendedCard extends Card {
 }
 
 /**
- * Aggregates the currently-loaded board into the numbers shown on the
- * Project Overview tab — totals, progress, urgency buckets, per-assignee
- * workload, and per-column counts.
- *
- * **Pure & cheap.** Wrapped in `useMemo` keyed on `columns`, so it recomputes
- * only when the store changes (drag-drop, WS broadcast, etc.). Don't add
- * I/O here — anything async belongs in a service or React Query.
- *
- * Notable derivations:
- *  - `overdueCards` / `todayCards` / `tomorrowCards` / `thisWeekCards` are
- *    computed against a fresh `today` (midnight local) — refresh on date
- *    change requires re-render, which happens naturally on board mutation.
- *  - `staleCount` flags cards that haven't moved for 7+ days. Used by the
- *    "Hidden bottleneck" insight string.
- *  - `dueSoonCards` is kept as the union (today + tomorrow + thisWeek) for
- *    consumers (like the BoardDashboard tab badge) that don't care about
- *    finer urgency buckets.
+ * Aggregates the loaded board into the Project Overview numbers: totals,
+ * progress, urgency buckets, per-assignee workload, per-column counts.
+ * Pure, inside a useMemo keyed on `columns` — never add I/O here.
  */
 export function useDashboardStats() {
   const { columns } = useBoardStore();
@@ -74,9 +60,8 @@ export function useDashboardStats() {
       columnMeta[col.id] = { title: col.title, category: col.category, position: col.position };
     });
 
-    // Per-assignee count of *active* (not-done) cards. Only feeds the
-    // "Bottleneck detected" insight below — the per-member ownership view
-    // derives its own counts from the store (see useBoardOwnership).
+    // Feeds the "Bottleneck detected" insight only — the per-member ownership view
+    // derives its own counts (see useBoardOwnership).
     const assigneeCount: Record<string, { name: string; active: number }> = {};
 
     allCards.forEach((card) => {

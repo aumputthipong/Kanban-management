@@ -1,4 +1,3 @@
-// app/auth/callback/page.tsx
 // Server Component — redirect target after Google OAuth.
 // Backend sets auth_token cookie then redirects here.
 import { redirect } from "next/navigation";

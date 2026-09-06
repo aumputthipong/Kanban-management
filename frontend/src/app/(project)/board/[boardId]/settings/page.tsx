@@ -1,4 +1,3 @@
-// app/(project)/board/[boardId]/settings/page.tsx
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 

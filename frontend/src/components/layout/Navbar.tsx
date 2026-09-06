@@ -1,4 +1,3 @@
-// components/layout/Navbar.tsx
 import Image from "next/image";
 import Link from "next/link";
 import { getSession } from "@/lib/session";

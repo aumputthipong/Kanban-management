@@ -3,16 +3,10 @@ import { useBoardStore } from "@/store/useBoardStore";
 import type { Card } from "@/types/board";
 
 /**
- * "Who's holding what" — per-member ownership of the currently-loaded board.
- *
- * Derived entirely from the Zustand board store (same source the kanban renders
- * from), so it updates for free via optimistic mutations + WS broadcasts. No
- * backend endpoint: the data is already on the client.
- *
- * **Held = assigned to the member AND not done.** A card counts under a column
- * only if that column is not a DONE column, which keeps `totalHeld` equal to
- * the sum of the per-column cells. Unassigned cards belong to no one and are
- * omitted. Idle members (0 held) are still listed.
+ * Per-member ownership of the loaded board, derived from the Zustand store — no
+ * endpoint, so it updates for free via optimistic mutations and WS broadcasts. Held =
+ * assigned and not done, counted only within non-DONE columns. See AGENTS.md,
+ * "Ownership View Pattern".
  */
 export interface OwnershipColumn {
   id: string;

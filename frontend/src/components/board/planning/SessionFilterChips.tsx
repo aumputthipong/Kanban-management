@@ -1,14 +1,8 @@
 "use client";
 
-// SessionFilterChips — single-select chip row above the items list. Five
-// buttons cover the meaningful slices of a planning session: all (what's
-// still in play), one per type (REQ/DEC/Q), and a "paused" bucket for
-// dropped items. Counts come from the parent so the chip can show "(3)"
-// without re-deriving from the source list here.
-//
-// This is intentionally simpler than the calendar's CalendarFilters
-// (which uses multi-select dropdowns) — a session is a small flat list
-// where one active slice at a time is the more useful interaction.
+// Single-select chip row above the items list: all, one per type, and a "paused"
+// bucket for dropped items. Counts come from the parent. Deliberately simpler than
+// CalendarFilters — a session is a small flat list where one slice at a time reads better.
 import type { ReactNode } from "react";
 import type { PlanningItemType } from "@/types/planning";
 
@@ -28,10 +22,8 @@ const FILTER_LABELS: Record<SessionFilter, string> = {
   dropped: "พักไว้ก่อน",
 };
 
-// Active-state colour per filter. "All" uses the indigo accent (primary
-// action); type filters reuse the soft chip palette so the active state
-// reads as the same colour family as each row's chip; "dropped" stays
-// muted because paused items are deliberately less prominent.
+// Per-filter active colour. Type filters reuse each row chip's palette; "dropped"
+// stays muted because paused items are deliberately less prominent.
 const FILTER_ACTIVE_CLASS: Record<SessionFilter, string> = {
   all: "border-indigo-300 bg-indigo-50 text-indigo-800",
   req: "border-red-300 bg-red-50 text-red-800",
@@ -46,8 +38,7 @@ interface Props {
   active: SessionFilter;
   counts: Record<SessionFilter, number>;
   onChange: (next: SessionFilter) => void;
-  /** Right-aligned slot on the same row as the chips (the select-mode controls
-   *  live here so the bulk action sits next to the list it acts on). */
+  /** Right-aligned slot on the chip row — the select-mode controls live here. */
   trailing?: ReactNode;
 }
 
@@ -90,17 +81,13 @@ export function SessionFilterChips({ active, counts, onChange, trailing }: Props
   );
 }
 
-// applySessionFilter is the single source of truth for which items the
-// chips surface. Kept beside the chip component so the labels and the
-// predicates stay in sync — change the contract here and the chips
-// inherit it automatically.
+// Single source of truth for what each chip surfaces; kept beside the labels.
 export function applySessionFilter<T extends { type: PlanningItemType; status: string }>(
   items: T[],
   filter: SessionFilter,
 ): T[] {
   if (filter === "dropped") return items.filter((it) => it.status === "dropped");
-  // Non-dropped buckets always exclude dropped items — those are the
-  // "paused" pile and have their own chip.
+  // Every non-dropped bucket excludes dropped items — those have their own chip.
   const visible = items.filter((it) => it.status !== "dropped");
   if (filter === "all") return visible;
   return visible.filter((it) => it.type === TYPE_BY_FILTER[filter]);

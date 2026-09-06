@@ -1,4 +1,3 @@
-// components/board/members/BoardMembersSection.tsx
 "use client";
 
 import { useMemo, useState } from "react";

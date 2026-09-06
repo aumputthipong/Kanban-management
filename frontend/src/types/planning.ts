@@ -1,10 +1,6 @@
-// types/planning.ts
-//
-// Planning section mirrors backend dto.PlanningSessionSummary / Detail /
-// PlanningItemResponse. The three item types (REQ / DEC / Q) reflect the
-// three questions any session answers: what we want, what we've decided,
-// what we still don't know. "DROP" is a *status* on an item, not a fourth
-// type — see backend/internal/service/planning_service.go for the rationale.
+// Mirrors backend dto.PlanningSession* / PlanningItemResponse. The three item types
+// answer what we want, what we decided, and what we still do not know. "DROP" is a
+// status on an item, not a fourth type.
 
 export type PlanningItemType = "REQ" | "DEC" | "Q";
 export type PlanningItemStatus = "live" | "selected" | "dropped" | "promoted";
@@ -34,9 +30,8 @@ export interface PlanningItem {
   promoted_to_card_id: string | null;
   position: number;
   created_at: string;
-  // Free-text fields surfaced via the row's chevron expand. On promote, the
-  // service copies these to the resulting card so the dev opening the card
-  // sees the same context the requirement owner captured during planning.
+  // Copied onto the resulting card on promote, so the dev sees the context the
+  // requirement owner captured during planning.
   acceptance_criteria?: string | null;
   implementation_note?: string | null;
 }
@@ -52,12 +47,8 @@ export interface PlanningSessionDetail {
   items: PlanningItem[];
 }
 
-// Returned by GET /cards/:cardID/source. The handler responds with `null`
-// (not 404) when a card wasn't promoted from planning, so the modal can
-// render its "source" section conditionally without an error fork.
-// One comment on a planning item's thread. Body is null on soft-deleted
-// rows — the UI then renders an italic "deleted" placeholder + the original author so
-// the thread's position doesn't shift on delete.
+// One comment on an item thread. `body` is null on soft-deleted rows; the UI shows an
+// italic placeholder plus the original author so the thread does not shift.
 export interface PlanningComment {
   id: string;
   item_id: string;
@@ -69,6 +60,8 @@ export interface PlanningComment {
   deleted_at: string | null;
 }
 
+// Returned by GET /cards/:cardID/source. The handler responds with null (not 404)
+// when the card was not promoted, so the modal renders the section without a fork.
 export interface CardSource {
   session: {
     id: string;

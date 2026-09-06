@@ -1,16 +1,7 @@
 /**
- * Tiny logger wrapper. Use this instead of `console.*` directly so we have a
- * single switch to silence non-essential output in production builds.
- *
- * Behaviour:
- *   - `error` always logs (kept so production users can still see real errors
- *     in DevTools, and so external trackers like Sentry can hook into it).
- *   - `warn` always logs (rare enough that the noise cost is acceptable).
- *   - `info` / `debug` are silenced when `NODE_ENV === "production"` unless
- *     `NEXT_PUBLIC_LOG_LEVEL=debug` is set at build time.
- *
- * No structured logging on the frontend yet — the use case is "tail the dev
- * console and find the bug fast", not "ship to a log aggregator".
+ * Use instead of `console.*` so production output has one switch. `error` and `warn`
+ * always log; `info` and `debug` are silenced in production builds unless
+ * NEXT_PUBLIC_LOG_LEVEL=debug is set.
  */
 
 const isProduction = process.env.NODE_ENV === "production";

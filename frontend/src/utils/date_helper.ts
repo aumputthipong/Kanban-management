@@ -1,8 +1,6 @@
 /**
- * Date formatting helpers for cards / activities / dashboards. All compute
- * deltas against today-at-midnight (local time) so a card due today reads
- * "Today" regardless of clock time. Inputs are date strings — no timezone
- * conversion is performed beyond what the JS `Date` parser does.
+ * Date helpers for cards, activities and dashboards. All deltas are against
+ * today-at-midnight local, so a card due today reads "Today" whatever the clock says.
  */
 
 /** "Overdue by N days" — assumes the due date is in the past. */

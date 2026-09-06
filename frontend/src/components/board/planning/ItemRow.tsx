@@ -33,8 +33,7 @@ interface ItemRowProps {
   index: number;
   item: PlanningItem;
   focused: boolean;
-  /** Bulk select-mode: rows show a leading checkbox and clicking toggles the
-   *  selection instead of focusing/editing. */
+  /** Rows show a leading checkbox and a click toggles selection instead of editing. */
   selectMode: boolean;
   isSelected: boolean;
   onToggleSelect: () => void;
@@ -49,12 +48,9 @@ interface ItemRowProps {
   onDown: () => void;
 }
 
-// One row of the capture surface. Renders the index, the type chip (click
-// opens a 3-option popover; the previous cycle-on-click was discoverable
-// only by accident and made REQ → DEC a two-click trip for new users), the
-// title (click to edit), the status badges, and the three icon-action
-// buttons. Click-first; the only keyboard surface is inside the edit input
-// (Enter to commit, Escape to cancel, arrows to nav).
+// One row of the capture surface. The type chip opens a 3-option popover: the old
+// cycle-on-click was discoverable only by accident and made REQ to DEC a two-click
+// trip, so do not go back to it. Keyboard surface is limited to the edit input.
 export function ItemRow({
   index,
   item,
@@ -76,17 +72,12 @@ export function ItemRow({
   const [expanded, setExpanded] = useState(false);
   const [commentsExpanded, setCommentsExpanded] = useState(false);
   const currentUserId = useBoardStore((s) => s.currentUserId);
-  // Lazy comment thread — the hook never fetches until `load()` is called,
-  // which happens the first time the user clicks the comment badge. Each
-  // row owns its own hook instance so the threads don't interleave.
+  // Lazy — nothing fetches until the user opens the thread.
   const comments = usePlanningComments(item.id, currentUserId || null);
 
   const [draft, setDraft] = useState(item.title);
-  // Tracks the last item.title we synced from so we can detect prop changes
-  // during render without a useEffect+setState (which trips React 19's
-  // react-hooks/set-state-in-effect rule). When the parent updates the
-  // title (e.g. WS-driven refresh) we mirror it into local draft *before*
-  // rendering — same outcome, no cascading-render warning.
+  // Mirror a parent title change into the draft during render, not in an effect —
+  // see AGENTS.md, "Data fetching & loading states".
   const [syncedTitle, setSyncedTitle] = useState(item.title);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
@@ -110,8 +101,7 @@ export function ItemRow({
     if (trimmed !== item.title) onChangeTitle(trimmed);
   };
 
-  // Row-level keys: Enter commits the edit, Escape cancels, arrows navigate.
-  // Type / drop / select / delete are click-only.
+  // Enter commits, Escape cancels, arrows navigate; every other action is click-only.
   const onKey = (e: KeyboardEvent<HTMLElement>) => {
     if (e.key === "Enter") {
       e.preventDefault();
@@ -142,10 +132,7 @@ export function ItemRow({
   const hasNote = (item.implementation_note ?? "").trim().length > 0;
   const hasDetails = hasNote;
 
-  // Status line shown under the title — a one-glance answer to "where is
-  // this item now": on the board, awaiting an answer, paused, or still a
-  // live note. (No "waiting on <person>" target / card key is shown — the
-  // data model has neither.)
+  // One-glance "where is this item now". No "waiting on <person>" — no such data.
   const statusMeta = promoted
     ? { Icon: CheckCircle2, label: "บน Board แล้ว", cls: "text-emerald-600" }
     : dropped
@@ -175,8 +162,7 @@ export function ItemRow({
         } ${selectMode && !promoted ? "cursor-pointer" : ""}`}
       >
         {selectMode ? (
-          // Select-mode: a leading checkbox replaces the index. Promoted rows
-          // can't be re-sent, so their box is disabled/greyed.
+          // Promoted rows cannot be re-sent, so their checkbox is disabled.
           <span className="flex w-6 shrink-0 justify-center pt-0.5" aria-hidden>
             {promoted ? (
               <Square size={16} className="text-slate-200" />
@@ -206,8 +192,7 @@ export function ItemRow({
                 className="min-w-0 flex-1 rounded-md border border-indigo-300 bg-white px-2 py-1 text-sm text-slate-800 shadow-sm outline-none focus:ring-2 focus:ring-indigo-400"
               />
             ) : (
-              // Display-only title — renaming is triggered from the "⋯" menu
-              // (one place for every row action), not by clicking the title.
+              // Display-only — renaming lives in the row menu, not a click on the title.
               <span
                 className={`min-w-0 flex-1 truncate text-sm font-medium ${
                   dropped

@@ -13,14 +13,9 @@ interface ActivityState {
 }
 
 /**
- * Activity feed for the currently-viewed board. Kept separate from
- * `useBoardStore` because it grows append-only and doesn't need to resync
- * when switching boards — `reset()` is called on every board change.
- *
- * `prependActivity` is what `useWebSocket` calls on `ACTIVITY_CREATED`. It
- * de-duplicates on `id` (broadcast may arrive before the optimistic write
- * resolves) and caps the list at 100 entries — older history reload via
- * `useActivityFeed` paginates.
+ * Activity feed for the viewed board. Separate from `useBoardStore` because it grows
+ * append-only and is reset on every board change. `prependActivity` (called on
+ * ACTIVITY_CREATED) de-duplicates on id and caps the list at 100.
  */
 export const useActivityStore = create<ActivityState>((set) => ({
   activities: [],

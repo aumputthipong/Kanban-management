@@ -1,4 +1,3 @@
-// components/board/settings/BoardSettingsForm.tsx
 "use client";
 
 import { useEffect, useRef, useState } from "react";

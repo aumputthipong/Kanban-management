@@ -1,4 +1,3 @@
-// components/board/members/useBoardMembers.ts
 import { useState, useEffect } from "react";
 import type { BoardMember } from "@/types/board";
 import { apiClient } from "@/lib/apiClient";

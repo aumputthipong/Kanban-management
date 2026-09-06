@@ -1,5 +1,3 @@
-// lib/constants.ts
-
 // On the client we call the API same-origin at "/api" so the auth cookie stays
 // first-party (the browser blocks cross-site cookies even with SameSite=None
 // when the frontend and backend are on different domains). Next.js rewrites

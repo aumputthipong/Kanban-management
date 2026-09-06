@@ -1,4 +1,3 @@
-// types/board.ts
 export interface Tag {
   id: string;
   board_id: string;

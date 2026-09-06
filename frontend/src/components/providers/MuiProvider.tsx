@@ -1,4 +1,3 @@
-// components/providers/MuiProvider.tsx
 "use client";
 
 import { AppRouterCacheProvider } from "@mui/material-nextjs/v15-appRouter";

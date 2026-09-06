@@ -1,4 +1,3 @@
-// app/(landing)/page.tsx
 // Hybrid landing — adapted from the design handoff but re-skinned with the
 // product's slate + blue palette so it feels of a piece with the rest of the app.
 import type { Metadata } from "next";

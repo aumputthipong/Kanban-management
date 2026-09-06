@@ -1,4 +1,3 @@
-// hooks/useBoardActions.ts
 import { useDragActions } from "./useDragActions";
 import { useCardActions } from "./useCardActions";
 import { useColumnActions } from "./useColumnActions";

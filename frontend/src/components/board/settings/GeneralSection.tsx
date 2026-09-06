@@ -1,4 +1,3 @@
-// components/board/settings/GeneralSection.tsx
 "use client";
 
 import { useState } from "react";

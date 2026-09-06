@@ -1,4 +1,3 @@
-// components/board/settings/DangerSection.tsx
 "use client";
 
 import { useState } from "react";

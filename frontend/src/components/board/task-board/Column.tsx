@@ -1,4 +1,3 @@
-// components/kanban/Column.tsx
 "use client";
 
 import { memo, useState, useMemo } from "react";

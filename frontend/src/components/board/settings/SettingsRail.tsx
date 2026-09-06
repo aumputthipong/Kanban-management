@@ -1,4 +1,3 @@
-// components/board/settings/SettingsRail.tsx
 "use client";
 
 import { Clock, AlertTriangle } from "lucide-react";

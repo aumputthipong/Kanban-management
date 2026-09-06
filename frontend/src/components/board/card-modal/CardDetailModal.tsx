@@ -1,4 +1,3 @@
-// components/kanban/card-modal/CardDetailModal.tsx
 "use client";
 
 import { useCallback, useEffect } from "react";

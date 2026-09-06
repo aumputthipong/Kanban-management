@@ -1,9 +1,8 @@
 import { create } from "zustand";
 
 /**
- * One toast displayed in the top-level `<Toaster>`. `actionLabel` + `onAction`
- * are paired — supply both for an undo-style affordance, neither for a plain
- * notice.
+ * One toast in the top-level `<Toaster>`. `actionLabel` and `onAction` are paired —
+ * supply both for an undo affordance, neither for a plain notice.
  */
 export interface Toast {
   id: string;
@@ -21,13 +20,8 @@ interface ToastState {
 }
 
 /**
- * Global queue for transient UI feedback. Used by `apiClient` for 403 toasts
- * and by board mutations for "Card moved · Undo" affordances.
- *
- * `show()` returns the toast id so the caller can dismiss it programmatically
- * (e.g. cancel a long-running pending toast once the request resolves). The
- * default 5 s auto-dismiss is fine for confirmations; pass `duration: 0` for
- * sticky errors that need explicit user action.
+ * Global queue for transient UI feedback. `show()` returns the id so a caller can
+ * dismiss programmatically; `duration: 0` keeps a toast sticky.
  */
 export const useToastStore = create<ToastState>((set) => ({
   toasts: [],

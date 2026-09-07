@@ -21,7 +21,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           # Use the exact Go version pinned in go.mod so `go mod tidy` produces
           # the same output locally and in CI (otherwise newer toolchains can

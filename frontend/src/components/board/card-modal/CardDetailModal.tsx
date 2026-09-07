@@ -67,7 +67,7 @@ export function CardDetailModal({
 
   useEffect(() => {
     if (isOpen && card?.id) fetchSubtasks(card.id);
-  }, [isOpen, card?.id]);
+  }, [isOpen, card?.id, fetchSubtasks]);
 
   useEscapeKey(isOpen, onClose);
 

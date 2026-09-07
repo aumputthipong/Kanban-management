@@ -176,7 +176,6 @@ export function KanbanBoard({ boardId }: { boardId: string }) {
       filterPriorities,
       filterTagIds,
       dropTarget,
-      columns,
     ],
   );
 

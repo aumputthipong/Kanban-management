@@ -96,6 +96,20 @@ jobs:
       - name: npm audit (high+ only, non-blocking)
         run: npm audit --audit-level=high || true
 
+  comments:
+    name: Comment budget
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+
+      # No npm install: the script uses only Node built-ins.
+      - name: Check comment budget
+        run: node scripts/check-comment-budget.mjs
+
   docker:
     name: Docker images build
     runs-on: ubuntu-latest

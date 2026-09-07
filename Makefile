@@ -45,7 +45,7 @@ seed: ## Seed demo data (demo account + sample board). Needs DB_URL (or backend/
 
 # ─── Verification (mirrors CI) ───────────────────────────────────────────────
 .PHONY: verify
-verify: vet test typecheck test-fe ## Run everything CI runs (vet + test + tsc + vitest)
+verify: vet test typecheck test-fe check-comments ## Run everything CI runs (vet + test + tsc + vitest + comment budget)
 
 .PHONY: vet
 vet: ## go vet ./...
@@ -75,6 +75,10 @@ test-fe: ## Frontend unit tests (vitest)
 .PHONY: lint-fe
 lint-fe: ## ESLint
 	cd frontend && npm run lint
+
+.PHONY: check-comments
+check-comments: ## Enforce the comment budget (docs/adr/0006)
+	node scripts/check-comment-budget.mjs
 
 # ─── Database / migrations ────────────────────────────────────────────────────
 .PHONY: migrate-new

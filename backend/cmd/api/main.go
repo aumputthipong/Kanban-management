@@ -24,9 +24,10 @@ import (
 	"github.com/joho/godotenv"
 )
 
-// Regenerate the OpenAPI spec into ./docs after editing handler annotations.
-// Run from backend/:  go generate ./cmd/api
-//go:generate swag init -g cmd/api/main.go -o docs --parseDependency --parseInternal
+// Regenerate the OpenAPI spec into backend/docs after editing handler annotations:
+// `make swag`, or `go generate ./cmd/api` from backend/. Paths are relative to this
+// file's directory, which is where go generate runs the command.
+//go:generate swag init -d ../../ -g cmd/api/main.go -o ../../docs --parseDependency --parseInternal
 
 // version is set at build time via -ldflags "-X main.version=..."; defaults to "dev" locally.
 var version = "dev"

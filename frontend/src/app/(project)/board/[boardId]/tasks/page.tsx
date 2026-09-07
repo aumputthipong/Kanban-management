@@ -4,7 +4,6 @@ import { use, useEffect, useState } from "react";
 import { KanbanBoard } from "@/components/board/task-board/KanbanBoard";
 import { useCardHighlightStore } from "@/store/useCardHighlightStore";
 import { useBoardActions } from "@/hooks/useBoardActions";
-import { useBoardStore } from "@/store/useBoardStore";
 import { Plus } from "lucide-react";
 import { MemberFilterBar } from "@/components/board/task-board/MemberFilterBar";
 import { PriorityFilterDropdown } from "@/components/board/task-board/PriorityFilterDropdown";

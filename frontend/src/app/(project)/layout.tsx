@@ -1,7 +1,5 @@
-// src/app/(project)/layout.tsx
 import { Sidebar } from "@/components/layout/Sidebar";
 import { apiClient } from "@/lib/apiClient";
-import { API_URL } from "@/lib/constants";
 import type { Board } from "@/types/board";
 import { cookies } from "next/headers";
 

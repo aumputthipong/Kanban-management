@@ -1,10 +1,13 @@
+import { useCallback } from "react";
 import { useBoardStore } from "@/store/useBoardStore";
 import { useToastStore } from "@/store/useToastStore";
 import { API_URL } from "@/lib/constants";
 import type { Subtask } from "@/types/board";
 
 export function useSubtaskActions() {
-  const fetchSubtasks = async (cardId: string) => {
+  // Stable identity: consumers put this in effect deps, and a fresh function per
+  // render would refetch on every one. It closes over nothing from this scope.
+  const fetchSubtasks = useCallback(async (cardId: string) => {
     try {
       const response = await fetch(`${API_URL}/cards/${cardId}/subtasks`, {
         method: "GET",
@@ -17,7 +20,7 @@ export function useSubtaskActions() {
     } catch (error) {
       console.error("Error fetching subtasks:", error);
     }
-  };
+  }, []);
 
   const handleAddSubtask = async (cardId: string, title: string) => {
     try {

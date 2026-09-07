@@ -76,8 +76,9 @@ comments in the repo — exactly the ones that prevent outages).
   to be opened.
 - The rule is enforced by a check in `make verify` rather than by review
   discipline — AGENTS.md already carried comment rules and the codebase drifted
-  anyway. The check ships **after** the cleanup PRs, because it would fail
-  against all 272 existing blocks on day one.
+  anyway. It shipped **after** the cleanup, because it would have failed against
+  all 272 existing blocks on day one. It lives in `scripts/check-comment-budget.mjs`
+  and uses only Node built-ins, so it needs no install in CI.
 - Comment density is not what makes this codebase hardest to maintain. 34
   frontend files exceed the 200-line rule AGENTS.md already sets, one of them at
   548 lines. Splitting those is a larger and separate piece of work.

@@ -522,7 +522,7 @@ const docTemplate = `{
                         }
                     },
                     "404": {
-                        "description": "column not found",
+                        "description": "Not Found",
                         "schema": {
                             "$ref": "#/definitions/github_com_aumputthipong_mini-erp-kanban_backend_internal_httputil.ErrorResponse"
                         }
@@ -1356,8 +1356,16 @@ const docTemplate = `{
                 "column_id": {
                     "type": "string"
                 },
+                "description": {
+                    "type": "string",
+                    "maxLength": 5000
+                },
                 "due_date": {
                     "type": "string"
+                },
+                "position": {
+                    "type": "number",
+                    "minimum": 0
                 },
                 "priority": {
                     "type": "string",
@@ -1366,6 +1374,13 @@ const docTemplate = `{
                         "medium",
                         "high"
                     ]
+                },
+                "subtasks": {
+                    "type": "array",
+                    "maxItems": 50,
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "title": {
                     "type": "string",
@@ -1594,6 +1609,14 @@ const docTemplate = `{
                 },
                 "assignee_id": {
                     "type": "string"
+                },
+                "changed_fields": {
+                    "description": "ChangedFields is the client-computed diff, recorded on the activity row so the\nfeed can say what changed without re-reading the previous row.",
+                    "type": "array",
+                    "maxItems": 20,
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "description": {
                     "type": "string",

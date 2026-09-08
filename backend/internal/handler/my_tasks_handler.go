@@ -17,8 +17,9 @@ import (
 // inbox so the UI can render filter chips with totals.
 //
 // Query params:
-//   filter            — all (default) | overdue | today | this_week | no_date
-//   include_unassigned — bool. Solo users without an assignee toggle this on.
+//
+//	filter            — all (default) | overdue | today | this_week | no_date
+//	include_unassigned — bool. Solo users without an assignee toggle this on.
 //
 // @Summary  My work (cross-board)
 // @Tags     my-tasks

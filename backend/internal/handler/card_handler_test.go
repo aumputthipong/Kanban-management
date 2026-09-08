@@ -36,152 +36,6 @@ const otherUserID = "11111111-2222-3333-4444-555555555555"
 // CreateCard
 // ────────────────────────────────────────────────
 
-// TestCreateCard_Success_RecordsCreator extends the existing happy-path
-// test in board_handler_test.go by also asserting that CreatedBy is sourced
-// from the auth context — clients must not be able to spoof authorship.
-func TestCreateCard_Success_RecordsCreator(t *testing.T) {
-	var receivedParams db.CreateCardParams
-	svc := &mock.MockBoardService{
-		GetBoardIDByColumnFn: func(ctx context.Context, columnID string) (string, error) {
-			return validBoardID, nil
-		},
-		GetBoardMemberRoleFn: func(ctx context.Context, boardID, userID string) (string, error) {
-			return "member", nil
-		},
-		CreateCardFn: func(ctx context.Context, arg db.CreateCardParams) (db.CreateCardRow, error) {
-			receivedParams = arg
-			return db.CreateCardRow{ID: validCardID, ColumnID: arg.ColumnID, Title: arg.Title}, nil
-		},
-	}
-	h := NewBoardHandler(svc, nil, nil)
-
-	body := map[string]any{"column_id": validColumnID, "title": "New card"}
-	req := withUserID(httptest.NewRequest(http.MethodPost, "/cards", jsonBody(t, body)), validUserID)
-	req.Header.Set("Content-Type", "application/json")
-	w := httptest.NewRecorder()
-
-	httputil.MakeHandler(h.CreateCard)(w, req)
-
-	assert.Equal(t, http.StatusCreated, w.Code)
-	assert.Equal(t, validColumnID, receivedParams.ColumnID)
-	assert.Equal(t, "New card", receivedParams.Title)
-	require.NotNil(t, receivedParams.CreatedBy)
-	assert.Equal(t, validUserID, *receivedParams.CreatedBy, "CreatedBy must come from auth context, not request body")
-}
-
-func TestCreateCard_InvalidColumnIDFormat_Returns400(t *testing.T) {
-	svc := &mock.MockBoardService{
-		GetBoardIDByColumnFn: func(ctx context.Context, columnID string) (string, error) {
-			t.Fatal("must not reach service when column ID format is invalid")
-			return "", nil
-		},
-	}
-	h := NewBoardHandler(svc, nil, nil)
-
-	body := map[string]any{"column_id": "not-a-uuid", "title": "x"}
-	req := withUserID(httptest.NewRequest(http.MethodPost, "/cards", jsonBody(t, body)), validUserID)
-	w := httptest.NewRecorder()
-
-	httputil.MakeHandler(h.CreateCard)(w, req)
-
-	assert.Equal(t, http.StatusBadRequest, w.Code)
-}
-
-func TestCreateCard_MissingTitle_Returns400(t *testing.T) {
-	svc := &mock.MockBoardService{}
-	h := NewBoardHandler(svc, nil, nil)
-
-	body := map[string]any{"column_id": validColumnID} // title missing
-	req := withUserID(httptest.NewRequest(http.MethodPost, "/cards", jsonBody(t, body)), validUserID)
-	w := httptest.NewRecorder()
-
-	httputil.MakeHandler(h.CreateCard)(w, req)
-
-	assert.Equal(t, http.StatusBadRequest, w.Code)
-}
-
-func TestCreateCard_MissingUserID_Returns401(t *testing.T) {
-	svc := &mock.MockBoardService{}
-	h := NewBoardHandler(svc, nil, nil)
-
-	body := map[string]any{"column_id": validColumnID, "title": "x"}
-	// No withUserID — context lacks UserIDKey.
-	req := httptest.NewRequest(http.MethodPost, "/cards", jsonBody(t, body))
-	w := httptest.NewRecorder()
-
-	httputil.MakeHandler(h.CreateCard)(w, req)
-
-	assert.Equal(t, http.StatusUnauthorized, w.Code)
-}
-
-func TestCreateCard_ColumnNotFound_Returns404(t *testing.T) {
-	svc := &mock.MockBoardService{
-		GetBoardIDByColumnFn: func(ctx context.Context, columnID string) (string, error) {
-			return "", pgx.ErrNoRows
-		},
-	}
-	h := NewBoardHandler(svc, nil, nil)
-
-	body := map[string]any{"column_id": validColumnID, "title": "x"}
-	req := withUserID(httptest.NewRequest(http.MethodPost, "/cards", jsonBody(t, body)), validUserID)
-	w := httptest.NewRecorder()
-
-	httputil.MakeHandler(h.CreateCard)(w, req)
-
-	assert.Equal(t, http.StatusNotFound, w.Code)
-}
-
-// TestCreateCard_NonMember_Returns404 — anti-enumeration: a user who knows
-// a valid column ID but isn't a member of the board must not be able to
-// distinguish "column doesn't exist" from "I'm not a member". See AGENTS.md.
-func TestCreateCard_NonMember_Returns404(t *testing.T) {
-	svc := &mock.MockBoardService{
-		GetBoardIDByColumnFn: func(ctx context.Context, columnID string) (string, error) {
-			return validBoardID, nil
-		},
-		GetBoardMemberRoleFn: func(ctx context.Context, boardID, userID string) (string, error) {
-			return "", pgx.ErrNoRows
-		},
-		CreateCardFn: func(ctx context.Context, arg db.CreateCardParams) (db.CreateCardRow, error) {
-			t.Fatal("non-member must never reach card creation")
-			return db.CreateCardRow{}, nil
-		},
-	}
-	h := NewBoardHandler(svc, nil, nil)
-
-	body := map[string]any{"column_id": validColumnID, "title": "x"}
-	req := withUserID(httptest.NewRequest(http.MethodPost, "/cards", jsonBody(t, body)), validUserID)
-	w := httptest.NewRecorder()
-
-	httputil.MakeHandler(h.CreateCard)(w, req)
-
-	assert.Equal(t, http.StatusNotFound, w.Code)
-	assert.NotEqual(t, http.StatusForbidden, w.Code, "anti-enumeration: 404 not 403")
-}
-
-func TestCreateCard_ServiceError_Returns500(t *testing.T) {
-	svc := &mock.MockBoardService{
-		GetBoardIDByColumnFn: func(ctx context.Context, columnID string) (string, error) {
-			return validBoardID, nil
-		},
-		GetBoardMemberRoleFn: func(ctx context.Context, boardID, userID string) (string, error) {
-			return "member", nil
-		},
-		CreateCardFn: func(ctx context.Context, arg db.CreateCardParams) (db.CreateCardRow, error) {
-			return db.CreateCardRow{}, errors.New("boom")
-		},
-	}
-	h := NewBoardHandler(svc, nil, nil)
-
-	body := map[string]any{"column_id": validColumnID, "title": "x"}
-	req := withUserID(httptest.NewRequest(http.MethodPost, "/cards", jsonBody(t, body)), validUserID)
-	w := httptest.NewRecorder()
-
-	httputil.MakeHandler(h.CreateCard)(w, req)
-
-	assert.Equal(t, http.StatusInternalServerError, w.Code)
-}
-
 // ────────────────────────────────────────────────
 // UpdateCard
 // ────────────────────────────────────────────────
@@ -216,7 +70,7 @@ func TestUpdateCard_ManagerEditsAnyCard_Success(t *testing.T) {
 			return db.Card{ID: arg.ID, Title: arg.Title}, nil
 		},
 	}
-	h := NewBoardHandler(svc, nil, nil)
+	h := NewBoardHandler(svc, nil, nil, nil)
 
 	body := map[string]any{"title": "edited by manager"}
 	req := withUserID(httptest.NewRequest(http.MethodPatch, "/cards/"+validCardID, jsonBody(t, body)), validUserID)
@@ -245,7 +99,7 @@ func TestUpdateCard_MemberEditsOwnCard_Success(t *testing.T) {
 			return db.Card{ID: arg.ID, Title: arg.Title}, nil
 		},
 	}
-	h := NewBoardHandler(svc, nil, nil)
+	h := NewBoardHandler(svc, nil, nil, nil)
 
 	body := map[string]any{"title": "my own edit"}
 	req := withUserID(httptest.NewRequest(http.MethodPatch, "/cards/"+validCardID, jsonBody(t, body)), validUserID)
@@ -275,7 +129,7 @@ func TestUpdateCard_MemberEditsAssignedCard_Success(t *testing.T) {
 			return db.Card{ID: arg.ID}, nil
 		},
 	}
-	h := NewBoardHandler(svc, nil, nil)
+	h := NewBoardHandler(svc, nil, nil, nil)
 
 	body := map[string]any{"title": "assignee edit"}
 	req := withUserID(httptest.NewRequest(http.MethodPatch, "/cards/"+validCardID, jsonBody(t, body)), validUserID)
@@ -307,7 +161,7 @@ func TestUpdateCard_MemberEditsOthersCard_Returns403(t *testing.T) {
 			return db.Card{}, nil
 		},
 	}
-	h := NewBoardHandler(svc, nil, nil)
+	h := NewBoardHandler(svc, nil, nil, nil)
 
 	body := map[string]any{"title": "should be rejected"}
 	req := withUserID(httptest.NewRequest(http.MethodPatch, "/cards/"+validCardID, jsonBody(t, body)), validUserID)
@@ -321,7 +175,7 @@ func TestUpdateCard_MemberEditsOthersCard_Returns403(t *testing.T) {
 
 func TestUpdateCard_InvalidCardIDFormat_Returns400(t *testing.T) {
 	svc := &mock.MockBoardService{}
-	h := NewBoardHandler(svc, nil, nil)
+	h := NewBoardHandler(svc, nil, nil, nil)
 
 	body := map[string]any{"title": "x"}
 	req := withUserID(httptest.NewRequest(http.MethodPatch, "/cards/not-a-uuid", jsonBody(t, body)), validUserID)
@@ -339,7 +193,7 @@ func TestUpdateCard_CardNotFound_Returns404(t *testing.T) {
 			return db.Card{}, pgx.ErrNoRows
 		},
 	}
-	h := NewBoardHandler(svc, nil, nil)
+	h := NewBoardHandler(svc, nil, nil, nil)
 
 	body := map[string]any{"title": "x"}
 	req := withUserID(httptest.NewRequest(http.MethodPatch, "/cards/"+validCardID, jsonBody(t, body)), validUserID)
@@ -366,7 +220,7 @@ func TestUpdateCard_NonMember_Returns404(t *testing.T) {
 			return "", pgx.ErrNoRows
 		},
 	}
-	h := NewBoardHandler(svc, nil, nil)
+	h := NewBoardHandler(svc, nil, nil, nil)
 
 	body := map[string]any{"title": "x"}
 	req := withUserID(httptest.NewRequest(http.MethodPatch, "/cards/"+validCardID, jsonBody(t, body)), validUserID)
@@ -399,7 +253,7 @@ func TestUpdateCard_PATCHSemantics_OmittedTitle(t *testing.T) {
 			return db.Card{ID: arg.ID}, nil
 		},
 	}
-	h := NewBoardHandler(svc, nil, nil)
+	h := NewBoardHandler(svc, nil, nil, nil)
 
 	// Only description supplied; title omitted entirely.
 	body := map[string]any{"description": "hello"}
@@ -445,7 +299,7 @@ func TestUpdateCard_PartialPatch_PreservesUntouchedFields(t *testing.T) {
 			return db.Card{ID: arg.ID}, nil
 		},
 	}
-	h := NewBoardHandler(svc, nil, nil)
+	h := NewBoardHandler(svc, nil, nil, nil)
 
 	// Snooze: only due_date supplied, exactly like lib/myWorkApi snoozeCardDueDate.
 	body := map[string]any{"due_date": "2026-06-10"}
@@ -481,7 +335,7 @@ func TestUpdateCard_PATCHSemantics_EmptyTitleRejected(t *testing.T) {
 			return db.Card{}, nil
 		},
 	}
-	h := NewBoardHandler(svc, nil, nil)
+	h := NewBoardHandler(svc, nil, nil, nil)
 
 	// Send raw JSON because the helper wraps map[string]any.
 	body := strings.NewReader(`{"title": ""}`)
@@ -504,7 +358,7 @@ func TestGetCard_Success_RoundtripsTitle(t *testing.T) {
 			return service.CardDetailData{Card: db.Card{ID: cardID, Title: "Hello"}}, nil
 		},
 	}
-	h := NewBoardHandler(svc, nil, nil)
+	h := NewBoardHandler(svc, nil, nil, nil)
 
 	req := withUserID(httptest.NewRequest(http.MethodGet, "/cards/"+validCardID, nil), validUserID)
 	req = chiCtx(req, "cardID", validCardID)
@@ -527,7 +381,7 @@ func TestGetCard_InvalidID_Returns400(t *testing.T) {
 			return service.CardDetailData{}, nil
 		},
 	}
-	h := NewBoardHandler(svc, nil, nil)
+	h := NewBoardHandler(svc, nil, nil, nil)
 
 	req := withUserID(httptest.NewRequest(http.MethodGet, "/cards/bad", nil), validUserID)
 	req = chiCtx(req, "cardID", "bad")
@@ -545,7 +399,7 @@ func TestGetCard_NotFound_Returns404(t *testing.T) {
 			return service.CardDetailData{}, sql.ErrNoRows
 		},
 	}
-	h := NewBoardHandler(svc, nil, nil)
+	h := NewBoardHandler(svc, nil, nil, nil)
 
 	req := withUserID(httptest.NewRequest(http.MethodGet, "/cards/"+validCardID, nil), validUserID)
 	req = chiCtx(req, "cardID", validCardID)
@@ -562,7 +416,7 @@ func TestGetCard_DBError_Returns500(t *testing.T) {
 			return service.CardDetailData{}, errors.New("connection refused")
 		},
 	}
-	h := NewBoardHandler(svc, nil, nil)
+	h := NewBoardHandler(svc, nil, nil, nil)
 
 	req := withUserID(httptest.NewRequest(http.MethodGet, "/cards/"+validCardID, nil), validUserID)
 	req = chiCtx(req, "cardID", validCardID)

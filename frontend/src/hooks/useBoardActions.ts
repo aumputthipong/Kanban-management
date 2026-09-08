@@ -10,8 +10,8 @@ import { useSubtaskActions } from "./useSubtaskActions";
 export function useBoardActions(boardId: string) {
   return {
     ...useDragActions(),
-    ...useCardActions(boardId),
-    ...useColumnActions(),
+    ...useCardActions(),
+    ...useColumnActions(boardId),
     ...useSubtaskActions(),
   };
 }

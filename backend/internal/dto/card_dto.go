@@ -89,12 +89,18 @@ type MyWorkResponse struct {
 	Counts MyWorkCounts     `json:"counts"`
 }
 
+// CreateCardRequest is the body of POST /api/cards. Position 0 means "append": the
+// service computes one past the current maximum. Subtasks are titles only — the card
+// does not exist yet, and they are inserted in the same transaction.
 type CreateCardRequest struct {
-	ColumnID   string  `json:"column_id"   validate:"required,uuid"`
-	Title      string  `json:"title"       validate:"required,min=1,max=200"`
-	DueDate    *string `json:"due_date"    validate:"omitempty,datetime=2006-01-02"`
-	AssigneeID *string `json:"assignee_id" validate:"omitempty,uuid"`
-	Priority   *string `json:"priority"    validate:"omitempty,oneof=low medium high"`
+	ColumnID    string   `json:"column_id"   validate:"required,uuid"`
+	Title       string   `json:"title"       validate:"required,min=1,max=200"`
+	DueDate     *string  `json:"due_date"    validate:"omitempty,datetime=2006-01-02"`
+	AssigneeID  *string  `json:"assignee_id" validate:"omitempty,uuid"`
+	Priority    *string  `json:"priority"    validate:"omitempty,oneof=low medium high"`
+	Description *string  `json:"description" validate:"omitempty,max=5000"`
+	Position    float64  `json:"position"    validate:"omitempty,gte=0"`
+	Subtasks    []string `json:"subtasks"    validate:"omitempty,max=50,dive,min=1,max=200"`
 }
 
 type UpdateCardRequest struct {
@@ -107,6 +113,9 @@ type UpdateCardRequest struct {
 	TagIDs             *[]string `json:"tag_ids"             validate:"omitempty,dive,uuid"`
 	AcceptanceCriteria *string   `json:"acceptance_criteria" validate:"omitempty,max=10000"`
 	ImplementationNote *string   `json:"implementation_note" validate:"omitempty,max=10000"`
+	// ChangedFields is the client-computed diff, recorded on the activity row so the
+	// feed can say what changed without re-reading the previous row.
+	ChangedFields []string `json:"changed_fields"      validate:"omitempty,max=20,dive,min=1,max=40"`
 }
 
 type CreateTagRequest struct {

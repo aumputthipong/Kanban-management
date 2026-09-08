@@ -19,6 +19,7 @@ type BoardHandler struct {
 	boardService    service.BoardServicer
 	settingsService service.UserSettingsServicer
 	activity        service.ActivityRecorder
+	broadcaster     Broadcaster
 }
 
 // NewBoardHandler wires the board handler. settingsService backs /my-tasks, which reads
@@ -28,11 +29,13 @@ func NewBoardHandler(
 	boardService service.BoardServicer,
 	settingsService service.UserSettingsServicer,
 	activity service.ActivityRecorder,
+	broadcaster Broadcaster,
 ) *BoardHandler {
 	return &BoardHandler{
 		boardService:    boardService,
 		settingsService: settingsService,
 		activity:        activity,
+		broadcaster:     broadcaster,
 	}
 }
 

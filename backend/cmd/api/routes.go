@@ -213,7 +213,7 @@ func setupRoutes(d routerDeps) http.Handler {
 		})
 
 		r.Route("/api/cards", func(r chi.Router) {
-			r.Post("/", httputil.MakeHandler(d.boardHandler.CreateCard))
+			r.Post("/", httputil.MakeHandler(d.boardCmdHandler.CreateCard))
 			r.Patch("/{cardID}", httputil.MakeHandler(d.boardHandler.UpdateCard))
 			r.Get("/{cardID}", httputil.MakeHandler(d.boardHandler.GetCard))
 			r.Delete("/{cardID}", httputil.MakeHandler(d.boardCmdHandler.DeleteCard))

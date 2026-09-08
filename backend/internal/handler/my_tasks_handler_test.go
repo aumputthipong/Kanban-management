@@ -32,7 +32,7 @@ func TestGetMyTasks_ReturnsCardsAndCounts(t *testing.T) {
 			}, nil
 		},
 	}
-	h := NewBoardHandler(svc, nil, nil)
+	h := NewBoardHandler(svc, nil, nil, nil)
 	req := withUserID(httptest.NewRequest(http.MethodGet, "/my-tasks?filter=all", nil), validUserID)
 	w := httptest.NewRecorder()
 
@@ -66,7 +66,7 @@ func TestGetMyTasks_FilterFromQuery_IncludeFromSettings(t *testing.T) {
 			}, nil
 		},
 	}
-	h := NewBoardHandler(svc, settings, nil)
+	h := NewBoardHandler(svc, settings, nil, nil)
 	req := withUserID(
 		httptest.NewRequest(http.MethodGet, "/my-tasks?filter=today&include_unassigned=false", nil),
 		validUserID,
@@ -80,7 +80,7 @@ func TestGetMyTasks_FilterFromQuery_IncludeFromSettings(t *testing.T) {
 }
 
 func TestGetMyTasks_Unauthorized(t *testing.T) {
-	h := NewBoardHandler(&mock.MockBoardService{}, nil, nil)
+	h := NewBoardHandler(&mock.MockBoardService{}, nil, nil, nil)
 	req := httptest.NewRequest(http.MethodGet, "/my-tasks", nil) // no user ctx
 	w := httptest.NewRecorder()
 
@@ -95,7 +95,7 @@ func TestGetMyTasks_ServiceError(t *testing.T) {
 			return service.MyWorkResult{}, errors.New("db down")
 		},
 	}
-	h := NewBoardHandler(svc, nil, nil)
+	h := NewBoardHandler(svc, nil, nil, nil)
 	req := withUserID(httptest.NewRequest(http.MethodGet, "/my-tasks", nil), validUserID)
 	w := httptest.NewRecorder()
 
@@ -120,7 +120,7 @@ func TestCompleteMyTask_Success_RecordsActivity(t *testing.T) {
 	recorder := &spyRecorder{
 		recordAsync: func(p service.RecordParams) { recorded = p },
 	}
-	h := NewBoardHandler(svc, nil, recorder)
+	h := NewBoardHandler(svc, nil, recorder, nil)
 	req := chiCtx(
 		withUserID(httptest.NewRequest(http.MethodPost, "/my-tasks/"+validCardID+"/complete", nil), validUserID),
 		"cardID", validCardID,
@@ -140,7 +140,7 @@ func TestCompleteMyTask_NotAssignee_404(t *testing.T) {
 			return service.CompleteMyTaskResult{OK: false}, nil
 		},
 	}
-	h := NewBoardHandler(svc, nil, nil)
+	h := NewBoardHandler(svc, nil, nil, nil)
 	req := chiCtx(
 		withUserID(httptest.NewRequest(http.MethodPost, "/my-tasks/"+validCardID+"/complete", nil), validUserID),
 		"cardID", validCardID,

@@ -39,6 +39,16 @@ func NewHub(boardCmd *service.BoardCommandService, activities *service.ActivityS
 	}
 }
 
+// Broadcast queues a message for every client in a board's room. Safe from any
+// goroutine, and a no-op once the hub has shut down — REST handlers call this
+// after their mutation commits, so a shutdown must not block them.
+func (h *Hub) Broadcast(boardID string, message []byte) {
+	select {
+	case h.broadcast <- BroadcastMessage{BoardID: boardID, Message: message}:
+	case <-h.stop:
+	}
+}
+
 // Shutdown closes every active WS connection and stops the hub goroutine.
 // Idempotent — safe to call once at SIGTERM. Pumps observe a closed `send`
 // channel and exit; ReadPump returns when the underlying conn closes.

@@ -47,8 +47,8 @@ func NewBoardCommandHandler(
 // emit sends a message shaped exactly like the WebSocket handlers' own, so existing
 // frontend listeners need no change. Best-effort like the audit row: the mutation has
 // already committed and must not fail because fan-out did.
-func (h *BoardCommandHandler) emit(boardID, msgType string, payload map[string]any) {
-	if h.broadcaster == nil {
+func emitTo(b Broadcaster, boardID, msgType string, payload map[string]any) {
+	if b == nil {
 		return
 	}
 	msg, err := json.Marshal(map[string]any{"type": msgType, "payload": payload})
@@ -56,7 +56,11 @@ func (h *BoardCommandHandler) emit(boardID, msgType string, payload map[string]a
 		slog.Error("marshal broadcast failed", "type", msgType, "board_id", boardID, "err", err)
 		return
 	}
-	h.broadcaster.Broadcast(boardID, msg)
+	b.Broadcast(boardID, msg)
+}
+
+func (h *BoardCommandHandler) emit(boardID, msgType string, payload map[string]any) {
+	emitTo(h.broadcaster, boardID, msgType, payload)
 }
 
 func (h *BoardCommandHandler) record(p service.RecordParams) {

@@ -113,6 +113,9 @@ type UpdateCardRequest struct {
 	TagIDs             *[]string `json:"tag_ids"             validate:"omitempty,dive,uuid"`
 	AcceptanceCriteria *string   `json:"acceptance_criteria" validate:"omitempty,max=10000"`
 	ImplementationNote *string   `json:"implementation_note" validate:"omitempty,max=10000"`
+	// ChangedFields is the client-computed diff, recorded on the activity row so the
+	// feed can say what changed without re-reading the previous row.
+	ChangedFields []string `json:"changed_fields"      validate:"omitempty,max=20,dive,min=1,max=40"`
 }
 
 type CreateTagRequest struct {

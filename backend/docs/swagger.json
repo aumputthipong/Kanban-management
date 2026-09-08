@@ -1604,6 +1604,14 @@
                 "assignee_id": {
                     "type": "string"
                 },
+                "changed_fields": {
+                    "description": "ChangedFields is the client-computed diff, recorded on the activity row so the\nfeed can say what changed without re-reading the previous row.",
+                    "type": "array",
+                    "maxItems": 20,
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "description": {
                     "type": "string",
                     "maxLength": 5000

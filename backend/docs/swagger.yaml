@@ -314,6 +314,14 @@ definitions:
         type: string
       assignee_id:
         type: string
+      changed_fields:
+        description: |-
+          ChangedFields is the client-computed diff, recorded on the activity row so the
+          feed can say what changed without re-reading the previous row.
+        items:
+          type: string
+        maxItems: 20
+        type: array
       description:
         maxLength: 5000
         type: string

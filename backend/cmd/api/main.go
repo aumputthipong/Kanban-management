@@ -169,7 +169,7 @@ func run(ctx context.Context, cfg config) error {
 	inviteService := service.NewInviteService(pool, queries)
 
 	subtaskHandler := handler.NewSubtaskHandler(subtaskService)
-	boardHandler := handler.NewBoardHandler(boardService, settingsService, activityService)
+	boardHandler := handler.NewBoardHandler(boardService, settingsService, activityService, hub)
 	boardCmdHandler := handler.NewBoardCommandHandler(boardCmdService, boardService, activityService, hub)
 	tagHandler := handler.NewTagHandler(tagService)
 	activityHandler := handler.NewActivityHandler(activityService)

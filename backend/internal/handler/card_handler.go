@@ -135,6 +135,26 @@ func (h *BoardHandler) UpdateCard(w http.ResponseWriter, r *http.Request) error 
 		return httputil.NewAPIError(http.StatusInternalServerError, "Failed to update card", err)
 	}
 
+	// NewBoardHandler documents a nil activity as "mutation works, audit skipped".
+	if h.activity != nil {
+		h.activity.RecordAsync(service.RecordParams{
+			BoardID: boardID, ActorID: userIDStr,
+			EventType: service.EventCardUpdated, EntityType: service.EntityCard, EntityID: &cardIDStr,
+			Payload: service.CardUpdatedPayload{Title: card.Title, Fields: req.ChangedFields},
+		})
+	}
+
+	// Same payload the WS path sent, so existing listeners are unchanged.
+	emitTo(h.broadcaster, boardID, "CARD_UPDATED", map[string]any{
+		"card_id":         cardIDStr,
+		"title":           card.Title,
+		"description":     card.Description,
+		"due_date":        req.DueDate,
+		"assignee_id":     card.AssigneeID,
+		"priority":        card.Priority,
+		"estimated_hours": card.EstimatedHours,
+	})
+
 	httputil.RespondJSON(w, http.StatusOK, card)
 	return nil
 }

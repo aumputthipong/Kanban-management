@@ -1,23 +1,29 @@
 import { useBoardStore } from "@/store/useBoardStore";
-import { useBoardWebSocket } from "@/contexts/BoardWebSocketContext";
 import { POSITION_GAP } from "@/utils/boardPosition";
 import { apiClient, ApiError } from "@/lib/apiClient";
 import { useToastStore } from "@/store/useToastStore";
-import { WS_EVENT } from "@/types/wsEvents";
-import type { Card, CardUpdateForm } from "@/types/board";
+import type { Card, CardUpdateForm, Column } from "@/types/board";
 
-export function useCardActions(boardId: string) {
-  const { sendMessage } = useBoardWebSocket();
+// Restores the board to `snapshot` and tells the user the write did not land. 403 is
+// skipped because apiClient has already toasted it.
+function revertWith(snapshot: Column[], message: string) {
+  return (err: unknown) => {
+    useBoardStore.getState().setColumns(snapshot);
+    if (err instanceof ApiError && err.status === 403) return;
+    useToastStore.getState().show({ message, duration: 4000 });
+  };
+}
+
+export function useCardActions() {
 
   const handleToggleDone = (card: Card) => {
-    sendMessage({
-      type: WS_EVENT.CardDoneToggled,
-      payload: {
-        card_id: card.id,
-        board_id: boardId,
-        is_done: !card.is_done,
-      },
-    });
+    const snapshot = useBoardStore.getState().columns;
+    const isDone = !card.is_done;
+    // Tick the box immediately; the move into (or out of) the DONE column arrives
+    // with the broadcast, which this client receives like any other.
+    useBoardStore.getState().updateCard({ ...card, is_done: isDone });
+    apiClient(`/cards/${card.id}/done`, { method: "PATCH", data: { is_done: isDone } })
+      .catch(revertWith(snapshot, "อัปเดตสถานะไม่สำเร็จ"));
   };
 
   // opts lets the Create Task modal seed assignee/priority/due/description/subtasks
@@ -40,9 +46,11 @@ export function useCardActions(boardId: string) {
     const lastCard = sorted[sorted.length - 1];
     const newPosition = lastCard ? lastCard.position + POSITION_GAP : POSITION_GAP;
 
-    sendMessage({
-      type: WS_EVENT.CardCreated,
-      payload: {
+    // Nothing is applied optimistically: the server assigns the id, and a card
+    // without one cannot be edited or dragged. The response carries it.
+    apiClient<{ id: string }>("/cards", {
+      method: "POST",
+      data: {
         column_id: columnId,
         title,
         position: newPosition,
@@ -52,7 +60,34 @@ export function useCardActions(boardId: string) {
         ...(opts?.description ? { description: opts.description } : {}),
         ...(opts?.subtasks && opts.subtasks.length > 0 ? { subtasks: opts.subtasks } : {}),
       },
-    });
+    })
+      .then((created) => {
+        useBoardStore.getState().addCardToStore({
+          id: created.id,
+          column_id: columnId,
+          title,
+          position: newPosition,
+          description: opts?.description ?? null,
+          due_date: opts?.dueDate ?? null,
+          assignee_id: opts?.assigneeId ?? null,
+          assignee_name:
+            useBoardStore
+              .getState()
+              .boardMembers.find((m) => m.user_id === opts?.assigneeId)?.full_name ?? null,
+          priority: (opts?.priority as Card["priority"]) ?? null,
+          estimated_hours: null,
+          is_done: false,
+          completed_at: null,
+          created_at: null,
+          created_by: useBoardStore.getState().currentUserId,
+          total_subtasks: opts?.subtasks?.length ?? 0,
+          completed_subtasks: 0,
+        });
+      })
+      .catch((err) => {
+        if (err instanceof ApiError && err.status === 403) return;
+        useToastStore.getState().show({ message: "สร้างการ์ดไม่สำเร็จ", duration: 4000 });
+      });
   };
 
   const handleChangeColumn = (cardId: string, toColumnId: string) => {
@@ -69,24 +104,20 @@ export function useCardActions(boardId: string) {
     const last = sorted[sorted.length - 1];
     const newPosition = last ? last.position + POSITION_GAP : POSITION_GAP;
 
+    const snapshot = useBoardStore.getState().columns;
     useBoardStore.getState().moveCard(cardId, toColumnId, newPosition);
-
-    sendMessage({
-      type: WS_EVENT.CardMoved,
-      payload: {
-        card_id: cardId,
-        old_column_id: currentCol.id,
-        new_column_id: toColumnId,
-        position: newPosition,
-      },
-    });
+    apiClient(`/cards/${cardId}/move`, {
+      method: "PATCH",
+      data: { column_id: toColumnId, position: newPosition },
+    }).catch(revertWith(snapshot, "ย้ายการ์ดไม่สำเร็จ"));
   };
 
   const handleDeleteCard = (cardId: string) => {
-    sendMessage({
-      type: WS_EVENT.CardDeleted,
-      payload: { card_id: cardId },
-    });
+    const snapshot = useBoardStore.getState().columns;
+    useBoardStore.getState().removeCardFromStore(cardId);
+    apiClient(`/cards/${cardId}`, { method: "DELETE" }).catch(
+      revertWith(snapshot, "ลบการ์ดไม่สำเร็จ"),
+    );
   };
 
   const handleUpdateCard = (cardId: string, form: CardUpdateForm) => {
@@ -139,6 +170,7 @@ export function useCardActions(boardId: string) {
       priority: string | null;
       estimated_hours: number | null;
       tag_ids: string[];
+      changed_fields: string[];
       acceptance_criteria?: string;
       implementation_note?: string;
     };
@@ -150,6 +182,7 @@ export function useCardActions(boardId: string) {
       priority: form.priority || null,
       estimated_hours: form.estimated_hours ? parseFloat(form.estimated_hours) : null,
       tag_ids: form.tags.map((t) => t.id),
+      changed_fields: changedFields,
     };
     if (original) {
       if (form.acceptance_criteria !== (original.acceptance_criteria ?? "")) {
@@ -169,21 +202,6 @@ export function useCardActions(boardId: string) {
         message: "บันทึกการ์ดไม่สำเร็จ — ลองอีกครั้ง",
         duration: 4000,
       });
-    });
-
-    sendMessage({
-      type: WS_EVENT.CardUpdated,
-      payload: {
-        card_id: cardId,
-        title: form.title,
-        description: form.description || null,
-        due_date: form.due_date || null,
-        assignee_id: newAssigneeId,
-        assignee_name: newAssigneeName,
-        priority: form.priority || null,
-        estimated_hours: form.estimated_hours ? parseFloat(form.estimated_hours) : null,
-        changed_fields: changedFields,
-      },
     });
   };
 

@@ -70,7 +70,7 @@ func TestUpdateCard_ManagerEditsAnyCard_Success(t *testing.T) {
 			return db.Card{ID: arg.ID, Title: arg.Title}, nil
 		},
 	}
-	h := NewBoardHandler(svc, nil, nil)
+	h := NewBoardHandler(svc, nil, nil, nil)
 
 	body := map[string]any{"title": "edited by manager"}
 	req := withUserID(httptest.NewRequest(http.MethodPatch, "/cards/"+validCardID, jsonBody(t, body)), validUserID)
@@ -99,7 +99,7 @@ func TestUpdateCard_MemberEditsOwnCard_Success(t *testing.T) {
 			return db.Card{ID: arg.ID, Title: arg.Title}, nil
 		},
 	}
-	h := NewBoardHandler(svc, nil, nil)
+	h := NewBoardHandler(svc, nil, nil, nil)
 
 	body := map[string]any{"title": "my own edit"}
 	req := withUserID(httptest.NewRequest(http.MethodPatch, "/cards/"+validCardID, jsonBody(t, body)), validUserID)
@@ -129,7 +129,7 @@ func TestUpdateCard_MemberEditsAssignedCard_Success(t *testing.T) {
 			return db.Card{ID: arg.ID}, nil
 		},
 	}
-	h := NewBoardHandler(svc, nil, nil)
+	h := NewBoardHandler(svc, nil, nil, nil)
 
 	body := map[string]any{"title": "assignee edit"}
 	req := withUserID(httptest.NewRequest(http.MethodPatch, "/cards/"+validCardID, jsonBody(t, body)), validUserID)
@@ -161,7 +161,7 @@ func TestUpdateCard_MemberEditsOthersCard_Returns403(t *testing.T) {
 			return db.Card{}, nil
 		},
 	}
-	h := NewBoardHandler(svc, nil, nil)
+	h := NewBoardHandler(svc, nil, nil, nil)
 
 	body := map[string]any{"title": "should be rejected"}
 	req := withUserID(httptest.NewRequest(http.MethodPatch, "/cards/"+validCardID, jsonBody(t, body)), validUserID)
@@ -175,7 +175,7 @@ func TestUpdateCard_MemberEditsOthersCard_Returns403(t *testing.T) {
 
 func TestUpdateCard_InvalidCardIDFormat_Returns400(t *testing.T) {
 	svc := &mock.MockBoardService{}
-	h := NewBoardHandler(svc, nil, nil)
+	h := NewBoardHandler(svc, nil, nil, nil)
 
 	body := map[string]any{"title": "x"}
 	req := withUserID(httptest.NewRequest(http.MethodPatch, "/cards/not-a-uuid", jsonBody(t, body)), validUserID)
@@ -193,7 +193,7 @@ func TestUpdateCard_CardNotFound_Returns404(t *testing.T) {
 			return db.Card{}, pgx.ErrNoRows
 		},
 	}
-	h := NewBoardHandler(svc, nil, nil)
+	h := NewBoardHandler(svc, nil, nil, nil)
 
 	body := map[string]any{"title": "x"}
 	req := withUserID(httptest.NewRequest(http.MethodPatch, "/cards/"+validCardID, jsonBody(t, body)), validUserID)
@@ -220,7 +220,7 @@ func TestUpdateCard_NonMember_Returns404(t *testing.T) {
 			return "", pgx.ErrNoRows
 		},
 	}
-	h := NewBoardHandler(svc, nil, nil)
+	h := NewBoardHandler(svc, nil, nil, nil)
 
 	body := map[string]any{"title": "x"}
 	req := withUserID(httptest.NewRequest(http.MethodPatch, "/cards/"+validCardID, jsonBody(t, body)), validUserID)
@@ -253,7 +253,7 @@ func TestUpdateCard_PATCHSemantics_OmittedTitle(t *testing.T) {
 			return db.Card{ID: arg.ID}, nil
 		},
 	}
-	h := NewBoardHandler(svc, nil, nil)
+	h := NewBoardHandler(svc, nil, nil, nil)
 
 	// Only description supplied; title omitted entirely.
 	body := map[string]any{"description": "hello"}
@@ -299,7 +299,7 @@ func TestUpdateCard_PartialPatch_PreservesUntouchedFields(t *testing.T) {
 			return db.Card{ID: arg.ID}, nil
 		},
 	}
-	h := NewBoardHandler(svc, nil, nil)
+	h := NewBoardHandler(svc, nil, nil, nil)
 
 	// Snooze: only due_date supplied, exactly like lib/myWorkApi snoozeCardDueDate.
 	body := map[string]any{"due_date": "2026-06-10"}
@@ -335,7 +335,7 @@ func TestUpdateCard_PATCHSemantics_EmptyTitleRejected(t *testing.T) {
 			return db.Card{}, nil
 		},
 	}
-	h := NewBoardHandler(svc, nil, nil)
+	h := NewBoardHandler(svc, nil, nil, nil)
 
 	// Send raw JSON because the helper wraps map[string]any.
 	body := strings.NewReader(`{"title": ""}`)
@@ -358,7 +358,7 @@ func TestGetCard_Success_RoundtripsTitle(t *testing.T) {
 			return service.CardDetailData{Card: db.Card{ID: cardID, Title: "Hello"}}, nil
 		},
 	}
-	h := NewBoardHandler(svc, nil, nil)
+	h := NewBoardHandler(svc, nil, nil, nil)
 
 	req := withUserID(httptest.NewRequest(http.MethodGet, "/cards/"+validCardID, nil), validUserID)
 	req = chiCtx(req, "cardID", validCardID)
@@ -381,7 +381,7 @@ func TestGetCard_InvalidID_Returns400(t *testing.T) {
 			return service.CardDetailData{}, nil
 		},
 	}
-	h := NewBoardHandler(svc, nil, nil)
+	h := NewBoardHandler(svc, nil, nil, nil)
 
 	req := withUserID(httptest.NewRequest(http.MethodGet, "/cards/bad", nil), validUserID)
 	req = chiCtx(req, "cardID", "bad")
@@ -399,7 +399,7 @@ func TestGetCard_NotFound_Returns404(t *testing.T) {
 			return service.CardDetailData{}, sql.ErrNoRows
 		},
 	}
-	h := NewBoardHandler(svc, nil, nil)
+	h := NewBoardHandler(svc, nil, nil, nil)
 
 	req := withUserID(httptest.NewRequest(http.MethodGet, "/cards/"+validCardID, nil), validUserID)
 	req = chiCtx(req, "cardID", validCardID)
@@ -416,7 +416,7 @@ func TestGetCard_DBError_Returns500(t *testing.T) {
 			return service.CardDetailData{}, errors.New("connection refused")
 		},
 	}
-	h := NewBoardHandler(svc, nil, nil)
+	h := NewBoardHandler(svc, nil, nil, nil)
 
 	req := withUserID(httptest.NewRequest(http.MethodGet, "/cards/"+validCardID, nil), validUserID)
 	req = chiCtx(req, "cardID", validCardID)

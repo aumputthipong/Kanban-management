@@ -1,8 +1,8 @@
 import { DragEndEvent, DragOverEvent } from "@dnd-kit/core";
 import { useRef } from "react";
 import { useBoardStore } from "@/store/useBoardStore";
-import { useBoardWebSocket } from "@/contexts/BoardWebSocketContext";
-import { WS_EVENT } from "@/types/wsEvents";
+import { apiClient, ApiError } from "@/lib/apiClient";
+import { useToastStore } from "@/store/useToastStore";
 import {
   POSITION_GAP,
   resolveOverFromColumns,
@@ -17,7 +17,6 @@ import {
 export function useDragActions() {
   // Action only — selecting board state here re-renders the card modal on every mutation.
   const moveCard = useBoardStore((s) => s.moveCard);
-  const { sendMessage } = useBoardWebSocket();
 
   // ref, not state — a re-render per pointer move would re-fire the dragOver move.
   const dragOverColumnRef = useRef<string | null>(null);
@@ -64,7 +63,6 @@ export function useDragActions() {
     if (!over || active.id === over.id) return;
 
     const activeCardId = active.id as string;
-    const originalColumnId = active.data.current?.currentColumnId as string;
 
     const freshColumns = useBoardStore.getState().columns;
     const resolved = resolveOverFromColumns(freshColumns, over.id as string);
@@ -89,16 +87,18 @@ export function useDragActions() {
       placeAfter,
     );
 
+    // Snapshot before the commit, not before the dragOver preview: the preview has
+    // already moved the card, and reverting to pre-drag state would fight the pointer.
+    const snapshot = useBoardStore.getState().columns;
     moveCard(activeCardId, overColumnId, newPosition);
 
-    sendMessage({
-      type: WS_EVENT.CardMoved,
-      payload: {
-        card_id: activeCardId,
-        old_column_id: originalColumnId,
-        new_column_id: overColumnId,
-        position: newPosition,
-      },
+    apiClient(`/cards/${activeCardId}/move`, {
+      method: "PATCH",
+      data: { column_id: overColumnId, position: newPosition },
+    }).catch((err) => {
+      useBoardStore.getState().setColumns(snapshot);
+      if (err instanceof ApiError && err.status === 403) return;
+      useToastStore.getState().show({ message: "ย้ายการ์ดไม่สำเร็จ", duration: 4000 });
     });
   };
 

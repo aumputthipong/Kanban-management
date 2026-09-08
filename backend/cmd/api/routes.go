@@ -24,6 +24,7 @@ import (
 type routerDeps struct {
 	boardService    service.BoardServicer
 	boardHandler    *handler.BoardHandler
+	boardCmdHandler *handler.BoardCommandHandler
 	authHandler     *handler.AuthHandler
 	oauthHandler    *handler.OAuthHandler
 	subtaskHandler  *handler.SubtaskHandler
@@ -135,6 +136,7 @@ func setupRoutes(d routerDeps) http.Handler {
 
 				r.Get("/", httputil.MakeHandler(d.boardHandler.GetBoardData))
 				r.Get("/activities", httputil.MakeHandler(d.activityHandler.ListByBoard))
+				r.Post("/columns", httputil.MakeHandler(d.boardCmdHandler.CreateColumn))
 
 				r.With(middleware.RequireBoardRole(core.RoleManager)).
 					Patch("/", httputil.MakeHandler(d.boardHandler.UpdateBoard))
@@ -203,10 +205,20 @@ func setupRoutes(d routerDeps) http.Handler {
 			r.Delete("/", httputil.MakeHandler(d.planningHandler.DeleteComment))
 		})
 
+		// Board writes go through REST and broadcast from the handler; the WS path
+		// keeps its handlers for older clients. See issue #197.
+		r.Route("/api/columns/{columnID}", func(r chi.Router) {
+			r.Patch("/", httputil.MakeHandler(d.boardCmdHandler.UpdateColumn))
+			r.Delete("/", httputil.MakeHandler(d.boardCmdHandler.DeleteColumn))
+		})
+
 		r.Route("/api/cards", func(r chi.Router) {
 			r.Post("/", httputil.MakeHandler(d.boardHandler.CreateCard))
 			r.Patch("/{cardID}", httputil.MakeHandler(d.boardHandler.UpdateCard))
 			r.Get("/{cardID}", httputil.MakeHandler(d.boardHandler.GetCard))
+			r.Delete("/{cardID}", httputil.MakeHandler(d.boardCmdHandler.DeleteCard))
+			r.Patch("/{cardID}/move", httputil.MakeHandler(d.boardCmdHandler.MoveCard))
+			r.Patch("/{cardID}/done", httputil.MakeHandler(d.boardCmdHandler.ToggleCardDone))
 			r.Get("/{cardID}/source", httputil.MakeHandler(d.planningHandler.GetCardSource))
 			r.Route("/{cardID}/subtasks", func(r chi.Router) {
 				r.Post("/", httputil.MakeHandler(d.subtaskHandler.CreateSubtask))

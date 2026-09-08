@@ -150,12 +150,39 @@ definitions:
     - column_id
     - title
     type: object
+  github_com_aumputthipong_mini-erp-kanban_backend_internal_dto.CreateColumnRequest:
+    properties:
+      category:
+        enum:
+        - TODO
+        - DONE
+        type: string
+      color:
+        type: string
+      title:
+        maxLength: 100
+        minLength: 1
+        type: string
+    required:
+    - category
+    - title
+    type: object
   github_com_aumputthipong_mini-erp-kanban_backend_internal_dto.MemberSummary:
     properties:
       full_name:
         type: string
       user_id:
         type: string
+    type: object
+  github_com_aumputthipong_mini-erp-kanban_backend_internal_dto.MoveCardRequest:
+    properties:
+      column_id:
+        type: string
+      position:
+        type: number
+    required:
+    - column_id
+    - position
     type: object
   github_com_aumputthipong_mini-erp-kanban_backend_internal_dto.MyTaskResponse:
     properties:
@@ -234,6 +261,13 @@ definitions:
       name:
         type: string
     type: object
+  github_com_aumputthipong_mini-erp-kanban_backend_internal_dto.ToggleCardDoneRequest:
+    properties:
+      is_done:
+        type: boolean
+    required:
+    - is_done
+    type: object
   github_com_aumputthipong_mini-erp-kanban_backend_internal_dto.UpdateBoardRequest:
     properties:
       budget:
@@ -295,6 +329,23 @@ definitions:
         maxLength: 200
         minLength: 1
         type: string
+    type: object
+  github_com_aumputthipong_mini-erp-kanban_backend_internal_dto.UpdateColumnRequest:
+    properties:
+      category:
+        enum:
+        - TODO
+        - DONE
+        type: string
+      color:
+        type: string
+      title:
+        maxLength: 100
+        minLength: 1
+        type: string
+    required:
+    - category
+    - title
     type: object
   github_com_aumputthipong_mini-erp-kanban_backend_internal_dto.UpdateUserSettingsRequest:
     properties:
@@ -654,6 +705,42 @@ paths:
       summary: Update board
       tags:
       - boards
+  /api/boards/{boardID}/columns:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Board UUID
+        in: path
+        name: boardID
+        required: true
+        type: string
+      - description: Title + category
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_aumputthipong_mini-erp-kanban_backend_internal_dto.CreateColumnRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/github_com_aumputthipong_mini-erp-kanban_backend_internal_dto.ColumnResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_aumputthipong_mini-erp-kanban_backend_internal_httputil.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_aumputthipong_mini-erp-kanban_backend_internal_httputil.ErrorResponse'
+      security:
+      - CookieAuth: []
+      summary: Create column
+      tags:
+      - columns
   /api/cards:
     post:
       consumes:
@@ -686,6 +773,27 @@ paths:
       tags:
       - cards
   /api/cards/{cardID}:
+    delete:
+      parameters:
+      - description: Card UUID
+        in: path
+        name: cardID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_aumputthipong_mini-erp-kanban_backend_internal_httputil.ErrorResponse'
+      security:
+      - CookieAuth: []
+      summary: Delete card
+      tags:
+      - cards
     get:
       parameters:
       - description: Card UUID
@@ -744,6 +852,129 @@ paths:
       summary: Update card
       tags:
       - cards
+  /api/cards/{cardID}/done:
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: Card UUID
+        in: path
+        name: cardID
+        required: true
+        type: string
+      - description: Desired done state
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_aumputthipong_mini-erp-kanban_backend_internal_dto.ToggleCardDoneRequest'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_aumputthipong_mini-erp-kanban_backend_internal_httputil.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_aumputthipong_mini-erp-kanban_backend_internal_httputil.ErrorResponse'
+      security:
+      - CookieAuth: []
+      summary: Toggle card done
+      tags:
+      - cards
+  /api/cards/{cardID}/move:
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: Card UUID
+        in: path
+        name: cardID
+        required: true
+        type: string
+      - description: Target column + position
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_aumputthipong_mini-erp-kanban_backend_internal_dto.MoveCardRequest'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_aumputthipong_mini-erp-kanban_backend_internal_httputil.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_aumputthipong_mini-erp-kanban_backend_internal_httputil.ErrorResponse'
+      security:
+      - CookieAuth: []
+      summary: Move card
+      tags:
+      - cards
+  /api/columns/{columnID}:
+    delete:
+      parameters:
+      - description: Column UUID
+        in: path
+        name: columnID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_aumputthipong_mini-erp-kanban_backend_internal_httputil.ErrorResponse'
+      security:
+      - CookieAuth: []
+      summary: Delete column
+      tags:
+      - columns
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: Column UUID
+        in: path
+        name: columnID
+        required: true
+        type: string
+      - description: Title + category (+ colour)
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_aumputthipong_mini-erp-kanban_backend_internal_dto.UpdateColumnRequest'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_aumputthipong_mini-erp-kanban_backend_internal_httputil.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_aumputthipong_mini-erp-kanban_backend_internal_httputil.ErrorResponse'
+      security:
+      - CookieAuth: []
+      summary: Update column
+      tags:
+      - columns
   /api/me/settings:
     get:
       produces:

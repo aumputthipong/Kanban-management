@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"net/http"
@@ -18,10 +19,10 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// requireBoardMembership checks that userID is a member of boardID and returns
-// the role, mirroring the RequireBoardMember middleware: non-members get 404.
-func (h *BoardHandler) requireBoardMembership(r *http.Request, boardID, userID string) (core.BoardRole, *httputil.APIError) {
-	role, err := h.boardService.GetBoardMemberRole(r.Context(), boardID, userID)
+// boardMembership checks that userID is a member of boardID and returns the role,
+// mirroring the RequireBoardMember middleware: non-members get 404, never 403.
+func boardMembership(ctx context.Context, svc service.BoardServicer, boardID, userID string) (core.BoardRole, *httputil.APIError) {
+	role, err := svc.GetBoardMemberRole(ctx, boardID, userID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return "", httputil.NewAPIError(http.StatusNotFound, "Not found", nil)
@@ -29,6 +30,10 @@ func (h *BoardHandler) requireBoardMembership(r *http.Request, boardID, userID s
 		return "", httputil.NewAPIError(http.StatusInternalServerError, "Failed to check board access", err)
 	}
 	return core.BoardRole(role), nil
+}
+
+func (h *BoardHandler) requireBoardMembership(r *http.Request, boardID, userID string) (core.BoardRole, *httputil.APIError) {
+	return boardMembership(r.Context(), h.boardService, boardID, userID)
 }
 
 // CreateCard creates a card in a column. Caller must be a member of the

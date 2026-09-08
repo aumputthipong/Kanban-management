@@ -134,3 +134,17 @@ type TagServicer interface {
 	CreateTag(ctx context.Context, boardID, name, color string) (db.Tag, error)
 	DeleteTag(ctx context.Context, boardID, tagID string) error
 }
+
+// BoardCommandServicer is the seam the REST write path depends on. It is the same
+// service the WebSocket handlers use — REST persists and broadcasts, WS only
+// broadcasts. See docs/adr/0003 and issue #197.
+type BoardCommandServicer interface {
+	VerifyCardInBoard(ctx context.Context, cardID, boardID string) error
+	VerifyColumnInBoard(ctx context.Context, columnID, boardID string) error
+	MoveCard(ctx context.Context, cardID, newColumnID string, position float64) (MoveCardResult, error)
+	DeleteCard(ctx context.Context, cardID string) (string, error)
+	ToggleCardDone(ctx context.Context, cardID, boardID string, isDone bool) (ToggleCardDoneResult, error)
+	CreateColumn(ctx context.Context, boardID, title, category string, color *string) (db.CreateColumnRow, error)
+	DeleteColumn(ctx context.Context, columnID string) error
+	UpdateColumn(ctx context.Context, p UpdateColumnParams) error
+}

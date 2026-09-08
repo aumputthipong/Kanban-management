@@ -423,6 +423,63 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/boards/{boardID}/columns": {
+            "post": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "columns"
+                ],
+                "summary": "Create column",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Board UUID",
+                        "name": "boardID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Title + category",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_aumputthipong_mini-erp-kanban_backend_internal_dto.CreateColumnRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_aumputthipong_mini-erp-kanban_backend_internal_dto.ColumnResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_aumputthipong_mini-erp-kanban_backend_internal_httputil.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_aumputthipong_mini-erp-kanban_backend_internal_httputil.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/cards": {
             "post": {
                 "security": [
@@ -511,6 +568,40 @@ const docTemplate = `{
                     }
                 }
             },
+            "delete": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "cards"
+                ],
+                "summary": "Delete card",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Card UUID",
+                        "name": "cardID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_aumputthipong_mini-erp-kanban_backend_internal_httputil.ErrorResponse"
+                        }
+                    }
+                }
+            },
             "patch": {
                 "security": [
                     {
@@ -551,6 +642,202 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/github_com_aumputthipong_mini-erp-kanban_backend_internal_dto.CardResponse"
                         }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_aumputthipong_mini-erp-kanban_backend_internal_httputil.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_aumputthipong_mini-erp-kanban_backend_internal_httputil.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/cards/{cardID}/done": {
+            "patch": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "cards"
+                ],
+                "summary": "Toggle card done",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Card UUID",
+                        "name": "cardID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Desired done state",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_aumputthipong_mini-erp-kanban_backend_internal_dto.ToggleCardDoneRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_aumputthipong_mini-erp-kanban_backend_internal_httputil.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_aumputthipong_mini-erp-kanban_backend_internal_httputil.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/cards/{cardID}/move": {
+            "patch": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "cards"
+                ],
+                "summary": "Move card",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Card UUID",
+                        "name": "cardID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Target column + position",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_aumputthipong_mini-erp-kanban_backend_internal_dto.MoveCardRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_aumputthipong_mini-erp-kanban_backend_internal_httputil.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_aumputthipong_mini-erp-kanban_backend_internal_httputil.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/columns/{columnID}": {
+            "delete": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "columns"
+                ],
+                "summary": "Delete column",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Column UUID",
+                        "name": "columnID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_aumputthipong_mini-erp-kanban_backend_internal_httputil.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "CookieAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "columns"
+                ],
+                "summary": "Update column",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Column UUID",
+                        "name": "columnID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Title + category (+ colour)",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_aumputthipong_mini-erp-kanban_backend_internal_dto.UpdateColumnRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
                     },
                     "400": {
                         "description": "Bad Request",
@@ -1087,6 +1374,30 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_aumputthipong_mini-erp-kanban_backend_internal_dto.CreateColumnRequest": {
+            "type": "object",
+            "required": [
+                "category",
+                "title"
+            ],
+            "properties": {
+                "category": {
+                    "type": "string",
+                    "enum": [
+                        "TODO",
+                        "DONE"
+                    ]
+                },
+                "color": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string",
+                    "maxLength": 100,
+                    "minLength": 1
+                }
+            }
+        },
         "github_com_aumputthipong_mini-erp-kanban_backend_internal_dto.MemberSummary": {
             "type": "object",
             "properties": {
@@ -1095,6 +1406,21 @@ const docTemplate = `{
                 },
                 "user_id": {
                     "type": "string"
+                }
+            }
+        },
+        "github_com_aumputthipong_mini-erp-kanban_backend_internal_dto.MoveCardRequest": {
+            "type": "object",
+            "required": [
+                "column_id",
+                "position"
+            ],
+            "properties": {
+                "column_id": {
+                    "type": "string"
+                },
+                "position": {
+                    "type": "number"
                 }
             }
         },
@@ -1216,6 +1542,17 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_aumputthipong_mini-erp-kanban_backend_internal_dto.ToggleCardDoneRequest": {
+            "type": "object",
+            "required": [
+                "is_done"
+            ],
+            "properties": {
+                "is_done": {
+                    "type": "boolean"
+                }
+            }
+        },
         "github_com_aumputthipong_mini-erp-kanban_backend_internal_dto.UpdateBoardRequest": {
             "type": "object",
             "properties": {
@@ -1291,6 +1628,30 @@ const docTemplate = `{
                 "title": {
                     "type": "string",
                     "maxLength": 200,
+                    "minLength": 1
+                }
+            }
+        },
+        "github_com_aumputthipong_mini-erp-kanban_backend_internal_dto.UpdateColumnRequest": {
+            "type": "object",
+            "required": [
+                "category",
+                "title"
+            ],
+            "properties": {
+                "category": {
+                    "type": "string",
+                    "enum": [
+                        "TODO",
+                        "DONE"
+                    ]
+                },
+                "color": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string",
+                    "maxLength": 100,
                     "minLength": 1
                 }
             }

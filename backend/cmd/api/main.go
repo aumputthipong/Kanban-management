@@ -170,6 +170,7 @@ func run(ctx context.Context, cfg config) error {
 
 	subtaskHandler := handler.NewSubtaskHandler(subtaskService)
 	boardHandler := handler.NewBoardHandler(boardService, settingsService, activityService)
+	boardCmdHandler := handler.NewBoardCommandHandler(boardCmdService, boardService, activityService, hub)
 	tagHandler := handler.NewTagHandler(tagService)
 	activityHandler := handler.NewActivityHandler(activityService)
 	planningHandler := handler.NewPlanningHandler(planningService, boardService, activityService)
@@ -190,6 +191,7 @@ func run(ctx context.Context, cfg config) error {
 	router := setupRoutes(routerDeps{
 		boardService:    boardService,
 		boardHandler:    boardHandler,
+		boardCmdHandler: boardCmdHandler,
 		authHandler:     authHandler,
 		oauthHandler:    oauthHandler,
 		subtaskHandler:  subtaskHandler,

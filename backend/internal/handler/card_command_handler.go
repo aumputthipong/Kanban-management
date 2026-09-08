@@ -217,6 +217,23 @@ func (h *BoardCommandHandler) CreateCard(w http.ResponseWriter, r *http.Request)
 		"total_subtasks":     len(subPayload),
 		"completed_subtasks": 0,
 	})
-	httputil.RespondJSON(w, http.StatusCreated, card)
+	// Respond with the snake_case DTO the rest of the API uses. The raw sqlc row
+	// marshals as PascalCase, which no client reads.
+	httputil.RespondJSON(w, http.StatusCreated, dto.CardResponse{
+		ID:                 card.ID,
+		ColumnID:           card.ColumnID,
+		Title:              card.Title,
+		Description:        card.Description,
+		Position:           card.Position,
+		DueDate:            req.DueDate,
+		AssigneeID:         card.AssigneeID,
+		Priority:           card.Priority,
+		CreatedBy:          card.CreatedBy,
+		TotalSubtasks:      int64(len(subPayload)),
+		CompletedSubtasks:  0,
+		Tags:               []dto.TagResponse{},
+		AcceptanceCriteria: card.AcceptanceCriteria,
+		ImplementationNote: card.ImplementationNote,
+	})
 	return nil
 }

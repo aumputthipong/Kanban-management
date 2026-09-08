@@ -150,18 +150,23 @@ func (h *BoardHandler) UpdateCard(w http.ResponseWriter, r *http.Request) error 
 		}
 	}
 
+	// Response and broadcast both read from resp. Sourcing a broadcast field from req
+	// instead would send null for anything the caller omitted, and the receiving store
+	// spreads the payload over its copy — the field would vanish on every other client.
+	resp := mapper.ToCardResponseFromRow(card)
+
 	// Same payload the WS path sent, so existing listeners are unchanged.
 	emitTo(h.broadcaster, boardID, "CARD_UPDATED", map[string]any{
 		"card_id":         cardIDStr,
-		"title":           card.Title,
-		"description":     card.Description,
-		"due_date":        req.DueDate,
-		"assignee_id":     card.AssigneeID,
-		"priority":        card.Priority,
-		"estimated_hours": card.EstimatedHours,
+		"title":           resp.Title,
+		"description":     resp.Description,
+		"due_date":        resp.DueDate,
+		"assignee_id":     resp.AssigneeID,
+		"priority":        resp.Priority,
+		"estimated_hours": resp.EstimatedHours,
 	})
 
-	httputil.RespondJSON(w, http.StatusOK, card)
+	httputil.RespondJSON(w, http.StatusOK, resp)
 	return nil
 }
 

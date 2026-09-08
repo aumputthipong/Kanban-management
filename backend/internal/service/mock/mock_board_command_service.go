@@ -11,6 +11,7 @@ import (
 // function-field pattern: a test sets only the methods it exercises.
 type MockBoardCommandService struct {
 	VerifyCardInBoardFn   func(ctx context.Context, cardID, boardID string) error
+	CreateCardWSFn        func(ctx context.Context, columnID, creatorID, title, priority string, position float64, assigneeID, dueDate, description *string, subtaskTitles []string) (db.CreateCardRow, []db.CardSubtask, error)
 	VerifyColumnInBoardFn func(ctx context.Context, columnID, boardID string) error
 	MoveCardFn            func(ctx context.Context, cardID, newColumnID string, position float64) (service.MoveCardResult, error)
 	DeleteCardFn          func(ctx context.Context, cardID string) (string, error)
@@ -22,6 +23,10 @@ type MockBoardCommandService struct {
 
 func (m *MockBoardCommandService) VerifyCardInBoard(ctx context.Context, cardID, boardID string) error {
 	return m.VerifyCardInBoardFn(ctx, cardID, boardID)
+}
+
+func (m *MockBoardCommandService) CreateCardWS(ctx context.Context, columnID, creatorID, title, priority string, position float64, assigneeID, dueDate, description *string, subtaskTitles []string) (db.CreateCardRow, []db.CardSubtask, error) {
+	return m.CreateCardWSFn(ctx, columnID, creatorID, title, priority, position, assigneeID, dueDate, description, subtaskTitles)
 }
 
 func (m *MockBoardCommandService) VerifyColumnInBoard(ctx context.Context, columnID, boardID string) error {

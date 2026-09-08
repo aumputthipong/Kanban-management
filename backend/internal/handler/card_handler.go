@@ -7,7 +7,6 @@ import (
 	"net/http"
 
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/core"
-	"github.com/aumputthipong/mini-erp-kanban/backend/internal/db"
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/dto"
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/httputil"
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/mapper"
@@ -34,62 +33,6 @@ func boardMembership(ctx context.Context, svc service.BoardServicer, boardID, us
 
 func (h *BoardHandler) requireBoardMembership(r *http.Request, boardID, userID string) (core.BoardRole, *httputil.APIError) {
 	return boardMembership(r.Context(), h.boardService, boardID, userID)
-}
-
-// CreateCard creates a card in a column. Caller must be a member of the
-// owning board.
-//
-// @Summary  Create card
-// @Tags     cards
-// @Accept   json
-// @Produce  json
-// @Security CookieAuth
-// @Param    payload body     dto.CreateCardRequest true  "Column + title (+ optional fields)"
-// @Success  201     {object} dto.CardResponse
-// @Failure  400     {object} httputil.ErrorResponse
-// @Failure  404     {object} httputil.ErrorResponse "column not found"
-// @Router   /api/cards [post]
-func (h *BoardHandler) CreateCard(w http.ResponseWriter, r *http.Request) error {
-	var req dto.CreateCardRequest
-	if err := httputil.DecodeAndValidate(r, &req); err != nil {
-		return err
-	}
-
-	if _, err := uuid.Parse(req.ColumnID); err != nil {
-		return httputil.NewAPIError(http.StatusBadRequest, "Invalid column ID", err)
-	}
-
-	userIDStr, ok := r.Context().Value(middleware.UserIDKey).(string)
-	if !ok || userIDStr == "" {
-		return httputil.NewAPIError(http.StatusUnauthorized, "Unauthorized", nil)
-	}
-
-	boardID, err := h.boardService.GetBoardIDByColumn(r.Context(), req.ColumnID)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return httputil.NewAPIError(http.StatusNotFound, "Column not found", nil)
-		}
-		return httputil.NewAPIError(http.StatusInternalServerError, "Failed to resolve column", err)
-	}
-	if _, apiErr := h.requireBoardMembership(r, boardID, userIDStr); apiErr != nil {
-		return apiErr
-	}
-
-	card, err := h.boardService.CreateCard(r.Context(), db.CreateCardParams{
-		ColumnID:   req.ColumnID,
-		Title:      req.Title,
-		Position:   0,
-		DueDate:    util.PtrStringToTimePtr(req.DueDate),
-		AssigneeID: req.AssigneeID,
-		Priority:   req.Priority,
-		CreatedBy:  util.StringToPtr(userIDStr),
-	})
-	if err != nil {
-		return httputil.NewAPIError(http.StatusInternalServerError, "Failed to create card", err)
-	}
-
-	httputil.RespondJSON(w, http.StatusCreated, card)
-	return nil
 }
 
 // UpdateCard partially updates a card. Used for inline edits + drag-and-drop

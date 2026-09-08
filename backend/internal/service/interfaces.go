@@ -140,6 +140,7 @@ type TagServicer interface {
 // broadcasts. See docs/adr/0003 and issue #197.
 type BoardCommandServicer interface {
 	VerifyCardInBoard(ctx context.Context, cardID, boardID string) error
+	CreateCardWS(ctx context.Context, columnID, creatorID, title, priority string, position float64, assigneeID, dueDate, description *string, subtaskTitles []string) (db.CreateCardRow, []db.CardSubtask, error)
 	VerifyColumnInBoard(ctx context.Context, columnID, boardID string) error
 	MoveCard(ctx context.Context, cardID, newColumnID string, position float64) (MoveCardResult, error)
 	DeleteCard(ctx context.Context, cardID string) (string, error)

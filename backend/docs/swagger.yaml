@@ -134,14 +134,25 @@ definitions:
         type: string
       column_id:
         type: string
+      description:
+        maxLength: 5000
+        type: string
       due_date:
         type: string
+      position:
+        minimum: 0
+        type: number
       priority:
         enum:
         - low
         - medium
         - high
         type: string
+      subtasks:
+        items:
+          type: string
+        maxItems: 50
+        type: array
       title:
         maxLength: 200
         minLength: 1
@@ -764,7 +775,7 @@ paths:
           schema:
             $ref: '#/definitions/github_com_aumputthipong_mini-erp-kanban_backend_internal_httputil.ErrorResponse'
         "404":
-          description: column not found
+          description: Not Found
           schema:
             $ref: '#/definitions/github_com_aumputthipong_mini-erp-kanban_backend_internal_httputil.ErrorResponse'
       security:

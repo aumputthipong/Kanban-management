@@ -308,3 +308,103 @@ func TestDeleteColumn_NonMember_Returns404(t *testing.T) {
 	assert.Equal(t, http.StatusNotFound, w.Code)
 	assert.Empty(t, bc.Sent)
 }
+
+// ────────────────────────────────────────────────
+// CreateCard
+// ────────────────────────────────────────────────
+
+func createCardReq(t *testing.T, body string) *http.Request {
+	t.Helper()
+	r := httptest.NewRequest(http.MethodPost, "/api/cards", strings.NewReader(body))
+	r.Header.Set("Content-Type", "application/json")
+	return withUserID(chiCtx(r), validUserID)
+}
+
+func TestCreateCard_WithSubtasks_PassesThemToTheService(t *testing.T) {
+	cmd := &mock.MockBoardCommandService{
+		CreateCardWSFn: func(ctx context.Context, columnID, creatorID, title, priority string, position float64, assigneeID, dueDate, description *string, subtaskTitles []string) (db.CreateCardRow, []db.CardSubtask, error) {
+			// The whole reason this endpoint exists: the old REST create dropped
+			// description and subtasks on the floor.
+			assert.Equal(t, validUserID, creatorID)
+			assert.Equal(t, []string{"one", "two"}, subtaskTitles)
+			require.NotNil(t, description)
+			assert.Equal(t, "why", *description)
+			return db.CreateCardRow{ID: validCardID, ColumnID: columnID, Title: title},
+				[]db.CardSubtask{{ID: "s1", Title: "one"}, {ID: "s2", Title: "two"}}, nil
+		},
+	}
+	h, bc := newCmdHandler(cmd, memberBoardService())
+
+	req := createCardReq(t, `{"column_id":"`+validColumnID+`","title":"New","description":"why","subtasks":["one","two"]}`)
+	w := httptest.NewRecorder()
+
+	httputil.MakeHandler(h.CreateCard)(w, req)
+
+	require.Equal(t, http.StatusCreated, w.Code)
+	msgType, payload := decodeBroadcast(t, bc)
+	assert.Equal(t, "CARD_CREATED", msgType)
+	assert.Equal(t, float64(2), payload["total_subtasks"])
+}
+
+func TestCreateCard_NonMember_Returns404(t *testing.T) {
+	boards := memberBoardService()
+	boards.GetBoardMemberRoleFn = func(ctx context.Context, boardID, userID string) (string, error) {
+		return "", pgx.ErrNoRows
+	}
+	cmd := &mock.MockBoardCommandService{
+		CreateCardWSFn: func(ctx context.Context, columnID, creatorID, title, priority string, position float64, assigneeID, dueDate, description *string, subtaskTitles []string) (db.CreateCardRow, []db.CardSubtask, error) {
+			t.Fatal("must not create a card for a non-member")
+			return db.CreateCardRow{}, nil, nil
+		},
+	}
+	h, bc := newCmdHandler(cmd, boards)
+
+	req := createCardReq(t, `{"column_id":"`+validColumnID+`","title":"New"}`)
+	w := httptest.NewRecorder()
+
+	httputil.MakeHandler(h.CreateCard)(w, req)
+
+	assert.Equal(t, http.StatusNotFound, w.Code)
+	assert.Empty(t, bc.Sent)
+}
+
+func TestCreateCard_ColumnNotFound_Returns404(t *testing.T) {
+	boards := memberBoardService()
+	boards.GetBoardIDByColumnFn = func(ctx context.Context, columnID string) (string, error) {
+		return "", pgx.ErrNoRows
+	}
+	h, bc := newCmdHandler(&mock.MockBoardCommandService{}, boards)
+
+	req := createCardReq(t, `{"column_id":"`+validColumnID+`","title":"New"}`)
+	w := httptest.NewRecorder()
+
+	httputil.MakeHandler(h.CreateCard)(w, req)
+
+	assert.Equal(t, http.StatusNotFound, w.Code)
+	assert.Empty(t, bc.Sent)
+}
+
+func TestCreateCard_MissingTitle_Returns400(t *testing.T) {
+	h, bc := newCmdHandler(&mock.MockBoardCommandService{}, memberBoardService())
+
+	req := createCardReq(t, `{"column_id":"`+validColumnID+`"}`)
+	w := httptest.NewRecorder()
+
+	httputil.MakeHandler(h.CreateCard)(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	assert.Empty(t, bc.Sent)
+}
+
+func TestCreateCard_MissingUserID_Returns401(t *testing.T) {
+	h, _ := newCmdHandler(&mock.MockBoardCommandService{}, memberBoardService())
+
+	r := httptest.NewRequest(http.MethodPost, "/api/cards",
+		strings.NewReader(`{"column_id":"`+validColumnID+`","title":"New"}`))
+	r.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+
+	httputil.MakeHandler(h.CreateCard)(w, chiCtx(r))
+
+	assert.Equal(t, http.StatusUnauthorized, w.Code)
+}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"log/slog"
 	"net/http"
 
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/core"
@@ -137,11 +138,16 @@ func (h *BoardHandler) UpdateCard(w http.ResponseWriter, r *http.Request) error 
 
 	// NewBoardHandler documents a nil activity as "mutation works, audit skipped".
 	if h.activity != nil {
-		h.activity.RecordAsync(service.RecordParams{
+		act, aerr := h.activity.Record(r.Context(), service.RecordParams{
 			BoardID: boardID, ActorID: userIDStr,
 			EventType: service.EventCardUpdated, EntityType: service.EntityCard, EntityID: &cardIDStr,
 			Payload: service.CardUpdatedPayload{Title: card.Title, Fields: req.ChangedFields},
 		})
+		if aerr != nil {
+			slog.Error("record activity failed", "card_id", cardIDStr, "err", aerr)
+		} else {
+			emitTo(h.broadcaster, boardID, "ACTIVITY_CREATED", activityPayload(act))
+		}
 	}
 
 	// Same payload the WS path sent, so existing listeners are unchanged.

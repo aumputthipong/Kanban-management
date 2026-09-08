@@ -1,12 +1,8 @@
 package websocket
 
-import (
-	"github.com/aumputthipong/mini-erp-kanban/backend/internal/service"
-)
-
-// Hub manages client connections grouped into one room per board ID. It
-// delegates write operations to BoardCommandService rather than holding
-// *db.Queries directly.
+// Hub manages client connections grouped into one room per board ID. It is
+// fan-out only: REST handlers persist and then call Broadcast. The hub itself
+// holds no services and performs no writes.
 type Hub struct {
 	rooms map[string]map[*Client]bool
 
@@ -14,8 +10,6 @@ type Hub struct {
 	register   chan *Client
 	unregister chan *Client
 	stop       chan struct{}
-	boardCmd   *service.BoardCommandService
-	activities *service.ActivityService
 	// allowedOrigin is the single trusted browser origin (FRONTEND_URL).
 	// Empty string disables origin checking — only acceptable in tests.
 	allowedOrigin string
@@ -26,15 +20,13 @@ type BroadcastMessage struct {
 	Message []byte
 }
 
-func NewHub(boardCmd *service.BoardCommandService, activities *service.ActivityService, allowedOrigin string) *Hub {
+func NewHub(allowedOrigin string) *Hub {
 	return &Hub{
 		rooms:         make(map[string]map[*Client]bool),
 		broadcast:     make(chan BroadcastMessage),
 		register:      make(chan *Client),
 		unregister:    make(chan *Client),
 		stop:          make(chan struct{}),
-		boardCmd:      boardCmd,
-		activities:    activities,
 		allowedOrigin: allowedOrigin,
 	}
 }

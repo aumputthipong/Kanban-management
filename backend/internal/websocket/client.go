@@ -4,7 +4,6 @@
 package websocket
 
 import (
-	"encoding/json"
 	"log/slog"
 	"net/http"
 	"time"
@@ -59,22 +58,16 @@ func (c *Client) ReadPump() {
 		return nil
 	})
 
+	// Inbound frames are discarded: writes go over REST and the socket only fans
+	// out. The read loop still has to run — it is what surfaces pongs and a
+	// closed connection, which is how a client is ever unregistered.
 	for {
-		_, message, err := c.conn.ReadMessage()
-		if err != nil {
+		if _, _, err := c.conn.ReadMessage(); err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure, websocket.CloseNoStatusReceived) {
 				slog.Warn("unexpected websocket close", "board_id", c.boardID, "err", err)
 			}
 			break
 		}
-
-		var wsMsg WSMessage
-		if err := json.Unmarshal(message, &wsMsg); err != nil {
-			slog.Warn("invalid ws message JSON", "board_id", c.boardID, "err", err)
-			continue
-		}
-
-		c.dispatch(wsMsg, message)
 	}
 }
 

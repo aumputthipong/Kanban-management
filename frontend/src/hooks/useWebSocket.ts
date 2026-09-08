@@ -5,12 +5,11 @@ import { useActivityStore } from "@/store/useActivityStore";
 import { logger } from "@/lib/logger";
 import { fetchWsTicket } from "@/lib/wsTicket";
 import { WS_EVENT } from "@/types/wsEvents";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 /**
- * Wire-format envelope for every WebSocket message. `payload` is `unknown` to
- * force handlers to narrow; its shape per `type` mirrors the backend's
- * internal/dto/card_dto.go.
+ * Wire-format envelope for every inbound message. `payload` is `unknown` to force
+ * handlers to narrow; its shape per `type` is set by the REST handlers that emit it.
  */
 export interface WebSocketMessage {
   type: string;
@@ -27,8 +26,8 @@ const MAX_RECONNECT_ATTEMPTS = 8;
 /**
  * Owns one board room's socket, dispatching into useBoardStore/useActivityStore.
  * Reconnects with exponential backoff; each attempt mints a fresh auth ticket
- * (docs/adr/0005-websocket-ticket-auth.md). `sendMessage` is a NO-OP when the
- * socket is not OPEN — it does not buffer, so the message is lost.
+ * (docs/adr/0005-websocket-ticket-auth.md). Receive-only: writes go over REST, so a
+ * dropped socket costs live updates and never a write.
  */
 export const useWebSocket = (url: string) => {
   const socketRef = useRef<WebSocket | null>(null);
@@ -193,14 +192,5 @@ export const useWebSocket = (url: string) => {
     };
   }, [url]);
 
-  const sendMessage = useCallback((message: WebSocketMessage) => {
-    const ws = socketRef.current;
-    if (ws && ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify(message));
-    } else {
-      logger.warn("[WS sendMessage] NOT sent — socket not open");
-    }
-  }, []);
-
-  return { sendMessage, status };
+  return { status };
 };

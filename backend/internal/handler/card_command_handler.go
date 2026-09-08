@@ -47,7 +47,7 @@ func (h *BoardCommandHandler) MoveCard(w http.ResponseWriter, r *http.Request) e
 		return httputil.NewAPIError(http.StatusInternalServerError, "Failed to move card", err)
 	}
 
-	h.record(service.RecordParams{
+	h.record(r.Context(), service.RecordParams{
 		BoardID: boardID, ActorID: userID,
 		EventType: service.EventCardMoved, EntityType: service.EntityCard, EntityID: &cardID,
 		Payload: service.CardMovedPayload{Title: result.CardTitle, ToColumnID: req.ColumnID},
@@ -88,7 +88,7 @@ func (h *BoardCommandHandler) DeleteCard(w http.ResponseWriter, r *http.Request)
 		return httputil.NewAPIError(http.StatusInternalServerError, "Failed to delete card", err)
 	}
 
-	h.record(service.RecordParams{
+	h.record(r.Context(), service.RecordParams{
 		BoardID: boardID, ActorID: userID,
 		EventType: service.EventCardDeleted, EntityType: service.EntityCard, EntityID: &cardID,
 		Payload: service.CardDeletedPayload{Title: title},
@@ -131,7 +131,7 @@ func (h *BoardCommandHandler) ToggleCardDone(w http.ResponseWriter, r *http.Requ
 		return httputil.NewAPIError(http.StatusInternalServerError, "Failed to toggle card", err)
 	}
 
-	h.record(service.RecordParams{
+	h.record(r.Context(), service.RecordParams{
 		BoardID: boardID, ActorID: userID,
 		EventType: service.EventCardDoneToggled, EntityType: service.EntityCard, EntityID: &cardID,
 		Payload: map[string]any{"title": result.CardTitle, "is_done": *req.IsDone},
@@ -198,7 +198,7 @@ func (h *BoardCommandHandler) CreateCard(w http.ResponseWriter, r *http.Request)
 		})
 	}
 
-	h.record(service.RecordParams{
+	h.record(r.Context(), service.RecordParams{
 		BoardID: boardID, ActorID: userID,
 		EventType: service.EventCardCreated, EntityType: service.EntityCard, EntityID: &card.ID,
 		Payload: service.CardCreatedPayload{Title: card.Title, ColumnID: card.ColumnID},

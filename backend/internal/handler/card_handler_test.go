@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/db"
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/httputil"
@@ -425,4 +426,88 @@ func TestGetCard_DBError_Returns500(t *testing.T) {
 	httputil.MakeHandler(h.GetCard)(w, req)
 
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
+}
+
+// TestUpdateCard_RespondsWithSnakeCase pins the wire shape. The handler used to
+// respond with the raw sqlc row, which marshals as PascalCase — no client reads
+// that, and the Swagger annotation promises dto.CardResponse.
+func TestUpdateCard_RespondsWithSnakeCase(t *testing.T) {
+	creator := ptr(validUserID)
+	svc := &mock.MockBoardService{
+		GetCardFn: func(ctx context.Context, cardID string) (db.Card, error) {
+			return cardOwnedBy(creator, nil), nil
+		},
+		GetBoardIDByColumnFn: func(ctx context.Context, columnID string) (string, error) {
+			return validBoardID, nil
+		},
+		GetBoardMemberRoleFn: func(ctx context.Context, boardID, userID string) (string, error) {
+			return "member", nil
+		},
+		UpdateCardFn: func(ctx context.Context, arg service.UpdateCardParams) (db.Card, error) {
+			return db.Card{ID: arg.ID, ColumnID: validColumnID, Title: arg.Title}, nil
+		},
+	}
+	h := NewBoardHandler(svc, nil, nil, nil)
+
+	req := withUserID(httptest.NewRequest(http.MethodPatch, "/cards/"+validCardID,
+		jsonBody(t, map[string]any{"title": "renamed"})), validUserID)
+	req = chiCtx(req, "cardID", validCardID)
+	w := httptest.NewRecorder()
+
+	httputil.MakeHandler(h.UpdateCard)(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+	var got map[string]any
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &got))
+	assert.Equal(t, validCardID, got["id"])
+	assert.Equal(t, "renamed", got["title"])
+	assert.NotContains(t, got, "ID")
+	assert.NotContains(t, got, "Title")
+}
+
+// Guards a trap: every CARD_UPDATED field must come from the updated row, never the
+// request. A request-sourced field is null whenever the caller omitted it, and the
+// receiving store spreads the payload over its copy — the value vanishes everywhere.
+func TestUpdateCard_OmittedDueDate_BroadcastsStoredValue(t *testing.T) {
+	creator := ptr(validUserID)
+	due := time.Date(2026, 3, 14, 0, 0, 0, 0, time.UTC)
+	svc := &mock.MockBoardService{
+		GetCardFn: func(ctx context.Context, cardID string) (db.Card, error) {
+			card := cardOwnedBy(creator, nil)
+			card.DueDate = &due
+			return card, nil
+		},
+		GetBoardIDByColumnFn: func(ctx context.Context, columnID string) (string, error) {
+			return validBoardID, nil
+		},
+		GetBoardMemberRoleFn: func(ctx context.Context, boardID, userID string) (string, error) {
+			return "member", nil
+		},
+		UpdateCardFn: func(ctx context.Context, arg service.UpdateCardParams) (db.Card, error) {
+			return db.Card{ID: arg.ID, ColumnID: validColumnID, Title: arg.Title, DueDate: arg.DueDate}, nil
+		},
+	}
+	bc := &mock.MockBroadcaster{}
+	h := NewBoardHandler(svc, nil, nil, bc)
+
+	// Body carries no due_date, so the handler must merge the stored one.
+	req := withUserID(httptest.NewRequest(http.MethodPatch, "/cards/"+validCardID,
+		jsonBody(t, map[string]any{"title": "renamed"})), validUserID)
+	req = chiCtx(req, "cardID", validCardID)
+	w := httptest.NewRecorder()
+
+	httputil.MakeHandler(h.UpdateCard)(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+	require.Len(t, bc.Sent, 1)
+	var msg struct {
+		Type    string `json:"type"`
+		Payload struct {
+			DueDate *string `json:"due_date"`
+		} `json:"payload"`
+	}
+	require.NoError(t, json.Unmarshal(bc.Sent[0].Message, &msg))
+	assert.Equal(t, "CARD_UPDATED", msg.Type)
+	require.NotNil(t, msg.Payload.DueDate, "due_date must not be null when the caller omitted it")
+	assert.Equal(t, "2026-03-14", *msg.Payload.DueDate)
 }

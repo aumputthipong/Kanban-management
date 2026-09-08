@@ -408,3 +408,35 @@ func TestCreateCard_MissingUserID_Returns401(t *testing.T) {
 
 	assert.Equal(t, http.StatusUnauthorized, w.Code)
 }
+
+// The activity feed is live only because the handler announces the row it just
+// wrote. Deleting the WS write handlers removed the previous source of
+// ACTIVITY_CREATED, so this pins the replacement.
+func TestMoveCard_AlsoBroadcastsTheActivityRow(t *testing.T) {
+	cmd := &mock.MockBoardCommandService{
+		VerifyColumnInBoardFn: func(ctx context.Context, columnID, boardID string) error { return nil },
+		MoveCardFn: func(ctx context.Context, cardID, newColumnID string, position float64) (service.MoveCardResult, error) {
+			return service.MoveCardResult{CardTitle: "Ship it"}, nil
+		},
+	}
+	activity := &mock.MockActivityRecorder{}
+	bc := &mock.MockBroadcaster{}
+	h := NewBoardCommandHandler(cmd, memberBoardService(), activity, bc)
+
+	req := patchReq(t, "/api/cards/"+validCardID+"/move",
+		`{"column_id":"`+otherColumnID+`","position":128}`, "cardID", validCardID)
+	httputil.MakeHandler(h.MoveCard)(httptest.NewRecorder(), req)
+
+	require.Len(t, activity.Calls, 1)
+	assert.Equal(t, service.EventCardMoved, activity.Calls[0].EventType)
+
+	var types []string
+	for _, sent := range bc.Sent {
+		var msg struct {
+			Type string `json:"type"`
+		}
+		require.NoError(t, json.Unmarshal(sent.Message, &msg))
+		types = append(types, msg.Type)
+	}
+	assert.Equal(t, []string{"ACTIVITY_CREATED", "CARD_MOVED"}, types)
+}

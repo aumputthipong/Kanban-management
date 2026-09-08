@@ -41,7 +41,7 @@ func (h *BoardCommandHandler) CreateColumn(w http.ResponseWriter, r *http.Reques
 		return httputil.NewAPIError(http.StatusInternalServerError, "Failed to create column", err)
 	}
 
-	h.record(service.RecordParams{
+	h.record(r.Context(), service.RecordParams{
 		BoardID: boardID, ActorID: userID,
 		EventType: service.EventColumnCreated, EntityType: service.EntityColumn, EntityID: &col.ID,
 		Payload: service.ColumnCreatedPayload{Title: col.Title},
@@ -98,7 +98,7 @@ func (h *BoardCommandHandler) UpdateColumn(w http.ResponseWriter, r *http.Reques
 		return httputil.NewAPIError(http.StatusInternalServerError, "Failed to update column", err)
 	}
 
-	h.record(service.RecordParams{
+	h.record(r.Context(), service.RecordParams{
 		BoardID: boardID, ActorID: userID,
 		EventType: service.EventColumnRenamed, EntityType: service.EntityColumn, EntityID: &columnID,
 		Payload: service.ColumnRenamedPayload{NewTitle: req.Title},
@@ -137,7 +137,7 @@ func (h *BoardCommandHandler) DeleteColumn(w http.ResponseWriter, r *http.Reques
 		return httputil.NewAPIError(http.StatusInternalServerError, "Failed to delete column", err)
 	}
 
-	h.record(service.RecordParams{
+	h.record(r.Context(), service.RecordParams{
 		BoardID: boardID, ActorID: userID,
 		EventType: service.EventColumnDeleted, EntityType: service.EntityColumn, EntityID: &columnID,
 		Payload: service.ColumnDeletedPayload{},

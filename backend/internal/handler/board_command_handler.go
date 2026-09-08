@@ -1,11 +1,14 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"log/slog"
 	"net/http"
+	"time"
 
+	"github.com/aumputthipong/mini-erp-kanban/backend/internal/db"
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/httputil"
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/middleware"
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/service"
@@ -63,11 +66,37 @@ func (h *BoardCommandHandler) emit(boardID, msgType string, payload map[string]a
 	emitTo(h.broadcaster, boardID, msgType, payload)
 }
 
-func (h *BoardCommandHandler) record(p service.RecordParams) {
+// record writes the audit row and announces it, so the activity feed stays live.
+// It uses the synchronous Record rather than RecordAsync because the broadcast
+// needs the row's id and created_at, which only the sync call returns.
+func (h *BoardCommandHandler) record(ctx context.Context, p service.RecordParams) {
 	if h.activity == nil {
 		return
 	}
-	h.activity.RecordAsync(p)
+	act, err := h.activity.Record(ctx, p)
+	if err != nil {
+		slog.Error("record activity failed", "event_type", p.EventType, "board_id", p.BoardID, "err", err)
+		return
+	}
+	emitTo(h.broadcaster, p.BoardID, "ACTIVITY_CREATED", activityPayload(act))
+}
+
+// activityPayload is the wire shape the activity feed consumes.
+func activityPayload(act db.Activity) map[string]any {
+	payload := json.RawMessage(act.Payload)
+	if len(payload) == 0 {
+		payload = json.RawMessage("{}")
+	}
+	return map[string]any{
+		"id":          act.ID,
+		"board_id":    act.BoardID,
+		"actor_id":    act.ActorID,
+		"event_type":  act.EventType,
+		"entity_type": act.EntityType,
+		"entity_id":   act.EntityID,
+		"payload":     payload,
+		"created_at":  act.CreatedAt.UTC().Format(time.RFC3339Nano),
+	}
 }
 
 // cardContext resolves the board owning cardID and gates membership on it.

@@ -180,3 +180,27 @@ func ToColumnResponses(columns []service.ColumnData) []dto.ColumnResponse {
 	}
 	return result
 }
+
+// ToCardResponseFromRow maps the row a write returns into the snake_case wire shape.
+// Tags are left empty: a write returns the card only, and GET /cards/{id} is the
+// hydrated read.
+func ToCardResponseFromRow(card db.Card) dto.CardResponse {
+	return dto.CardResponse{
+		ID:                 card.ID,
+		ColumnID:           card.ColumnID,
+		Title:              card.Title,
+		Description:        card.Description,
+		Position:           card.Position,
+		DueDate:            timePtrToString(card.DueDate),
+		EstimatedHours:     util.PgNumericToFloat64Ptr(card.EstimatedHours),
+		AssigneeID:         card.AssigneeID,
+		Priority:           card.Priority,
+		IsDone:             card.IsDone,
+		CompletedAt:        timePtrToRFC3339(util.TimestamptzToTimePtr(card.CompletedAt)),
+		CreatedAt:          timePtrToRFC3339(util.TimestamptzToTimePtr(card.CreatedAt)),
+		CreatedBy:          card.CreatedBy,
+		Tags:               []dto.TagResponse{},
+		AcceptanceCriteria: card.AcceptanceCriteria,
+		ImplementationNote: card.ImplementationNote,
+	}
+}

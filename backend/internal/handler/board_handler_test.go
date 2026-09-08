@@ -513,7 +513,7 @@ func TestUpdateCard_Success(t *testing.T) {
 	assert.Equal(t, http.StatusOK, w.Code)
 	var res map[string]interface{}
 	require.NoError(t, json.NewDecoder(w.Body).Decode(&res))
-	assert.Equal(t, validCardID, res["ID"])
+	assert.Equal(t, validCardID, res["id"])
 }
 
 func TestUpdateCard_InvalidCardID(t *testing.T) {

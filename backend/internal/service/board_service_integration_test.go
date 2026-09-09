@@ -291,3 +291,32 @@ func TestGetMyWork_UnassignedCard_ExcludedUnlessIncludeUnassigned(t *testing.T) 
 	require.NoError(t, err)
 	assert.Equal(t, 1, included.Counts.Total, "with IncludeUnassigned, an unassigned card on the caller's own board must count")
 }
+
+// ────────────────────────────────────────────────
+// GetAllBoards
+// ────────────────────────────────────────────────
+
+// GetAllBoards fetches board stats and member rows as two separate queries,
+// then groups members by board id in Go — this checks that grouping doesn't
+// leak one board's members onto another's summary.
+func TestGetAllBoards_MembersGroupedToTheRightBoard(t *testing.T) {
+	ctx := context.Background()
+	f := newBoardFixture(t)
+	boardA, err := f.svc.CreateBoard(ctx, "Board A", nil, nil, nil, f.userID)
+	require.NoError(t, err)
+	boardB, err := f.svc.CreateBoard(ctx, "Board B", nil, nil, nil, f.userID)
+	require.NoError(t, err)
+
+	summaries, err := f.svc.GetAllBoards(ctx, f.userID)
+	require.NoError(t, err)
+	require.Len(t, summaries, 2)
+
+	byID := map[string]service.BoardSummaryData{}
+	for _, b := range summaries {
+		byID[b.ID] = b
+	}
+	require.Len(t, byID[boardA].Members, 1)
+	require.Len(t, byID[boardB].Members, 1)
+	assert.Equal(t, f.userID, byID[boardA].Members[0].UserID)
+	assert.Equal(t, f.userID, byID[boardB].Members[0].UserID)
+}

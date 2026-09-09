@@ -85,10 +85,6 @@ export const useWebSocket = (url: string) => {
             .getState()
             .addColumnToStore({ id, title, position, category, color: color ?? null, cards: [] });
         }
-        if (parsedData.type === WS_EVENT.ColumnRenamed) {
-          const { column_id, title } = parsedData.payload;
-          useBoardStore.getState().renameColumnInStore(column_id, title);
-        }
         if (parsedData.type === WS_EVENT.ColumnDeleted) {
           useBoardStore.getState().removeColumnFromStore(parsedData.payload.column_id);
         }

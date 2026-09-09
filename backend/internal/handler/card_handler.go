@@ -146,7 +146,7 @@ func (h *BoardHandler) UpdateCard(w http.ResponseWriter, r *http.Request) error 
 		if aerr != nil {
 			slog.Error("record activity failed", "card_id", cardIDStr, "err", aerr)
 		} else {
-			emitTo(h.broadcaster, boardID, "ACTIVITY_CREATED", activityPayload(act))
+			emitTo(h.broadcaster, boardID, core.WSActivityCreated, activityPayload(act))
 		}
 	}
 
@@ -156,7 +156,7 @@ func (h *BoardHandler) UpdateCard(w http.ResponseWriter, r *http.Request) error 
 	resp := mapper.ToCardResponseFromRow(card)
 
 	// Same payload the WS path sent, so existing listeners are unchanged.
-	emitTo(h.broadcaster, boardID, "CARD_UPDATED", map[string]any{
+	emitTo(h.broadcaster, boardID, core.WSCardUpdated, map[string]any{
 		"card_id":         cardIDStr,
 		"title":           resp.Title,
 		"description":     resp.Description,

@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/aumputthipong/mini-erp-kanban/backend/internal/core"
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/db"
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/httputil"
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/middleware"
@@ -50,7 +51,7 @@ func NewBoardCommandHandler(
 // emit sends a message shaped exactly like the WebSocket handlers' own, so existing
 // frontend listeners need no change. Best-effort like the audit row: the mutation has
 // already committed and must not fail because fan-out did.
-func emitTo(b Broadcaster, boardID, msgType string, payload map[string]any) {
+func emitTo(b Broadcaster, boardID string, msgType core.WSEvent, payload map[string]any) {
 	if b == nil {
 		return
 	}
@@ -62,7 +63,7 @@ func emitTo(b Broadcaster, boardID, msgType string, payload map[string]any) {
 	b.Broadcast(boardID, msg)
 }
 
-func (h *BoardCommandHandler) emit(boardID, msgType string, payload map[string]any) {
+func (h *BoardCommandHandler) emit(boardID string, msgType core.WSEvent, payload map[string]any) {
 	emitTo(h.broadcaster, boardID, msgType, payload)
 }
 
@@ -78,7 +79,7 @@ func (h *BoardCommandHandler) record(ctx context.Context, p service.RecordParams
 		slog.Error("record activity failed", "event_type", p.EventType, "board_id", p.BoardID, "err", err)
 		return
 	}
-	emitTo(h.broadcaster, p.BoardID, "ACTIVITY_CREATED", activityPayload(act))
+	emitTo(h.broadcaster, p.BoardID, core.WSActivityCreated, activityPayload(act))
 }
 
 // activityPayload is the wire shape the activity feed consumes.

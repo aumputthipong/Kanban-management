@@ -55,9 +55,15 @@ jobs:
             -ldflags="-s -w -X main.version=${{ github.sha }}" \
             -o /tmp/api ./cmd/api
 
+      # Pinned, not @latest: a govulncheck release that raises its own go
+      # directive above ours fails to install, and the install was the one
+      # command in this "non-blocking" step that could still fail the job.
       - name: govulncheck (non-blocking — track stdlib + dep CVEs)
         run: |
-          go install golang.org/x/vuln/cmd/govulncheck@latest
+          go install golang.org/x/vuln/cmd/govulncheck@v1.7.0 || {
+            echo "::warning::govulncheck install failed — check its go directive against backend/go.mod"
+            exit 0
+          }
           govulncheck ./... || echo "::warning::govulncheck reported vulnerabilities — review the log and bump go.mod or deps when patches are available"
 
   frontend:
@@ -109,6 +115,9 @@ jobs:
       # No npm install: the script uses only Node built-ins.
       - name: Check comment budget
         run: node scripts/check-comment-budget.mjs
+
+      - name: Check WebSocket event contract
+        run: node scripts/check-ws-events.mjs
 
   docker:
     name: Docker images build

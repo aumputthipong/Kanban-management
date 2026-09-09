@@ -59,7 +59,6 @@ interface BoardState {
   ) => void;
   deleteSubtaskFromCard: (cardId: string, subtaskId: string) => void;
   addColumnToStore: (column: Column) => void;
-  renameColumnInStore: (columnId: string, title: string) => void;
   removeColumnFromStore: (columnId: string) => void;
   updateColumnInStore: (columnId: string, patch: Partial<Pick<Column, "title" | "category" | "color">>) => void;
 }
@@ -254,13 +253,6 @@ export const useBoardStore = create<BoardState>((set) => ({
       );
       return { columns: sorted };
     }),
-
-  renameColumnInStore: (columnId, title) =>
-    set((state) => ({
-      columns: state.columns.map((col) =>
-        col.id === columnId ? { ...col, title } : col,
-      ),
-    })),
 
   removeColumnFromStore: (columnId) =>
     set((state) => ({

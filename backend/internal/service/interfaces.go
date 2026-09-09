@@ -5,6 +5,7 @@ package service
 
 import (
 	"context"
+	"time"
 
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/db"
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/dto"
@@ -97,6 +98,13 @@ type ActivityRecorder interface {
 	// where the caller has no use for the resulting row; the WS path keeps
 	// using Record because broadcasts include the row's ID and created_at.
 	RecordAsync(p RecordParams)
+}
+
+// ActivityLister is the read side of the audit log. Deliberately separate from
+// ActivityRecorder: a handler that only writes activities must not depend on the
+// query, and its mock must not have to grow a stub for it.
+type ActivityLister interface {
+	List(ctx context.Context, boardID string, before *time.Time, limit int32) ([]ActivityItem, error)
 }
 
 // UserSettingsServicer is the contract for per-user workspace preferences.

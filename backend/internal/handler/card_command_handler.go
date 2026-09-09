@@ -3,6 +3,7 @@ package handler
 import (
 	"net/http"
 
+	"github.com/aumputthipong/mini-erp-kanban/backend/internal/core"
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/dto"
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/httputil"
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/middleware"
@@ -52,7 +53,7 @@ func (h *BoardCommandHandler) MoveCard(w http.ResponseWriter, r *http.Request) e
 		EventType: service.EventCardMoved, EntityType: service.EntityCard, EntityID: &cardID,
 		Payload: service.CardMovedPayload{Title: result.CardTitle, ToColumnID: req.ColumnID},
 	})
-	h.emit(boardID, "CARD_MOVED", map[string]any{
+	h.emit(boardID, core.WSCardMoved, map[string]any{
 		"card_id":       cardID,
 		"new_column_id": req.ColumnID,
 		"position":      req.Position,
@@ -93,7 +94,7 @@ func (h *BoardCommandHandler) DeleteCard(w http.ResponseWriter, r *http.Request)
 		EventType: service.EventCardDeleted, EntityType: service.EntityCard, EntityID: &cardID,
 		Payload: service.CardDeletedPayload{Title: title},
 	})
-	h.emit(boardID, "CARD_DELETED", map[string]any{"card_id": cardID})
+	h.emit(boardID, core.WSCardDeleted, map[string]any{"card_id": cardID})
 	w.WriteHeader(http.StatusNoContent)
 	return nil
 }
@@ -136,7 +137,7 @@ func (h *BoardCommandHandler) ToggleCardDone(w http.ResponseWriter, r *http.Requ
 		EventType: service.EventCardDoneToggled, EntityType: service.EntityCard, EntityID: &cardID,
 		Payload: map[string]any{"title": result.CardTitle, "is_done": *req.IsDone},
 	})
-	h.emit(boardID, "CARD_MOVED", map[string]any{
+	h.emit(boardID, core.WSCardMoved, map[string]any{
 		"card_id":       cardID,
 		"new_column_id": result.TargetColumnID,
 		"position":      0,
@@ -203,7 +204,7 @@ func (h *BoardCommandHandler) CreateCard(w http.ResponseWriter, r *http.Request)
 		EventType: service.EventCardCreated, EntityType: service.EntityCard, EntityID: &card.ID,
 		Payload: service.CardCreatedPayload{Title: card.Title, ColumnID: card.ColumnID},
 	})
-	h.emit(boardID, "CARD_CREATED", map[string]any{
+	h.emit(boardID, core.WSCardCreated, map[string]any{
 		"id":                 card.ID,
 		"column_id":          card.ColumnID,
 		"title":              card.Title,

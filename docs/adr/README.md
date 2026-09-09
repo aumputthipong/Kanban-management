@@ -20,6 +20,8 @@ ADR that references the old one, not an edit.
 | [0004](0004-membership-gate-returns-404.md)   | Board membership gate returns 404, not 403      | Accepted |
 | [0005](0005-websocket-ticket-auth.md)         | WebSocket handshake uses a short-lived ticket    | Accepted |
 | [0006](0006-comment-budget.md)                | Comment budget by block size, not density        | Accepted |
+| [0007](0007-ws-event-contract.md)             | WebSocket event tags are checked across languages | Accepted |
+| [0008](0008-coupling-we-are-not-cutting.md)   | Coupling we are deliberately not cutting         | Accepted |
 
 ## Adding an ADR
 

@@ -110,6 +110,9 @@ jobs:
       - name: Check comment budget
         run: node scripts/check-comment-budget.mjs
 
+      - name: Check WebSocket event contract
+        run: node scripts/check-ws-events.mjs
+
   docker:
     name: Docker images build
     runs-on: ubuntu-latest

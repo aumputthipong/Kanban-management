@@ -12,10 +12,10 @@ import (
 )
 
 type ActivityHandler struct {
-	activityService *service.ActivityService
+	activityService service.ActivityLister
 }
 
-func NewActivityHandler(activityService *service.ActivityService) *ActivityHandler {
+func NewActivityHandler(activityService service.ActivityLister) *ActivityHandler {
 	return &ActivityHandler{activityService: activityService}
 }
 

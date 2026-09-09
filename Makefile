@@ -45,7 +45,7 @@ seed: ## Seed demo data (demo account + sample board). Needs DB_URL (or backend/
 
 # ─── Verification (mirrors CI) ───────────────────────────────────────────────
 .PHONY: verify
-verify: vet test typecheck test-fe check-comments ## Run everything CI runs (vet + test + tsc + vitest + comment budget)
+verify: vet test typecheck test-fe check-comments check-ws-events ## Run everything CI runs (vet + test + tsc + vitest + comment budget + WS contract)
 
 .PHONY: vet
 vet: ## go vet ./...
@@ -79,6 +79,10 @@ lint-fe: ## ESLint
 .PHONY: check-comments
 check-comments: ## Enforce the comment budget (docs/adr/0006)
 	node scripts/check-comment-budget.mjs
+
+.PHONY: check-ws-events
+check-ws-events: ## Enforce the Go/TS WebSocket event contract (docs/adr/0007)
+	node scripts/check-ws-events.mjs
 
 # ─── Database / migrations ────────────────────────────────────────────────────
 .PHONY: migrate-new

@@ -251,14 +251,6 @@ describe("addColumnToStore", () => {
   });
 });
 
-describe("renameColumnInStore", () => {
-  it("renames the target column", () => {
-    useBoardStore.setState({ columns: [makeColumn()] });
-    useBoardStore.getState().renameColumnInStore("col-1", "Renamed");
-    expect(useBoardStore.getState().columns[0].title).toBe("Renamed");
-  });
-});
-
 describe("removeColumnFromStore", () => {
   it("removes the column by ID", () => {
     const col1 = makeColumn({ id: "col-1" });

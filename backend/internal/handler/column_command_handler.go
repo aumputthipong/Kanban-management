@@ -3,6 +3,7 @@ package handler
 import (
 	"net/http"
 
+	"github.com/aumputthipong/mini-erp-kanban/backend/internal/core"
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/dto"
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/httputil"
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/middleware"
@@ -46,7 +47,7 @@ func (h *BoardCommandHandler) CreateColumn(w http.ResponseWriter, r *http.Reques
 		EventType: service.EventColumnCreated, EntityType: service.EntityColumn, EntityID: &col.ID,
 		Payload: service.ColumnCreatedPayload{Title: col.Title},
 	})
-	h.emit(boardID, "COLUMN_CREATED", map[string]any{
+	h.emit(boardID, core.WSColumnCreated, map[string]any{
 		"id":       col.ID,
 		"board_id": boardID,
 		"title":    col.Title,
@@ -103,7 +104,7 @@ func (h *BoardCommandHandler) UpdateColumn(w http.ResponseWriter, r *http.Reques
 		EventType: service.EventColumnRenamed, EntityType: service.EntityColumn, EntityID: &columnID,
 		Payload: service.ColumnRenamedPayload{NewTitle: req.Title},
 	})
-	h.emit(boardID, "COLUMN_UPDATED", map[string]any{
+	h.emit(boardID, core.WSColumnUpdated, map[string]any{
 		"column_id": columnID,
 		"title":     req.Title,
 		"category":  req.Category,
@@ -142,7 +143,7 @@ func (h *BoardCommandHandler) DeleteColumn(w http.ResponseWriter, r *http.Reques
 		EventType: service.EventColumnDeleted, EntityType: service.EntityColumn, EntityID: &columnID,
 		Payload: service.ColumnDeletedPayload{},
 	})
-	h.emit(boardID, "COLUMN_DELETED", map[string]any{"column_id": columnID})
+	h.emit(boardID, core.WSColumnDeleted, map[string]any{"column_id": columnID})
 	w.WriteHeader(http.StatusNoContent)
 	return nil
 }

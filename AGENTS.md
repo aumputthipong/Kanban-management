@@ -76,7 +76,7 @@ handler/  → service/  → db/ (sqlc-generated)
 
 - Record `activities` row **ก่อน** broadcast เสมอ — audit log เป็น source of truth.
 - WS handlers ต้อง **idempotent** — รับ event ของ state ที่เป็นอยู่แล้ว = no-op (เพราะ writer ไม่ filter broadcast ของตัวเอง).
-- เพิ่ม event type ใหม่ → อัปเดต enum ทั้งฝั่ง Go และ TypeScript พร้อมกัน.
+- **Broadcast tag ต้องเป็น `core.WS*` constant เสมอ ห้าม string ดิบ** — ประกาศคู่กันที่ [`core/wsevent.go`](backend/internal/core/wsevent.go) และ [`types/wsEvents.ts`](frontend/src/types/wsEvents.ts). `make check-ws-events` fail ถ้าสองฝั่งไม่ตรง หรือมี literal หลุดที่ call site (ดู [ADR 0007](docs/adr/0007-ws-event-contract.md)).
 
 ### Activity event types (reference)
 

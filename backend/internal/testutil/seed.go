@@ -125,6 +125,20 @@ func (s *SeedHelper) Card(ctx context.Context, columnID string) string {
 	return c.ID
 }
 
+// Subtask creates a subtask on the given card with default title/position.
+func (s *SeedHelper) Subtask(ctx context.Context, cardID string) string {
+	s.t.Helper()
+	st, err := s.queries.CreateSubtask(ctx, db.CreateSubtaskParams{
+		CardID:   cardID,
+		Title:    "Test Subtask",
+		Position: 65536,
+	})
+	if err != nil {
+		s.t.Fatalf("seed subtask: %v", err)
+	}
+	return st.ID
+}
+
 // Tag creates a board-scoped tag with the given name.
 func (s *SeedHelper) Tag(ctx context.Context, boardID, name string) string {
 	s.t.Helper()

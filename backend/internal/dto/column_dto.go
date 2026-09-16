@@ -13,11 +13,15 @@ type ToggleCardDoneRequest struct {
 	IsDone *bool `json:"is_done" validate:"required"`
 }
 
+// Color validates against the named swatches in the frontend's shared colour
+// palette (ColumnOptionsModal.COLUMN_COLOR_PALETTE) — the client sends the key,
+// not a hex value; the palette itself resolves key -> hex for rendering.
+
 // CreateColumnRequest is the body of POST /api/boards/{boardID}/columns.
 type CreateColumnRequest struct {
 	Title    string  `json:"title"    validate:"required,min=1,max=100"`
 	Category string  `json:"category" validate:"required,oneof=TODO DONE"`
-	Color    *string `json:"color"    validate:"omitempty,hexcolor"`
+	Color    *string `json:"color"    validate:"omitempty,oneof=slate blue purple green amber rose pink cyan"`
 }
 
 // UpdateColumnRequest is the body of PATCH /api/columns/{columnID}. Both title and
@@ -25,5 +29,5 @@ type CreateColumnRequest struct {
 type UpdateColumnRequest struct {
 	Title    string  `json:"title"    validate:"required,min=1,max=100"`
 	Category string  `json:"category" validate:"required,oneof=TODO DONE"`
-	Color    *string `json:"color"    validate:"omitempty,hexcolor"`
+	Color    *string `json:"color"    validate:"omitempty,oneof=slate blue purple green amber rose pink cyan"`
 }

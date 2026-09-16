@@ -64,6 +64,7 @@ rounded:
 size:
   pill-h: 24px
   priority-bar-w: 3px
+  accent-bar-h: 3px
   tag-dot: 5px
   avatar-sm: 18px
   status-icon: 14px
@@ -177,6 +178,10 @@ larger surfaces step up, chips step down. Larger surface ⇒ larger radius.
 - **chip-filter:** Calendar filter row. Outline default (`secondary` border, `on-surface` text); active state = `surface-tint` background + `primary` text. `rounded.full`, `label-sm` typography.
 - **popover-card:** Hover preview / day-detail popover. `surface-elevated` with shadow-md, `rounded.md`, `lg` padding, `popover-max` (320px) wide. Contains **at most one** `button-primary` ("Open card"); secondary actions are text-only links in `secondary` slate.
 - **today-cell:** Today's date cell. `surface-tint` background wash + a `primary` `rounded.full` disc around the date number.
+- **accent-bar:** A flat bar `accent-bar-h` (3px) tall across the top of a card or panel — absolutely positioned full width, clipped by the container's rounded corners (container needs `relative overflow-hidden`). Never a thick `border-top`, which bends into the corners. Color = the entity accent (project color on `ProjectCard`) or `on-surface` ink for the page's main container (My Work).
+- **panel-container:** One `surface` container, `rounded.2xl`, 1px `slate-200` outline, on the `background` canvas. Internal bands (header, tab bar, list) are separated by 1px `slate-200` rules — **not** by tinted fills.
+- **tab-underline:** Tabs inside a panel. Sit on the bar's bottom rule; active = 2px `primary` underline + `on-surface` semibold label; inactive = transparent underline, `secondary` text. Count badge: `surface-tint` + `primary` when active, `slate-100` otherwise, `state-overdue` colors when it counts overdue work.
+- **priority-chip:** Outlined `rounded.full` chip, `label-sm`, English label (High / Medium / Low) with a small `priority.*` disc. The disc is the only place priority color appears inside a list row.
 
 ## Responsive
 
@@ -211,6 +216,7 @@ Turtask รองรับ **viewport ≥ 768px** (tablet ขึ้นไป). �
 - Reserve `success` / `danger` for status signals on chips and toasts.
 - Stick to the four typography steps. New sizes mean a spec change, not an inline override.
 - Let `background` and `surface` carry hierarchy — cards lift off the board canvas through the surface delta alone, not borders.
+- Split color roughly 60 / 30 / 10: `surface` + `background` dominate, rules/outlines and neutral text are the middle layer, `primary` is the small accent. No gradients.
 
 **Don't**
 

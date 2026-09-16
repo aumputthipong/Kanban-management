@@ -1,41 +1,57 @@
 "use client";
 
 import { Calendar, CalendarDays, CalendarRange, Inbox } from "lucide-react";
-import { DashboardPanel } from "./DashboardPanel";
-import { HeroTodayPanel } from "./HeroTodayPanel";
 import { MyWorkEmptyState } from "./MyWorkEmptyState";
-import { OverdueStrip } from "./OverdueStrip";
 import { ProjectGroupedList } from "./ProjectGroupedList";
+import { TaskNote } from "./TaskNote";
 import type { BoardMeta } from "./boardMeta";
-import type { MyWorkCard, MyWorkCounts } from "@/types/myWork";
+import { Skeleton } from "@/components/ui/Skeleton";
+import type { MyWorkCard, MyWorkCounts, MyWorkNoteTab } from "@/types/myWork";
+
+// The two cells of the page grid in my-work/page.tsx: one white container on the
+// left, the full-height rail on the right.
+const MAIN_CELL = "min-h-0 flex flex-col px-6 py-6 lg:px-8 lg:col-start-1 lg:row-start-1";
+const RAIL_CELL =
+  "min-h-0 bg-white border-t border-slate-200 px-5 py-6 lg:border-t-0 lg:border-l lg:overflow-y-auto dash-scroll lg:col-start-2 lg:row-start-1";
 
 interface DashboardGridProps {
+  /** Greeting + stats, rendered at the top of the main container. */
+  header: React.ReactNode;
   cards: MyWorkCard[];
   counts: MyWorkCounts;
   boardMeta: Map<string, BoardMeta>;
   doneToday: number;
   onOpenCard: (card: MyWorkCard) => void;
+  onComplete: (cardId: string) => void;
+  tab: MyWorkNoteTab;
+  onTabChange: (tab: MyWorkNoteTab) => void;
 }
 
 export function DashboardGrid({
+  header,
   cards,
   counts,
   boardMeta,
   doneToday,
   onOpenCard,
+  onComplete,
+  tab,
+  onTabChange,
 }: DashboardGridProps) {
-  const rowProps = { onOpenCard };
-
-  // Whole inbox empty — one calm empty state instead of four empty panels.
   if (cards.length === 0) {
     return (
-      <div className="min-h-0 lg:flex-1 flex items-center justify-center dash-reveal d3">
-        <MyWorkEmptyState filter="all" />
+      <div className={`${MAIN_CELL} lg:col-span-2`}>
+        <section className="relative rounded-2xl border border-slate-200 bg-white overflow-hidden">
+          <span aria-hidden className="absolute inset-x-0 top-0 h-0.75 bg-slate-900" />
+          <div className="px-6 py-5">{header}</div>
+          <div className="border-t border-slate-200 p-6">
+            <MyWorkEmptyState filter="all" />
+          </div>
+        </section>
       </div>
     );
   }
 
-  // Today hero is primary; overdue is a quiet strip; the rail holds the rest.
   const today = cards.filter((c) => c.group === "today");
   const overdue = cards.filter((c) => c.group === "overdue");
   const upcoming = cards
@@ -44,84 +60,124 @@ export function DashboardGrid({
   const noDate = cards.filter((c) => c.group === "no_date");
 
   return (
-    <div className="grid gap-[18px] min-h-0 lg:flex-1 grid-cols-1 lg:[grid-template-columns:minmax(0,1.9fr)_minmax(300px,1fr)]">
-      {/* LEFT: Today (primary) + collapsed overdue */}
-      <div className="flex flex-col gap-3.5 min-h-0">
-        <HeroTodayPanel
-          cards={today}
+    <>
+      <div className={MAIN_CELL}>
+        <TaskNote
+          header={header}
+          tab={tab}
+          onTabChange={onTabChange}
+          today={today}
+          overdue={overdue}
           doneToday={doneToday}
           boardMeta={boardMeta}
-          className="dash-reveal d3 flex-1"
-          {...rowProps}
-        />
-        <OverdueStrip
-          cards={overdue}
-          boardMeta={boardMeta}
-          className="dash-reveal d4"
-          {...rowProps}
+          onOpenCard={onOpenCard}
+          onComplete={onComplete}
         />
       </div>
 
-      {/* RIGHT RAIL: secondary + tertiary */}
-      <div className="grid gap-[18px] min-h-0 lg:[grid-template-rows:auto_minmax(0,1fr)]">
-        <DashboardPanel
-          icon={<Calendar size={13} />}
-          iconTone="tint"
-          title="กำหนดส่งที่จะถึง"
-          count={upcoming.length > 0 ? upcoming.length : undefined}
-          scrollBody={upcoming.length > 0}
-          className="dash-reveal d3"
-        >
+      <aside className={RAIL_CELL}>
+        <RailSection icon={<Calendar size={15} />} title="กำหนดส่งที่จะถึง" count={upcoming.length}>
           {upcoming.length > 0 ? (
-            <ProjectGroupedList cards={upcoming} boardMeta={boardMeta} {...rowProps} />
+            <ProjectGroupedList cards={upcoming} boardMeta={boardMeta} onOpenCard={onOpenCard} />
           ) : (
-            <div>
-              <UpcomingClearedRow icon={<CalendarDays size={15} />} label="สัปดาห์นี้" />
-              <UpcomingClearedRow icon={<CalendarRange size={15} />} label="เดือนนี้" />
+            <div className="flex flex-col gap-2">
+              <ClearedRow icon={<CalendarDays size={14} />} label="สัปดาห์นี้" />
+              <ClearedRow icon={<CalendarRange size={14} />} label="เดือนนี้" />
             </div>
           )}
-        </DashboardPanel>
+        </RailSection>
 
-        <DashboardPanel
-          icon={<Inbox size={13} />}
-          iconTone="neutral"
-          title="ไม่มีวันที่"
-          count={counts.no_date}
-          className="min-h-0 dash-reveal d4"
-        >
-          {noDate.length === 0 ? (
-            <ClearedState text="ทุกงานมีกำหนดส่งแล้ว" sub="ไม่มีงานค้างไว้โดยไม่มีวันที่" />
+        <RailSection icon={<Inbox size={15} />} title="ไม่มีวันที่" count={counts.no_date} className="mt-7">
+          {noDate.length > 0 ? (
+            <ProjectGroupedList cards={noDate} boardMeta={boardMeta} onOpenCard={onOpenCard} />
           ) : (
-            <ProjectGroupedList cards={noDate} boardMeta={boardMeta} slim {...rowProps} />
+            <p className="text-[13px] text-slate-400">ทุกงานมีกำหนดส่งแล้ว</p>
           )}
-        </DashboardPanel>
+        </RailSection>
+      </aside>
+    </>
+  );
+}
+
+export function DashboardGridLoading() {
+  return (
+    <>
+      <div className={MAIN_CELL}>
+        <section className="relative rounded-2xl border border-slate-200 bg-white overflow-hidden">
+          <span aria-hidden className="absolute inset-x-0 top-0 h-0.75 bg-slate-900" />
+          <div className="flex flex-wrap items-center justify-between gap-6 px-6 py-5">
+            <div className="flex-1 basis-72 space-y-2">
+              <Skeleton className="h-3.5 w-40" />
+              <Skeleton className="h-8 w-80" />
+              <Skeleton className="h-2 max-w-md mt-4 rounded-full" />
+            </div>
+            <div className="flex gap-3">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <Skeleton key={i} className="h-18.5 w-26 rounded-lg" />
+              ))}
+            </div>
+          </div>
+          <div className="border-t border-slate-200 px-6 py-3">
+            <Skeleton className="h-6 w-56" />
+          </div>
+          <div className="border-t border-slate-200 p-6 space-y-3">
+            <Skeleton className="h-24 rounded-lg" />
+            <Skeleton className="h-24 rounded-lg" />
+          </div>
+        </section>
       </div>
-    </div>
+      <aside className={RAIL_CELL}>
+        <Skeleton className="h-4 w-32 mb-3" />
+        <div className="flex flex-col gap-2">
+          <Skeleton className="h-10 rounded-lg" />
+          <Skeleton className="h-10 rounded-lg" />
+        </div>
+        <Skeleton className="h-4 w-24 mt-7 mb-3" />
+        <Skeleton className="h-28 rounded-lg" />
+      </aside>
+    </>
   );
 }
 
-function ClearedState({ text, sub }: { text: string; sub: string }) {
+function RailSection({
+  icon,
+  title,
+  count,
+  className = "",
+  children,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  count: number;
+  className?: string;
+  children: React.ReactNode;
+}) {
   return (
-    <div className="flex flex-col items-center justify-center gap-2 px-5 py-8 text-center h-full">
-      <span className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center">
-        <Inbox size={20} />
-      </span>
-      <span className="text-sm font-bold text-slate-900">{text}</span>
-      <span className="text-xs text-slate-400 max-w-[200px]">{sub}</span>
-    </div>
+    <section className={className}>
+      <h2 className="flex items-center gap-2 mb-3 text-sm font-semibold text-slate-900">
+        <span aria-hidden className="text-slate-500">
+          {icon}
+        </span>
+        {title}
+        {count > 0 && (
+          <span className="ml-auto rounded-full bg-blue-50 px-2 py-0.5 text-xs font-semibold tabular-nums text-blue-700">
+            {count} งาน
+          </span>
+        )}
+      </h2>
+      {children}
+    </section>
   );
 }
 
-function UpcomingClearedRow({ icon, label }: { icon: React.ReactNode; label: string }) {
+function ClearedRow({ icon, label }: { icon: React.ReactNode; label: string }) {
   return (
-    <div className="flex items-center justify-between px-[18px] py-3 border-b border-slate-100 last:border-b-0">
-      <span className="flex items-center gap-2.5 text-[13px] font-semibold text-slate-600">
-        <span className="text-slate-400">{icon}</span>
-        {label}
+    <div className="flex items-center gap-2.5 h-10 px-3 rounded-lg border border-slate-200 bg-slate-50 text-[13px] text-slate-600">
+      <span aria-hidden className="text-slate-400">
+        {icon}
       </span>
-      <span className="text-xs font-bold text-emerald-700 bg-emerald-50 rounded-full px-2.5 py-0.5 whitespace-nowrap">
-        ไม่มีคิว
-      </span>
+      {label}
+      <span className="ml-auto rounded-sm bg-slate-200/70 px-2 py-0.5 text-xs text-slate-500">ไม่มีคิว</span>
     </div>
   );
 }

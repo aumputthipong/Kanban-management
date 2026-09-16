@@ -19,6 +19,10 @@
   --color-primary: #1e40af;
   --color-primary-hover: #1e3a8a;
 
+  /* design.md → colors.surface-tint. The quiet 30% surface: hero panels,
+     table/tab headers, selected states. */
+  --color-surface-tint: #eef2ff;
+
   /* Danger / destructive (design.md → colors.danger). Use bg-danger /
      text-danger for solids and bg-danger/10 for the light surface tint, so
      error + destructive UI stops reaching for raw red-500/rose-600 utilities.

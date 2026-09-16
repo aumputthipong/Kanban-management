@@ -9,22 +9,15 @@ interface Props {
   cards: MyWorkCard[];
   boardMeta: Map<string, BoardMeta>;
   onOpenCard: (card: MyWorkCard) => void;
-  /** Forwarded to CompactRow — drop due/estimate columns. */
-  slim?: boolean;
-  /** Forwarded to CompactRow — taller hero rows. */
-  hero?: boolean;
+  /** Project glyph tile in the group header instead of a colour dot. */
+  withIcon?: boolean;
+  /** Row renderer; defaults to the light rail row. */
+  renderCard?: (card: MyWorkCard) => React.ReactNode;
 }
 
-// Groups a panel's cards into project containers (project glyph + name + count,
-// then the rows) so each date panel still answers "which project". The caller
-// owns the card order; within a project that order is preserved.
-export function ProjectGroupedList({
-  cards,
-  boardMeta,
-  onOpenCard,
-  slim,
-  hero,
-}: Props) {
+// Groups cards per project: a light box with the project header and its tasks
+// indented under a guide line. The caller owns card order; within a project it is kept.
+export function ProjectGroupedList({ cards, boardMeta, onOpenCard, withIcon = false, renderCard }: Props) {
   const groups: { boardId: string; name: string; cards: MyWorkCard[] }[] = [];
   const indexById = new Map<string, number>();
   for (const c of cards) {
@@ -39,38 +32,30 @@ export function ProjectGroupedList({
   // Busiest project first, then alphabetical — stable across re-renders.
   groups.sort((a, b) => b.cards.length - a.cards.length || a.name.localeCompare(b.name));
 
+  const row = renderCard ?? ((c: MyWorkCard) => <CompactRow key={c.id} card={c} rail onOpenCard={onOpenCard} />);
+
   return (
-    <div>
+    <div className="flex flex-col gap-2">
       {groups.map((g) => {
         const meta = boardMeta.get(g.boardId);
         return (
-          <div key={g.boardId} className="border-b border-slate-100 last:border-b-0">
-            <div className="flex items-center gap-2 px-[18px] pt-2.5 pb-1.5">
-              <span
-                aria-hidden
-                className="w-5 h-5 rounded flex items-center justify-center text-white shrink-0"
-                style={{ background: boardColor(meta?.color) }}
-              >
-                <BoardGlyph icon={meta?.icon} size={12} />
-              </span>
-              <span className="text-[12.5px] font-bold text-slate-800 truncate">
-                {g.name}
-              </span>
-              <span className="ml-auto text-[11px] font-bold tabular-nums text-slate-400">
-                {g.cards.length}
-              </span>
+          <div key={g.boardId} className="rounded-lg border border-slate-200 bg-white px-2 pt-2.5 pb-1.5">
+            <div className="flex items-center gap-2 px-1.5 pb-1.5">
+              {withIcon ? (
+                <span
+                  aria-hidden
+                  className="w-5 h-5 rounded-md flex items-center justify-center text-white shrink-0"
+                  style={{ background: boardColor(meta?.color) }}
+                >
+                  <BoardGlyph icon={meta?.icon} size={12} />
+                </span>
+              ) : (
+                <span aria-hidden className="w-2 h-2 rounded-full shrink-0" style={{ background: boardColor(meta?.color) }} />
+              )}
+              <span className="flex-1 min-w-0 truncate text-[13px] font-semibold text-slate-900">{g.name}</span>
+              <span className="shrink-0 text-xs text-slate-400 tabular-nums">{g.cards.length} รายการ</span>
             </div>
-            <div>
-              {g.cards.map((c) => (
-                <CompactRow
-                  key={c.id}
-                  card={c}
-                  slim={slim}
-                  hero={hero}
-                  onOpenCard={onOpenCard}
-                />
-              ))}
-            </div>
+            <div className="ml-2.5 border-l border-slate-200">{g.cards.map(row)}</div>
           </div>
         );
       })}

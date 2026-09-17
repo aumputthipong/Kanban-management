@@ -417,6 +417,18 @@ INSERT INTO card_subtasks (card_id, title, position)
 VALUES ($1, $2, $3)
 RETURNING *;
 
+-- name: AppendSubtask :one
+-- Position is decided here, never by the client (a client count+1 repeats after a delete).
+-- Pair with LockCardForUpdate in a transaction, or two appends read the same MAX.
+INSERT INTO card_subtasks (card_id, title, position)
+SELECT sqlc.arg(card_id)::uuid, sqlc.arg(title)::text, COALESCE(MAX(position), 0) + 1
+FROM card_subtasks
+WHERE card_id = sqlc.arg(card_id)::uuid
+RETURNING *;
+
+-- name: LockCardForUpdate :one
+SELECT id FROM cards WHERE id = $1 FOR UPDATE;
+
 -- name: UpdateSubtask :one
 UPDATE card_subtasks
 SET 

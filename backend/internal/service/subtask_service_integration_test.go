@@ -42,11 +42,78 @@ func newSubtaskFixture(t *testing.T) *subtaskFixture {
 	}
 }
 
+func positionsOf(t *testing.T, f *subtaskFixture) []float64 {
+	t.Helper()
+	list, err := f.svc.GetSubtasksByCardID(context.Background(), f.cardID)
+	require.NoError(t, err)
+	out := make([]float64, len(list))
+	for i, st := range list {
+		out[i] = st.Position
+	}
+	return out
+}
+
+// The bug that shipped: the client sent count+1, which repeats a position once a middle
+// subtask is deleted, and tied rows then swapped places on every update.
+func TestCreateSubtask_AfterDeletingMiddle_AppendsAfterLast(t *testing.T) {
+	ctx := context.Background()
+	f := newSubtaskFixture(t) // seeds one subtask at position 1
+
+	second, err := f.svc.CreateSubtask(ctx, f.cardID, "second")
+	require.NoError(t, err)
+	third, err := f.svc.CreateSubtask(ctx, f.cardID, "third")
+	require.NoError(t, err)
+	require.NoError(t, f.svc.DeleteSubtask(ctx, second.ID))
+
+	added, err := f.svc.CreateSubtask(ctx, f.cardID, "added")
+	require.NoError(t, err)
+
+	assert.Greater(t, added.Position, third.Position, "a new subtask goes after the last one, never beside it")
+	assert.Equal(t, []float64{1, 3, 4}, positionsOf(t, f))
+}
+
+func TestCreateSubtask_ConcurrentAppends_GetDistinctPositions(t *testing.T) {
+	ctx := context.Background()
+	f := newSubtaskFixture(t)
+
+	const n = 10
+	var wg sync.WaitGroup
+	errs := make(chan error, n)
+	for i := 0; i < n; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			_, err := f.svc.CreateSubtask(ctx, f.cardID, "concurrent")
+			errs <- err
+		}()
+	}
+	wg.Wait()
+	close(errs)
+	for err := range errs {
+		require.NoError(t, err, "the card row lock must serialize appends, not fail them")
+	}
+
+	positions := positionsOf(t, f)
+	require.Len(t, positions, n+1)
+	for i, p := range positions {
+		assert.Equal(t, float64(i+1), p)
+	}
+}
+
+func TestCardSubtasks_DuplicatePosition_RejectedByDatabase(t *testing.T) {
+	ctx := context.Background()
+	f := newSubtaskFixture(t)
+
+	_, err := f.queries.CreateSubtask(ctx, db.CreateSubtaskParams{CardID: f.cardID, Title: "dup", Position: 1})
+
+	require.Error(t, err, "UNIQUE(card_id, position) is the backstop if any code path skips AppendSubtask")
+}
+
 func TestCreateSubtask_Success(t *testing.T) {
 	ctx := context.Background()
 	f := newSubtaskFixture(t)
 
-	st, err := f.svc.CreateSubtask(ctx, db.CreateSubtaskParams{CardID: f.cardID, Title: "New step", Position: 1})
+	st, err := f.svc.CreateSubtask(ctx, f.cardID, "New step")
 	require.NoError(t, err)
 	assert.Equal(t, "New step", st.Title)
 	assert.False(t, st.IsDone)

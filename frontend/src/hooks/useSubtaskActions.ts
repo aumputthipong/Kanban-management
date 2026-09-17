@@ -24,29 +24,24 @@ export function useSubtaskActions() {
 
   const handleAddSubtask = async (cardId: string, title: string) => {
     try {
-      const { columns, updateCard } = useBoardStore.getState();
-      const targetCard = columns.flatMap((c) => c.cards).find((c) => c.id === cardId);
-      if (!targetCard) return;
-
-      const currentSubtasks = targetCard.subtasks || [];
-      const newPosition = currentSubtasks.length + 1;
-
       const response = await fetch(`${API_URL}/cards/${cardId}/subtasks`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ title, position: newPosition }),
+        body: JSON.stringify({ title }),
       });
 
       if (!response.ok) throw new Error("Failed to create subtask");
 
       const newSubtask: Subtask = await response.json();
 
-      updateCard({
-        ...targetCard,
-        subtasks: [...currentSubtasks, newSubtask],
-        total_subtasks: targetCard.total_subtasks + 1,
-      });
+      // Re-read after the await: the CARD_SUBTASKS_UPDATED broadcast may already carry it.
+      const { columns, setSubtasksToCard } = useBoardStore.getState();
+      const card = columns.flatMap((c) => c.cards).find((c) => c.id === cardId);
+      const list = card?.subtasks ?? [];
+      if (card && !list.some((st) => st.id === newSubtask.id)) {
+        setSubtasksToCard(cardId, [...list, newSubtask]);
+      }
     } catch (error) {
       console.error("Error creating subtask:", error);
     }

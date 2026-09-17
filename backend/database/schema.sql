@@ -93,6 +93,8 @@ CREATE TABLE card_subtasks (
 );
 -- สร้าง Index เพื่อให้ Query หา Subtask ของ Card นั้นๆ ได้เร็วขึ้น
 CREATE INDEX idx_card_subtasks_card_id ON card_subtasks(card_id);
+ALTER TABLE card_subtasks
+    ADD CONSTRAINT card_subtasks_card_id_position_key UNIQUE (card_id, position);
 
 CREATE TABLE tags (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),

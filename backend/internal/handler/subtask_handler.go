@@ -135,11 +135,7 @@ func (h *SubtaskHandler) CreateSubtask(w http.ResponseWriter, r *http.Request) e
 		return apiErr
 	}
 
-	subtask, err := h.subtaskService.CreateSubtask(r.Context(), db.CreateSubtaskParams{
-		CardID:   card.cardID,
-		Title:    payload.Title,
-		Position: payload.Position,
-	})
+	subtask, err := h.subtaskService.CreateSubtask(r.Context(), card.cardID, payload.Title)
 	if err != nil {
 		return httputil.NewAPIError(http.StatusInternalServerError, "Failed to create subtask", err)
 	}

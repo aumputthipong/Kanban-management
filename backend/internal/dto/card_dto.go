@@ -124,8 +124,10 @@ type CreateTagRequest struct {
 }
 
 type SubtaskRequest struct {
-	Title    string  `json:"title"    validate:"required,min=1,max=200"`
-	Position float64 `json:"position" validate:"gte=0"`
+	Title string `json:"title" validate:"required,min=1,max=200"`
+	// Ignored: the server appends. Kept because unknown fields are rejected, and clients
+	// that still send it must not start failing with 400.
+	Position *float64 `json:"position,omitempty"`
 }
 
 type CardMovedBroadcastPayload struct {

@@ -53,7 +53,7 @@ type BoardServicer interface {
 // SubtaskServicer is the contract for the subtask handler. CRUD against
 // card_subtasks rows, scoped to a parent card.
 type SubtaskServicer interface {
-	CreateSubtask(ctx context.Context, arg db.CreateSubtaskParams) (db.CardSubtask, error)
+	CreateSubtask(ctx context.Context, cardID, title string) (db.CardSubtask, error)
 	GetSubtasksByCardID(ctx context.Context, cardID string) ([]db.CardSubtask, error)
 	UpdateSubtask(ctx context.Context, subtaskID string, req dto.UpdateSubtaskRequest) (db.CardSubtask, error)
 	DeleteSubtask(ctx context.Context, subtaskID string) error

@@ -38,6 +38,36 @@ func (q *Queries) AddBoardMember(ctx context.Context, arg AddBoardMemberParams) 
 	return i, err
 }
 
+const appendSubtask = `-- name: AppendSubtask :one
+INSERT INTO card_subtasks (card_id, title, position)
+SELECT $1::uuid, $2::text, COALESCE(MAX(position), 0) + 1
+FROM card_subtasks
+WHERE card_id = $1::uuid
+RETURNING id, card_id, title, is_done, position, created_at, updated_at
+`
+
+type AppendSubtaskParams struct {
+	CardID string
+	Title  string
+}
+
+// Position is decided here, never by the client (a client count+1 repeats after a delete).
+// Pair with LockCardForUpdate in a transaction, or two appends read the same MAX.
+func (q *Queries) AppendSubtask(ctx context.Context, arg AppendSubtaskParams) (CardSubtask, error) {
+	row := q.db.QueryRow(ctx, appendSubtask, arg.CardID, arg.Title)
+	var i CardSubtask
+	err := row.Scan(
+		&i.ID,
+		&i.CardID,
+		&i.Title,
+		&i.IsDone,
+		&i.Position,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const clearCardTags = `-- name: ClearCardTags :exec
 DELETE FROM card_tags WHERE card_id = $1
 `
@@ -2170,6 +2200,16 @@ func (q *Queries) ListPlanningSessionsByBoard(ctx context.Context, boardID strin
 		return nil, err
 	}
 	return items, nil
+}
+
+const lockCardForUpdate = `-- name: LockCardForUpdate :one
+SELECT id FROM cards WHERE id = $1 FOR UPDATE
+`
+
+func (q *Queries) LockCardForUpdate(ctx context.Context, id string) (string, error) {
+	row := q.db.QueryRow(ctx, lockCardForUpdate, id)
+	err := row.Scan(&id)
+	return id, err
 }
 
 const lockPlanningItemForUpdate = `-- name: LockPlanningItemForUpdate :one

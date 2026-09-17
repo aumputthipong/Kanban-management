@@ -125,13 +125,12 @@ func (s *SeedHelper) Card(ctx context.Context, columnID string) string {
 	return c.ID
 }
 
-// Subtask creates a subtask on the given card with default title/position.
+// Subtask appends a subtask to the given card with a default title.
 func (s *SeedHelper) Subtask(ctx context.Context, cardID string) string {
 	s.t.Helper()
-	st, err := s.queries.CreateSubtask(ctx, db.CreateSubtaskParams{
-		CardID:   cardID,
-		Title:    "Test Subtask",
-		Position: 65536,
+	st, err := s.queries.AppendSubtask(ctx, db.AppendSubtaskParams{
+		CardID: cardID,
+		Title:  "Test Subtask",
 	})
 	if err != nil {
 		s.t.Fatalf("seed subtask: %v", err)

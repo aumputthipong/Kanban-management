@@ -21,11 +21,25 @@ func NewSubtaskService(pool *pgxpool.Pool) *SubtaskService {
 	}
 }
 
-func (s *SubtaskService) CreateSubtask(ctx context.Context, arg db.CreateSubtaskParams) (db.CardSubtask, error) {
-
-	subtask, err := s.queries.CreateSubtask(ctx, arg)
+// CreateSubtask appends a subtask after the card's last one. The card row is locked so
+// concurrent appends to one card serialize instead of reading the same MAX(position).
+func (s *SubtaskService) CreateSubtask(ctx context.Context, cardID, title string) (db.CardSubtask, error) {
+	tx, err := s.pool.Begin(ctx)
 	if err != nil {
-		return db.CardSubtask{}, fmt.Errorf("db error: %w", err)
+		return db.CardSubtask{}, fmt.Errorf("begin tx: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	qtx := s.queries.WithTx(tx)
+	if _, err := qtx.LockCardForUpdate(ctx, cardID); err != nil {
+		return db.CardSubtask{}, fmt.Errorf("lock card: %w", err)
+	}
+	subtask, err := qtx.AppendSubtask(ctx, db.AppendSubtaskParams{CardID: cardID, Title: title})
+	if err != nil {
+		return db.CardSubtask{}, fmt.Errorf("append subtask: %w", err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return db.CardSubtask{}, fmt.Errorf("commit tx: %w", err)
 	}
 	return subtask, nil
 }

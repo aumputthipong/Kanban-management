@@ -110,9 +110,9 @@ func requireSubtasksBroadcast(t *testing.T, bc *mock.MockBroadcaster) {
 
 func TestCreateSubtask_Success_BroadcastsList(t *testing.T) {
 	svc := subtaskService(validCardID)
-	svc.CreateSubtaskFn = func(ctx context.Context, arg db.CreateSubtaskParams) (db.CardSubtask, error) {
-		assert.Equal(t, validCardID, arg.CardID)
-		assert.Equal(t, "Write tests", arg.Title)
+	svc.CreateSubtaskFn = func(ctx context.Context, cardID, title string) (db.CardSubtask, error) {
+		assert.Equal(t, validCardID, cardID)
+		assert.Equal(t, "Write tests", title)
 		return db.CardSubtask{ID: validSubtaskID, CardID: validCardID, Title: "Write tests", Position: 1}, nil
 	}
 	bc := &mock.MockBroadcaster{}
@@ -130,7 +130,7 @@ func TestCreateSubtask_Success_BroadcastsList(t *testing.T) {
 
 func TestCreateSubtask_NonMember_Returns404(t *testing.T) {
 	svc := &mock.MockSubtaskService{
-		CreateSubtaskFn: func(ctx context.Context, arg db.CreateSubtaskParams) (db.CardSubtask, error) {
+		CreateSubtaskFn: func(ctx context.Context, cardID, title string) (db.CardSubtask, error) {
 			t.Fatal("a non-member must not reach the service")
 			return db.CardSubtask{}, nil
 		},
@@ -163,7 +163,7 @@ func TestCreateSubtask_InvalidJSON_Returns400(t *testing.T) {
 
 func TestCreateSubtask_ServiceError_Returns500WithoutBroadcast(t *testing.T) {
 	svc := &mock.MockSubtaskService{
-		CreateSubtaskFn: func(ctx context.Context, arg db.CreateSubtaskParams) (db.CardSubtask, error) {
+		CreateSubtaskFn: func(ctx context.Context, cardID, title string) (db.CardSubtask, error) {
 			return db.CardSubtask{}, errors.New("db error")
 		},
 	}

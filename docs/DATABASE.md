@@ -183,7 +183,9 @@ erDiagram
 - `priority` is nullable on purpose: most cards don't need one.
 
 ### `card_subtasks`
-- `position` is `DOUBLE PRECISION` to allow inline reordering, same idea as cards but smaller scale. No 64k normalization yet — subtask reorders are rare.
+- `position` is `DOUBLE PRECISION`, and `UNIQUE (card_id, position)` since migration `000019`. New subtasks are appended by the server (`AppendSubtask`: `MAX(position) + 1` under a `FOR UPDATE` lock on the card row); clients never send a position.
+- Why unique: a client-computed `count + 1` repeated a position after a middle subtask was deleted, and tied rows swapped places on every update. `000019` renumbered existing cards to `1..n` in display order.
+- A future drag-to-reorder cannot swap two positions in two plain UPDATEs, because the constraint would reject the intermediate state. Write both rows in one statement, or move one row to a temporary free value first.
 
 ### `tags` & `card_tags`
 - Tags are scoped to a board (`(board_id, name)` is unique). Two boards can have a "blocker" tag with different colors.

@@ -176,7 +176,7 @@ func run(ctx context.Context, cfg config) error {
 	planningHandler := handler.NewPlanningHandler(planningService, boardService, activityService)
 	authHandler := handler.NewAuthHandler(authService, cfg.Production, cfg.CrossSite)
 	settingsHandler := handler.NewUserSettingsHandler(settingsService)
-	inviteHandler := handler.NewInviteHandler(inviteService)
+	inviteHandler := handler.NewInviteHandler(inviteService, boardService, hub)
 	oauthHandler := handler.NewOAuthHandler(
 		cfg.GoogleClientID,
 		cfg.GoogleClientSecret,

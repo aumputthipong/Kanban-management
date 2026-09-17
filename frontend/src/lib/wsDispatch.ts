@@ -61,6 +61,9 @@ export function applyWsMessage({ type, payload }: WebSocketMessage): void {
         title: p.title, category: p.category, color: p.color || null,
       });
       return;
+    case WS_EVENT.BoardMembersUpdated:
+      board.setBoardMembers(p.members);
+      return;
     case WS_EVENT.ActivityCreated:
       useActivityStore.getState().prependActivity(p);
       return;

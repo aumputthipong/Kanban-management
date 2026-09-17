@@ -12,6 +12,7 @@ export const WS_EVENT = {
   ColumnCreated: "COLUMN_CREATED",
   ColumnDeleted: "COLUMN_DELETED",
   ColumnUpdated: "COLUMN_UPDATED",
+  BoardMembersUpdated: "BOARD_MEMBERS_UPDATED",
   ActivityCreated: "ACTIVITY_CREATED",
 } as const;
 

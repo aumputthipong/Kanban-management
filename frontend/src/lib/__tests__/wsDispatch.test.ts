@@ -199,6 +199,21 @@ describe("applyWsMessage CARD_CREATED", () => {
   });
 });
 
+describe("applyWsMessage BOARD_MEMBERS_UPDATED", () => {
+  it("replaces the member list, so new members resolve on later card events", () => {
+    seed(makeCard());
+    const CAROL: BoardMember = {
+      id: "m-3", role: "manager", user_id: "user-carol", email: "c@x.io", full_name: "Carol",
+    };
+
+    applyWsMessage({ type: WS_EVENT.BoardMembersUpdated, payload: { members: [ALICE, CAROL] } });
+    applyWsMessage(cardUpdated({ assignee_id: "user-carol" }));
+
+    expect(useBoardStore.getState().boardMembers).toEqual([ALICE, CAROL]);
+    expect(storedCard().assignee_name).toBe("Carol");
+  });
+});
+
 describe("applyWsMessage unknown type", () => {
   it("leaves the store unchanged", () => {
     seed(makeCard());

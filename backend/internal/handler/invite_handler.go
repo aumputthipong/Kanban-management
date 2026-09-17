@@ -12,11 +12,13 @@ import (
 )
 
 type InviteHandler struct {
-	invites service.InviteServicer
+	invites     service.InviteServicer
+	boards      service.BoardServicer
+	broadcaster Broadcaster
 }
 
-func NewInviteHandler(invites service.InviteServicer) *InviteHandler {
-	return &InviteHandler{invites: invites}
+func NewInviteHandler(invites service.InviteServicer, boards service.BoardServicer, broadcaster Broadcaster) *InviteHandler {
+	return &InviteHandler{invites: invites, boards: boards, broadcaster: broadcaster}
 }
 
 // CreateInvite (re)generates the board's shareable invite link. Manager+ only
@@ -98,6 +100,7 @@ func (h *InviteHandler) AcceptInvite(w http.ResponseWriter, r *http.Request) err
 			return httputil.NewAPIError(http.StatusInternalServerError, "Failed to accept invite", err)
 		}
 	}
+	broadcastMembers(r.Context(), h.boards, h.broadcaster, boardID)
 	httputil.RespondJSON(w, http.StatusOK, dto.AcceptInviteResponse{BoardID: boardID})
 	return nil
 }

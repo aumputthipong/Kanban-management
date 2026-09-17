@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -14,6 +15,7 @@ import (
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/service"
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/service/mock"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // withBoardRole injects a role into context as RequireBoardMember would have
@@ -507,4 +509,103 @@ func TestLeaveBoard_ServiceError_Returns500(t *testing.T) {
 	httputil.MakeHandler(h.LeaveBoard)(w, req)
 
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
+}
+
+// ────────────────────────────────────────────────
+// BOARD_MEMBERS_UPDATED broadcast
+// ────────────────────────────────────────────────
+
+func membersAfterChange() func(ctx context.Context, boardID string) ([]db.GetBoardMembersRow, error) {
+	return func(ctx context.Context, boardID string) ([]db.GetBoardMembersRow, error) {
+		return []db.GetBoardMembersRow{
+			{ID: "m-1", Role: "owner", UserID: validUserID, Email: "o@x.io", FullName: "Owner"},
+			{ID: "m-2", Role: "manager", UserID: otherUserID, Email: "b@x.io", FullName: "Bob"},
+		}, nil
+	}
+}
+
+func requireMembersBroadcast(t *testing.T, bc *mock.MockBroadcaster) {
+	t.Helper()
+	require.Len(t, bc.Sent, 1)
+	assert.Equal(t, validBoardID, bc.Sent[0].BoardID)
+	var msg struct {
+		Type    string `json:"type"`
+		Payload struct {
+			Members []struct {
+				UserID   string `json:"user_id"`
+				Role     string `json:"role"`
+				FullName string `json:"full_name"`
+			} `json:"members"`
+		} `json:"payload"`
+	}
+	require.NoError(t, json.Unmarshal(bc.Sent[0].Message, &msg))
+	assert.Equal(t, "BOARD_MEMBERS_UPDATED", msg.Type)
+	require.Len(t, msg.Payload.Members, 2, "the full list is sent, not the one changed member")
+	assert.Equal(t, "manager", msg.Payload.Members[1].Role)
+	assert.Equal(t, "Bob", msg.Payload.Members[1].FullName)
+}
+
+func TestMembershipChanges_BroadcastMemberList(t *testing.T) {
+	cases := map[string]struct {
+		call func(h *BoardHandler) httputil.APIFunc
+		req  func() *http.Request
+	}{
+		"add": {
+			call: func(h *BoardHandler) httputil.APIFunc { return h.AddBoardMember },
+			req: func() *http.Request {
+				return httptest.NewRequest(http.MethodPost, "/", strings.NewReader(`{"email":"b@x.io","role":"member"}`))
+			},
+		},
+		"remove": {
+			call: func(h *BoardHandler) httputil.APIFunc { return h.RemoveBoardMember },
+			req:  func() *http.Request { return httptest.NewRequest(http.MethodDelete, "/", nil) },
+		},
+		"change role": {
+			call: func(h *BoardHandler) httputil.APIFunc { return h.UpdateMemberRole },
+			req: func() *http.Request {
+				return httptest.NewRequest(http.MethodPatch, "/", strings.NewReader(`{"role":"manager"}`))
+			},
+		},
+		"leave": {
+			call: func(h *BoardHandler) httputil.APIFunc { return h.LeaveBoard },
+			req: func() *http.Request {
+				return withBoardRole(withUserID(httptest.NewRequest(http.MethodDelete, "/", nil), otherUserID), "member")
+			},
+		},
+	}
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			svc := &mock.MockBoardService{
+				AddBoardMemberByEmailFn: func(ctx context.Context, boardID, email, role string) error { return nil },
+				RemoveBoardMemberFn:     func(ctx context.Context, boardID, userID string) error { return nil },
+				UpdateMemberRoleFn:      func(ctx context.Context, boardID, userID, role string) error { return nil },
+				GetBoardMembersFn:       membersAfterChange(),
+			}
+			bc := &mock.MockBroadcaster{}
+			h := NewBoardHandler(svc, nil, nil, bc)
+			req := chiCtx(tc.req(), "boardID", validBoardID, "userID", otherUserID)
+			w := httptest.NewRecorder()
+
+			httputil.MakeHandler(tc.call(h))(w, req)
+
+			require.Less(t, w.Code, 300, w.Body.String())
+			requireMembersBroadcast(t, bc)
+		})
+	}
+}
+
+func TestRemoveBoardMember_ServiceError_DoesNotBroadcast(t *testing.T) {
+	svc := &mock.MockBoardService{
+		RemoveBoardMemberFn: func(ctx context.Context, boardID, userID string) error { return errors.New("db error") },
+		GetBoardMembersFn:   membersAfterChange(),
+	}
+	bc := &mock.MockBroadcaster{}
+	h := NewBoardHandler(svc, nil, nil, bc)
+	req := chiCtx(httptest.NewRequest(http.MethodDelete, "/", nil), "boardID", validBoardID, "userID", otherUserID)
+	w := httptest.NewRecorder()
+
+	httputil.MakeHandler(h.RemoveBoardMember)(w, req)
+
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
+	assert.Empty(t, bc.Sent)
 }

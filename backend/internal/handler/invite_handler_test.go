@@ -25,7 +25,7 @@ func TestCreateInvite_Success(t *testing.T) {
 			return service.InviteLink{Token: "tok123", ExpiresAt: time.Now().Add(time.Hour)}, nil
 		},
 	}
-	h := NewInviteHandler(svc)
+	h := NewInviteHandler(svc, nil, nil)
 	req := httptest.NewRequest(http.MethodPost, "/boards/"+validBoardID+"/invites", nil)
 	req = chiCtx(req, "boardID", validBoardID)
 	req = withUserID(req, validUserID)
@@ -40,7 +40,7 @@ func TestCreateInvite_Success(t *testing.T) {
 }
 
 func TestCreateInvite_InvalidBoardID_Returns400(t *testing.T) {
-	h := NewInviteHandler(&mock.MockInviteService{})
+	h := NewInviteHandler(&mock.MockInviteService{}, nil, nil)
 	req := httptest.NewRequest(http.MethodPost, "/boards/bad/invites", nil)
 	req = chiCtx(req, "boardID", "not-a-uuid")
 	req = withUserID(req, validUserID)
@@ -59,7 +59,7 @@ func TestGetActiveInvite_None_Returns204(t *testing.T) {
 			return service.InviteLink{}, false, nil
 		},
 	}
-	h := NewInviteHandler(svc)
+	h := NewInviteHandler(svc, nil, nil)
 	req := httptest.NewRequest(http.MethodGet, "/boards/"+validBoardID+"/invites", nil)
 	req = chiCtx(req, "boardID", validBoardID)
 	w := httptest.NewRecorder()
@@ -75,7 +75,7 @@ func TestGetActiveInvite_Found_Returns200(t *testing.T) {
 			return service.InviteLink{Token: "abc", ExpiresAt: time.Now().Add(time.Hour)}, true, nil
 		},
 	}
-	h := NewInviteHandler(svc)
+	h := NewInviteHandler(svc, nil, nil)
 	req := httptest.NewRequest(http.MethodGet, "/boards/"+validBoardID+"/invites", nil)
 	req = chiCtx(req, "boardID", validBoardID)
 	w := httptest.NewRecorder()
@@ -98,7 +98,7 @@ func TestAcceptInvite_Success(t *testing.T) {
 			return validBoardID, nil
 		},
 	}
-	h := NewInviteHandler(svc)
+	h := NewInviteHandler(svc, nil, nil)
 	req := httptest.NewRequest(http.MethodPost, "/invites/tok123/accept", nil)
 	req = chiCtx(req, "token", "tok123")
 	req = withUserID(req, validUserID)
@@ -113,7 +113,7 @@ func TestAcceptInvite_Success(t *testing.T) {
 }
 
 func TestAcceptInvite_Unauthorized_Returns401(t *testing.T) {
-	h := NewInviteHandler(&mock.MockInviteService{})
+	h := NewInviteHandler(&mock.MockInviteService{}, nil, nil)
 	req := httptest.NewRequest(http.MethodPost, "/invites/tok123/accept", nil)
 	req = chiCtx(req, "token", "tok123") // no userID in context
 	w := httptest.NewRecorder()
@@ -129,7 +129,7 @@ func TestAcceptInvite_Invalid_Returns404(t *testing.T) {
 			return "", service.ErrInviteInvalid
 		},
 	}
-	h := NewInviteHandler(svc)
+	h := NewInviteHandler(svc, nil, nil)
 	req := httptest.NewRequest(http.MethodPost, "/invites/bad/accept", nil)
 	req = chiCtx(req, "token", "bad")
 	req = withUserID(req, validUserID)
@@ -146,7 +146,7 @@ func TestAcceptInvite_Expired_Returns410(t *testing.T) {
 			return "", service.ErrInviteExpired
 		},
 	}
-	h := NewInviteHandler(svc)
+	h := NewInviteHandler(svc, nil, nil)
 	req := httptest.NewRequest(http.MethodPost, "/invites/old/accept", nil)
 	req = chiCtx(req, "token", "old")
 	req = withUserID(req, validUserID)
@@ -155,4 +155,22 @@ func TestAcceptInvite_Expired_Returns410(t *testing.T) {
 	httputil.MakeHandler(h.AcceptInvite)(w, req)
 
 	assert.Equal(t, http.StatusGone, w.Code)
+}
+
+func TestAcceptInvite_Success_BroadcastsMemberList(t *testing.T) {
+	svc := &mock.MockInviteService{
+		AcceptInviteFn: func(ctx context.Context, token, userID string) (string, error) {
+			return validBoardID, nil
+		},
+	}
+	boards := &mock.MockBoardService{GetBoardMembersFn: membersAfterChange()}
+	bc := &mock.MockBroadcaster{}
+	h := NewInviteHandler(svc, boards, bc)
+	req := withUserID(chiCtx(httptest.NewRequest(http.MethodPost, "/invites/tok/accept", nil), "token", "tok"), otherUserID)
+	w := httptest.NewRecorder()
+
+	httputil.MakeHandler(h.AcceptInvite)(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	requireMembersBroadcast(t, bc)
 }

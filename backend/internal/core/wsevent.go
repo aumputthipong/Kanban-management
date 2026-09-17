@@ -18,5 +18,6 @@ const (
 	WSColumnCreated       WSEvent = "COLUMN_CREATED"
 	WSColumnUpdated       WSEvent = "COLUMN_UPDATED"
 	WSColumnDeleted       WSEvent = "COLUMN_DELETED"
+	WSBoardMembersUpdated WSEvent = "BOARD_MEMBERS_UPDATED"
 	WSActivityCreated     WSEvent = "ACTIVITY_CREATED"
 )

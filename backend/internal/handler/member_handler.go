@@ -1,10 +1,13 @@
 package handler
 
 import (
+	"context"
 	"errors"
+	"log/slog"
 	"net/http"
 
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/core"
+	"github.com/aumputthipong/mini-erp-kanban/backend/internal/db"
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/dto"
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/httputil"
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/middleware"
@@ -24,6 +27,16 @@ func (h *BoardHandler) GetBoardMembers(w http.ResponseWriter, r *http.Request) e
 		return httputil.NewAPIError(http.StatusInternalServerError, "Failed to fetch members", err)
 	}
 
+	result := toMemberResponses(members)
+
+	// Board membership changes infrequently; short private cache cuts the
+	// refetch storm when a user opens multiple board tabs.
+	w.Header().Set("Cache-Control", "private, max-age=30")
+	httputil.RespondJSON(w, http.StatusOK, result)
+	return nil
+}
+
+func toMemberResponses(members []db.GetBoardMembersRow) []dto.BoardMemberResponse {
 	result := make([]dto.BoardMemberResponse, 0, len(members))
 	for _, m := range members {
 		result = append(result, dto.BoardMemberResponse{
@@ -34,12 +47,21 @@ func (h *BoardHandler) GetBoardMembers(w http.ResponseWriter, r *http.Request) e
 			FullName: m.FullName,
 		})
 	}
+	return result
+}
 
-	// Board membership changes infrequently; short private cache cuts the
-	// refetch storm when a user opens multiple board tabs.
-	w.Header().Set("Cache-Control", "private, max-age=30")
-	httputil.RespondJSON(w, http.StatusOK, result)
-	return nil
+// broadcastMembers sends the board's full member list after a membership change. Open
+// boards use it for the assignee picker, the member filter and client-side edit rights.
+func broadcastMembers(ctx context.Context, svc service.BoardServicer, b Broadcaster, boardID string) {
+	if b == nil {
+		return
+	}
+	members, err := svc.GetBoardMembers(ctx, boardID)
+	if err != nil {
+		slog.Error("load members for broadcast failed", "board_id", boardID, "err", err)
+		return
+	}
+	emitTo(b, boardID, core.WSBoardMembersUpdated, map[string]any{"members": toMemberResponses(members)})
 }
 
 func (h *BoardHandler) AddBoardMember(w http.ResponseWriter, r *http.Request) error {
@@ -64,6 +86,7 @@ func (h *BoardHandler) AddBoardMember(w http.ResponseWriter, r *http.Request) er
 		}
 	}
 
+	broadcastMembers(r.Context(), h.boardService, h.broadcaster, boardID)
 	w.WriteHeader(http.StatusCreated)
 	return nil
 }
@@ -82,6 +105,7 @@ func (h *BoardHandler) RemoveBoardMember(w http.ResponseWriter, r *http.Request)
 	if err := h.boardService.RemoveBoardMember(r.Context(), boardID, userIDStr); err != nil {
 		return httputil.NewAPIError(http.StatusInternalServerError, "Failed to remove member", err)
 	}
+	broadcastMembers(r.Context(), h.boardService, h.broadcaster, boardID)
 
 	w.WriteHeader(http.StatusNoContent)
 	return nil
@@ -109,6 +133,7 @@ func (h *BoardHandler) UpdateMemberRole(w http.ResponseWriter, r *http.Request) 
 	if err := h.boardService.UpdateMemberRole(r.Context(), boardID, userIDStr, req.Role); err != nil {
 		return httputil.NewAPIError(http.StatusInternalServerError, "Failed to update role", err)
 	}
+	broadcastMembers(r.Context(), h.boardService, h.broadcaster, boardID)
 
 	w.WriteHeader(http.StatusNoContent)
 	return nil
@@ -138,6 +163,7 @@ func (h *BoardHandler) LeaveBoard(w http.ResponseWriter, r *http.Request) error 
 	if err := h.boardService.RemoveBoardMember(r.Context(), boardID, userID); err != nil {
 		return httputil.NewAPIError(http.StatusInternalServerError, "Failed to leave board", err)
 	}
+	broadcastMembers(r.Context(), h.boardService, h.broadcaster, boardID)
 
 	w.WriteHeader(http.StatusNoContent)
 	return nil

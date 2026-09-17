@@ -219,6 +219,12 @@ func TestCompleteMyTask_Assignee_MarksDoneAndMovesToDoneColumn(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, card.IsDone)
 	assert.Equal(t, doneCol, card.ColumnID)
+
+	// The handler broadcasts these; they must be the stored values, not guesses.
+	assert.Equal(t, doneCol, result.ColumnID)
+	assert.Equal(t, card.Position, result.Position)
+	require.NotNil(t, result.CompletedAt)
+	assert.Equal(t, util.TimestamptzToTimePtr(card.CompletedAt).UTC(), result.CompletedAt.UTC())
 }
 
 // The assignee gate is enforced by the SQL's WHERE assignee_id = $3, not by

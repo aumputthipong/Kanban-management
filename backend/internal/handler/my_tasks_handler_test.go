@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/db"
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/dto"
@@ -104,23 +105,28 @@ func TestGetMyTasks_ServiceError(t *testing.T) {
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
 }
 
-func TestCompleteMyTask_Success_RecordsActivity(t *testing.T) {
+func TestCompleteMyTask_Success_RecordsActivityAndBroadcastsMove(t *testing.T) {
+	completedAt := time.Date(2026, 9, 17, 10, 0, 0, 0, time.UTC)
 	svc := &mock.MockBoardService{
 		CompleteMyTaskFn: func(ctx context.Context, cardID, userID string) (service.CompleteMyTaskResult, error) {
 			assert.Equal(t, validCardID, cardID)
 			assert.Equal(t, validUserID, userID)
 			return service.CompleteMyTaskResult{
-				OK:        true,
-				BoardID:   validBoardID,
-				CardTitle: "Ship docs",
+				OK:          true,
+				BoardID:     validBoardID,
+				CardTitle:   "Ship docs",
+				ColumnID:    validColumnID,
+				Position:    65536,
+				CompletedAt: &completedAt,
 			}, nil
 		},
 	}
 	var recorded service.RecordParams
 	recorder := &spyRecorder{
-		recordAsync: func(p service.RecordParams) { recorded = p },
+		record: func(ctx context.Context, p service.RecordParams) error { recorded = p; return nil },
 	}
-	h := NewBoardHandler(svc, nil, recorder, nil)
+	bc := &mock.MockBroadcaster{}
+	h := NewBoardHandler(svc, nil, recorder, bc)
 	req := chiCtx(
 		withUserID(httptest.NewRequest(http.MethodPost, "/my-tasks/"+validCardID+"/complete", nil), validUserID),
 		"cardID", validCardID,
@@ -132,6 +138,33 @@ func TestCompleteMyTask_Success_RecordsActivity(t *testing.T) {
 	assert.Equal(t, service.EventCardDoneToggled, recorded.EventType)
 	assert.Equal(t, validBoardID, recorded.BoardID)
 	assert.Equal(t, validUserID, recorded.ActorID)
+
+	// Activity first (audit log is the source of truth), then the move.
+	require.Len(t, bc.Sent, 2)
+	var activity struct {
+		Type string `json:"type"`
+	}
+	require.NoError(t, json.Unmarshal(bc.Sent[0].Message, &activity))
+	assert.Equal(t, "ACTIVITY_CREATED", activity.Type)
+
+	var moved struct {
+		Type    string `json:"type"`
+		Payload struct {
+			CardID      string  `json:"card_id"`
+			NewColumnID string  `json:"new_column_id"`
+			Position    float64 `json:"position"`
+			IsDone      bool    `json:"is_done"`
+			CompletedAt string  `json:"completed_at"`
+		} `json:"payload"`
+	}
+	require.NoError(t, json.Unmarshal(bc.Sent[1].Message, &moved))
+	assert.Equal(t, validBoardID, bc.Sent[1].BoardID)
+	assert.Equal(t, "CARD_MOVED", moved.Type)
+	assert.Equal(t, validCardID, moved.Payload.CardID)
+	assert.Equal(t, validColumnID, moved.Payload.NewColumnID)
+	assert.Equal(t, float64(65536), moved.Payload.Position)
+	assert.True(t, moved.Payload.IsDone)
+	assert.Equal(t, "2026-09-17T10:00:00Z", moved.Payload.CompletedAt)
 }
 
 func TestCompleteMyTask_NotAssignee_404(t *testing.T) {
@@ -140,7 +173,8 @@ func TestCompleteMyTask_NotAssignee_404(t *testing.T) {
 			return service.CompleteMyTaskResult{OK: false}, nil
 		},
 	}
-	h := NewBoardHandler(svc, nil, nil, nil)
+	bc := &mock.MockBroadcaster{}
+	h := NewBoardHandler(svc, nil, nil, bc)
 	req := chiCtx(
 		withUserID(httptest.NewRequest(http.MethodPost, "/my-tasks/"+validCardID+"/complete", nil), validUserID),
 		"cardID", validCardID,
@@ -149,6 +183,7 @@ func TestCompleteMyTask_NotAssignee_404(t *testing.T) {
 
 	httputil.MakeHandler(h.CompleteMyTask)(w, req)
 	assert.Equal(t, http.StatusNotFound, w.Code)
+	assert.Empty(t, bc.Sent, "nothing moved, so nothing is broadcast")
 }
 
 // spyRecorder is a tiny ActivityRecorder used by my-tasks handler tests to

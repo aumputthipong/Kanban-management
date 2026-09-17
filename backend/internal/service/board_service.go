@@ -394,6 +394,10 @@ type CompleteMyTaskResult struct {
 	OK        bool
 	BoardID   string
 	CardTitle string
+	// The card as stored after the move, for the CARD_MOVED broadcast. Zero when !OK.
+	ColumnID    string
+	Position    float64
+	CompletedAt *time.Time
 }
 
 // CompleteMyTask marks a card done and moves it to the board's first DONE column,
@@ -426,10 +430,21 @@ func (s *BoardService) CompleteMyTask(ctx context.Context, cardID, userID string
 	if err != nil {
 		return CompleteMyTaskResult{}, fmt.Errorf("complete card: %w", err)
 	}
+	if rows == 0 {
+		return CompleteMyTaskResult{BoardID: boardID, CardTitle: card.Title}, nil
+	}
+	// completed_at is set by NOW() in SQL; re-read so the broadcast carries the stored value.
+	done, err := s.queries.GetCard(ctx, cardID)
+	if err != nil {
+		return CompleteMyTaskResult{}, fmt.Errorf("reload completed card: %w", err)
+	}
 	return CompleteMyTaskResult{
-		OK:        rows > 0,
-		BoardID:   boardID,
-		CardTitle: card.Title,
+		OK:          true,
+		BoardID:     boardID,
+		CardTitle:   done.Title,
+		ColumnID:    done.ColumnID,
+		Position:    done.Position,
+		CompletedAt: util.TimestamptzToTimePtr(done.CompletedAt),
 	}, nil
 }
 

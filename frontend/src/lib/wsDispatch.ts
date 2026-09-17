@@ -1,6 +1,7 @@
 import { useBoardStore } from "@/store/useBoardStore";
 import { useActivityStore } from "@/store/useActivityStore";
 import { WS_EVENT } from "@/types/wsEvents";
+import type { BoardMember } from "@/types/board";
 
 /**
  * Wire-format envelope for every inbound message. `payload` is `unknown` to force
@@ -40,6 +41,13 @@ export function applyWsMessage({ type, payload }: WebSocketMessage): void {
       board.updateCard({ id: card_id, ...rest, assignee_name: resolveAssigneeName(rest.assignee_id) });
       return;
     }
+    case WS_EVENT.CardSubtasksUpdated:
+      // Full list, not a delta: re-applying it (including over our own optimistic edit) is safe.
+      board.setSubtasksToCard(p.card_id, p.subtasks);
+      return;
+    case WS_EVENT.TagDeleted:
+      board.removeTagFromBoard(p.tag_id);
+      return;
     case WS_EVENT.ColumnCreated:
       board.addColumnToStore({
         id: p.id, title: p.title, position: p.position, category: p.category,
@@ -54,6 +62,15 @@ export function applyWsMessage({ type, payload }: WebSocketMessage): void {
         title: p.title, category: p.category, color: p.color || null,
       });
       return;
+    case WS_EVENT.BoardMembersUpdated: {
+      const members: BoardMember[] = p.members;
+      board.setBoardMembers(members);
+      // The server evicts this socket right after; the provider takes the user off the board.
+      if (board.currentUserId && !members.some((m) => m.user_id === board.currentUserId)) {
+        board.setRemovedFromBoard(true);
+      }
+      return;
+    }
     case WS_EVENT.ActivityCreated:
       useActivityStore.getState().prependActivity(p);
       return;

@@ -12,11 +12,14 @@ import (
 )
 
 type InviteHandler struct {
-	invites service.InviteServicer
+	invites     service.InviteServicer
+	boards      service.BoardServicer
+	activity    service.ActivityRecorder
+	broadcaster Broadcaster
 }
 
-func NewInviteHandler(invites service.InviteServicer) *InviteHandler {
-	return &InviteHandler{invites: invites}
+func NewInviteHandler(invites service.InviteServicer, boards service.BoardServicer, activity service.ActivityRecorder, broadcaster Broadcaster) *InviteHandler {
+	return &InviteHandler{invites: invites, boards: boards, activity: activity, broadcaster: broadcaster}
 }
 
 // CreateInvite (re)generates the board's shareable invite link. Manager+ only
@@ -96,6 +99,14 @@ func (h *InviteHandler) AcceptInvite(w http.ResponseWriter, r *http.Request) err
 			return httputil.NewAPIError(http.StatusGone, "ลิงก์เชิญหมดอายุแล้ว", err)
 		default:
 			return httputil.NewAPIError(http.StatusInternalServerError, "Failed to accept invite", err)
+		}
+	}
+	members := broadcastMembers(r.Context(), h.boards, h.broadcaster, boardID)
+	for _, m := range members {
+		if m.UserID == userID {
+			recordActivity(r.Context(), h.activity, h.broadcaster, memberActivity(boardID, userID, service.EventMemberAdded,
+				service.MemberChangedPayload{UserID: userID, Name: m.FullName, Role: m.Role, Via: "invite"}))
+			break
 		}
 	}
 	httputil.RespondJSON(w, http.StatusOK, dto.AcceptInviteResponse{BoardID: boardID})

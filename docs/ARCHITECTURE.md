@@ -57,7 +57,8 @@ Action matrix:
 | Action                      | owner | manager | member |
 |-----------------------------|:-----:|:-------:|:------:|
 | Read board / activities     | ✅    | ✅      | ✅     |
-| Create / update / move card | ✅    | ✅      | ✅     |
+| Create / move card          | ✅    | ✅      | ✅     |
+| Edit card fields & subtasks | ✅    | ✅      | own¹   |
 | Update board title / budget | ✅    | ✅      |        |
 | Add / remove members        | ✅    | ✅      |        |
 | Change member roles         | ✅    | ✅      |        |
@@ -65,6 +66,8 @@ Action matrix:
 | Move board to trash         | ✅    |         |        |
 | Restore / hard-delete       | ✅    |         |        |
 | Leave board                 |       | ✅      | ✅     |
+
+¹ A member may edit a card they created or are assigned to (`canEditCard` in the card handler, mirrored by `useCanEdit`). Subtasks follow the same rule; reading them only needs membership.
 
 The frontend mirrors this matrix for UI gating (hide buttons), but the backend is the source of truth — never trust the client.
 

@@ -22,6 +22,7 @@ ADR that references the old one, not an edit.
 | [0006](0006-comment-budget.md)                | Comment budget by block size, not density        | Accepted |
 | [0007](0007-ws-event-contract.md)             | WebSocket event tags are checked across languages | Accepted |
 | [0008](0008-coupling-we-are-not-cutting.md)   | Coupling we are deliberately not cutting         | Accepted |
+| [0009](0009-card-patch-sends-changed-fields.md) | Card PATCH sends only the changed field          | Accepted |
 
 ## Adding an ADR
 

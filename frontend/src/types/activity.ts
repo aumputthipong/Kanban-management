@@ -7,7 +7,11 @@ export type ActivityEventType =
   | "column.created"
   | "column.deleted"
   | "column.renamed"
-  | "member.added";
+  | "card.subtasks_completed"
+  | "member.added"
+  | "member.removed"
+  | "member.left"
+  | "member.role_changed";
 
 export interface Activity {
   id: string;

@@ -31,7 +31,7 @@ interface CardDetailModalProps {
   boardId: string;
   isOpen: boolean;
   onClose: () => void;
-  onUpdated: (cardId: string, form: FormState) => void;
+  onUpdated: (cardId: string, form: FormState, field: keyof FormState) => void;
   onDelete: (cardId: string) => void;
   onAddSubtask?: (cardId: string, title: string) => void;
   canEdit: boolean;
@@ -47,10 +47,9 @@ export function CardDetailModal({
   onAddSubtask,
   canEdit,
 }: CardDetailModalProps) {
-  // Per-field auto-save: each commit fires onUpdated with the full current
-  // snapshot. The modal stays open — closing is the user's explicit action.
+  // Per-field auto-save; the modal stays open until the user closes it.
   const onCommit = useCallback(
-    (next: FormState) => onUpdated(card.id, next),
+    (next: FormState, field: keyof FormState) => onUpdated(card.id, next, field),
     [onUpdated, card.id],
   );
   const {

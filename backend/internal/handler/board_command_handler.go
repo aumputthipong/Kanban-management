@@ -24,6 +24,18 @@ type Broadcaster interface {
 	Broadcast(boardID string, message []byte)
 }
 
+// RoomEvictor drops a user's live connections to a board. It is type-asserted on the
+// Broadcaster (the hub implements both) so handler constructors stay unchanged.
+type RoomEvictor interface {
+	EvictUser(boardID, userID string)
+}
+
+func evictFromBoard(b Broadcaster, boardID, userID string) {
+	if ev, ok := b.(RoomEvictor); ok {
+		ev.EvictUser(boardID, userID)
+	}
+}
+
 // BoardCommandHandler is the REST write path for the kanban board: move, delete and
 // done-toggle a card, plus column CRUD. It persists through the same service the WS
 // handlers use and then broadcasts, so a dropped socket costs realtime, not the write.
@@ -67,19 +79,23 @@ func (h *BoardCommandHandler) emit(boardID string, msgType core.WSEvent, payload
 	emitTo(h.broadcaster, boardID, msgType, payload)
 }
 
-// record writes the audit row and announces it, so the activity feed stays live.
+func (h *BoardCommandHandler) record(ctx context.Context, p service.RecordParams) {
+	recordActivity(ctx, h.activity, h.broadcaster, p)
+}
+
+// recordActivity writes the audit row and announces it, so the activity feed stays live.
 // It uses the synchronous Record rather than RecordAsync because the broadcast
 // needs the row's id and created_at, which only the sync call returns.
-func (h *BoardCommandHandler) record(ctx context.Context, p service.RecordParams) {
-	if h.activity == nil {
+func recordActivity(ctx context.Context, rec service.ActivityRecorder, b Broadcaster, p service.RecordParams) {
+	if rec == nil {
 		return
 	}
-	act, err := h.activity.Record(ctx, p)
+	act, err := rec.Record(ctx, p)
 	if err != nil {
 		slog.Error("record activity failed", "event_type", p.EventType, "board_id", p.BoardID, "err", err)
 		return
 	}
-	emitTo(h.broadcaster, p.BoardID, core.WSActivityCreated, activityPayload(act))
+	emitTo(b, p.BoardID, core.WSActivityCreated, activityPayload(act))
 }
 
 // activityPayload is the wire shape the activity feed consumes.

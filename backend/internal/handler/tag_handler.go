@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/aumputthipong/mini-erp-kanban/backend/internal/core"
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/dto"
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/httputil"
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/service"
@@ -12,11 +13,12 @@ import (
 )
 
 type TagHandler struct {
-	tagService service.TagServicer
+	tagService  service.TagServicer
+	broadcaster Broadcaster
 }
 
-func NewTagHandler(tagService service.TagServicer) *TagHandler {
-	return &TagHandler{tagService: tagService}
+func NewTagHandler(tagService service.TagServicer, broadcaster Broadcaster) *TagHandler {
+	return &TagHandler{tagService: tagService, broadcaster: broadcaster}
 }
 
 func (h *TagHandler) GetBoardTags(w http.ResponseWriter, r *http.Request) error {
@@ -74,6 +76,8 @@ func (h *TagHandler) DeleteBoardTag(w http.ResponseWriter, r *http.Request) erro
 	if err := h.tagService.DeleteTag(r.Context(), boardID, tagID); err != nil {
 		return httputil.NewAPIError(http.StatusInternalServerError, "Failed to delete tag", err)
 	}
+	// card_tags rows cascade in the DB; open boards must drop the tag from their cards too.
+	emitTo(h.broadcaster, boardID, core.WSTagDeleted, map[string]any{"tag_id": tagID})
 	w.WriteHeader(http.StatusNoContent)
 	return nil
 }

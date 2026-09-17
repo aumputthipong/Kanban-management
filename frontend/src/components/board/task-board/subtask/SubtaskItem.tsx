@@ -8,6 +8,8 @@ interface SubtaskItemProps {
   onToggle: (cardId: string, subtaskId: string, currentStatus: boolean) => void;
   onUpdateTitle: (cardId: string, subtaskId: string, newTitle: string) => void;
   onDelete: (cardId: string, subtaskId: string) => void;
+  /** Mirrors the backend rule: only people who can edit the card can change its subtasks. */
+  canEdit: boolean;
 }
 
 export const SubtaskItem = memo(function SubtaskItem({
@@ -16,6 +18,7 @@ export const SubtaskItem = memo(function SubtaskItem({
   onToggle,
   onUpdateTitle,
   onDelete,
+  canEdit,
 }: SubtaskItemProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(subtask.title);
@@ -54,8 +57,9 @@ export const SubtaskItem = memo(function SubtaskItem({
       <input
         type="checkbox"
         checked={subtask.is_done}
+        disabled={!canEdit}
         onChange={() => onToggle(cardId, subtask.id, subtask.is_done)}
-        className="shrink-0 rounded border-slate-300 text-primary focus:ring-blue-500 cursor-pointer"
+        className="shrink-0 rounded border-slate-300 text-primary focus:ring-blue-500 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
       />
 
       {isEditing ? (
@@ -83,44 +87,46 @@ export const SubtaskItem = memo(function SubtaskItem({
         </span>
       )}
 
-      <div className="relative shrink-0" ref={menuRef}>
-        <button
-          type="button"
-          onClick={() => setMenuOpen((v) => !v)}
-          className={`p-1 rounded transition-colors ${
-            menuOpen
-              ? "bg-slate-200 text-slate-700"
-              : "text-slate-400 opacity-0 group-hover:opacity-100 hover:bg-slate-200 hover:text-slate-700"
-          }`}
-          aria-label="Subtask options"
-        >
-          <MoreHorizontal size={14} />
-        </button>
+      {canEdit && (
+        <div className="relative shrink-0" ref={menuRef}>
+          <button
+            type="button"
+            onClick={() => setMenuOpen((v) => !v)}
+            className={`p-1 rounded transition-colors ${
+              menuOpen
+                ? "bg-slate-200 text-slate-700"
+                : "text-slate-400 opacity-0 group-hover:opacity-100 hover:bg-slate-200 hover:text-slate-700"
+            }`}
+            aria-label="Subtask options"
+          >
+            <MoreHorizontal size={14} />
+          </button>
 
-        {menuOpen && (
-          <div className="absolute top-7 right-0 z-50 w-36 bg-white border border-slate-200 rounded-lg shadow-lg py-1 overflow-hidden">
-            <button
-              type="button"
-              onClick={startEdit}
-              className="flex items-center gap-2 w-full px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50 cursor-pointer"
-            >
-              <Pencil size={12} />
-              Rename
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setMenuOpen(false);
-                onDelete(cardId, subtask.id);
-              }}
-              className="flex items-center gap-2 w-full px-3 py-1.5 text-xs text-red-600 hover:bg-red-50 cursor-pointer"
-            >
-              <Trash2 size={12} />
-              Delete
-            </button>
-          </div>
-        )}
-      </div>
+          {menuOpen && (
+            <div className="absolute top-7 right-0 z-50 w-36 bg-white border border-slate-200 rounded-lg shadow-lg py-1 overflow-hidden">
+              <button
+                type="button"
+                onClick={startEdit}
+                className="flex items-center gap-2 w-full px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50 cursor-pointer"
+              >
+                <Pencil size={12} />
+                Rename
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setMenuOpen(false);
+                  onDelete(cardId, subtask.id);
+                }}
+                className="flex items-center gap-2 w-full px-3 py-1.5 text-xs text-red-600 hover:bg-red-50 cursor-pointer"
+              >
+                <Trash2 size={12} />
+                Delete
+              </button>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 });

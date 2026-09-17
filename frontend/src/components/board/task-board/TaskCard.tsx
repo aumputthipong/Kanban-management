@@ -33,7 +33,7 @@ interface CardProps {
   card: Card;
   boardId: string;
   onDeleteCard: (cardId: string) => void;
-  onSaveCard: (cardId: string, form: FormState) => void;
+  onSaveCard: (cardId: string, form: FormState, field: keyof FormState) => void;
 }
 
 export const TaskCard = memo(function TaskCard({
@@ -203,7 +203,7 @@ export const TaskCard = memo(function TaskCard({
           boardId={boardId}
           isOpen={isDetailOpen}
           onClose={() => setIsDetailOpen(false)}
-          onUpdated={(cardId, form) => onSaveCard(cardId, form)}
+          onUpdated={onSaveCard}
           onDelete={(cardId) => {
             onDeleteCard(cardId);
             setIsDetailOpen(false);

@@ -2,6 +2,7 @@ import { useBoardStore } from "@/store/useBoardStore";
 import { POSITION_GAP } from "@/utils/boardPosition";
 import { apiClient, ApiError } from "@/lib/apiClient";
 import { useToastStore } from "@/store/useToastStore";
+import { buildCardFieldUpdate, type CardField } from "@/lib/cardPatch";
 import type { Card, CardUpdateForm, Column } from "@/types/board";
 
 // Restores the board to `snapshot` and tells the user the write did not land. 403 is
@@ -13,19 +14,6 @@ function revertWith(snapshot: Column[], message: string) {
     useToastStore.getState().show({ message, duration: 4000 });
   };
 }
-
-type CardPatchBody = {
-  title: string;
-  description: string | null;
-  due_date: string | null;
-  assignee_id: string | null;
-  priority: string | null;
-  estimated_hours: number | null;
-  tag_ids: string[];
-  changed_fields: string[];
-  acceptance_criteria?: string;
-  implementation_note?: string;
-};
 
 export function useCardActions() {
 
@@ -133,68 +121,13 @@ export function useCardActions() {
     );
   };
 
-  const handleUpdateCard = (cardId: string, form: CardUpdateForm) => {
+  const handleUpdateCard = (cardId: string, form: CardUpdateForm, field: CardField) => {
     const { boardMembers, columns, updateCard } = useBoardStore.getState();
-    const newAssigneeId = form.assignee_id || null;
-    const original = columns.flatMap((c) => c.cards).find((c) => c.id === cardId);
-    // Only fields that actually changed become activity-log entries.
-    const changedFields: string[] = [];
-    // acceptance_criteria / implementation_note are sent only when they changed: the
-    // backend COALESCEs them, so omitting preserves the existing value. A title-only
-    // edit must not clobber AC that PromoteItem copied in.
-    const optional: Partial<Pick<CardPatchBody, "acceptance_criteria" | "implementation_note">> = {};
-    if (original) {
-      const newEstimated = form.estimated_hours ? parseFloat(form.estimated_hours) : null;
-      if (form.title !== original.title) changedFields.push("title");
-      if ((form.description || null) !== (original.description ?? null)) changedFields.push("description");
-      if ((form.due_date || null) !== (original.due_date ?? null)) changedFields.push("due_date");
-      if (newAssigneeId !== (original.assignee_id ?? null)) changedFields.push("assignee_id");
-      if ((form.priority || null) !== (original.priority ?? null)) changedFields.push("priority");
-      if (newEstimated !== (original.estimated_hours ?? null)) changedFields.push("estimated_hours");
-      const oldTagIds = new Set((original.tags ?? []).map((t) => t.id));
-      const newTagIds = new Set(form.tags.map((t) => t.id));
-      const tagsChanged =
-        oldTagIds.size !== newTagIds.size ||
-        [...newTagIds].some((id) => !oldTagIds.has(id));
-      if (tagsChanged) changedFields.push("tags");
-      if (form.acceptance_criteria !== (original.acceptance_criteria ?? "")) {
-        optional.acceptance_criteria = form.acceptance_criteria;
-        changedFields.push("acceptance_criteria");
-      }
-      if (form.implementation_note !== (original.implementation_note ?? "")) {
-        optional.implementation_note = form.implementation_note;
-        changedFields.push("implementation_note");
-      }
-    }
-    const newAssigneeName = newAssigneeId
-      ? (boardMembers.find((m) => m.user_id === newAssigneeId)?.full_name ?? null)
-      : null;
+    const current = columns.flatMap((c) => c.cards).find((c) => c.id === cardId);
+    const { body, patch } = buildCardFieldUpdate(form, field, boardMembers);
+    // Patch onto the store's copy, not the form: other fields may be newer from a broadcast.
+    if (current) updateCard({ ...current, ...patch });
 
-    updateCard({
-      ...original!,
-      title: form.title,
-      description: form.description || null,
-      due_date: form.due_date || null,
-      assignee_id: newAssigneeId,
-      assignee_name: newAssigneeName,
-      priority: (form.priority as Card["priority"]) || null,
-      estimated_hours: form.estimated_hours ? parseFloat(form.estimated_hours) : null,
-      tags: form.tags,
-      acceptance_criteria: form.acceptance_criteria || null,
-      implementation_note: form.implementation_note || null,
-    });
-
-    const body: CardPatchBody = {
-      title: form.title,
-      description: form.description || null,
-      due_date: form.due_date || null,
-      assignee_id: newAssigneeId,
-      priority: form.priority || null,
-      estimated_hours: form.estimated_hours ? parseFloat(form.estimated_hours) : null,
-      tag_ids: form.tags.map((t) => t.id),
-      changed_fields: changedFields,
-      ...optional,
-    };
     // apiClient, not raw fetch: raw fetch only rejects on network errors, so a 4xx
     // used to vanish silently. Toast anything apiClient has not already toasted.
     apiClient(`/cards/${cardId}`, { method: "PATCH", data: body }).catch((err) => {

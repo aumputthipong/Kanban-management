@@ -20,7 +20,6 @@ import { useBoardStore, UNASSIGNED_FILTER } from "@/store/useBoardStore";
 import { useBoardActions } from "@/hooks/useBoardActions";
 import { useCanEdit } from "@/hooks/useCanEdit";
 import type { Card } from "@/types/board";
-import type { FormState } from "@/components/board/card-modal/CardDetailModal";
 import { CalendarHeader } from "./CalendarHeader";
 import { CalendarFilters } from "./CalendarFilters";
 import { TaskPill } from "./TaskPill";
@@ -283,19 +282,7 @@ function EditCardModal({
       boardId={boardId}
       isOpen
       onClose={onClose}
-      onUpdated={(cardId: string, form: FormState) =>
-        handleUpdateCard(cardId, {
-          title: form.title,
-          description: form.description,
-          due_date: form.due_date,
-          assignee_id: form.assignee_id,
-          priority: form.priority,
-          estimated_hours: form.estimated_hours,
-          tags: form.tags,
-          acceptance_criteria: form.acceptance_criteria,
-          implementation_note: form.implementation_note,
-        })
-      }
+      onUpdated={handleUpdateCard}
       onDelete={(cardId: string) => {
         handleDeleteCard(cardId);
         onClose();

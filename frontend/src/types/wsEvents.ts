@@ -7,9 +7,12 @@ export const WS_EVENT = {
   CardCreated: "CARD_CREATED",
   CardDeleted: "CARD_DELETED",
   CardUpdated: "CARD_UPDATED",
+  CardSubtasksUpdated: "CARD_SUBTASKS_UPDATED",
+  TagDeleted: "TAG_DELETED",
   ColumnCreated: "COLUMN_CREATED",
   ColumnDeleted: "COLUMN_DELETED",
   ColumnUpdated: "COLUMN_UPDATED",
+  BoardMembersUpdated: "BOARD_MEMBERS_UPDATED",
   ActivityCreated: "ACTIVITY_CREATED",
 } as const;
 

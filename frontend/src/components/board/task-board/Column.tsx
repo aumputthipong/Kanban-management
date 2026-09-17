@@ -67,7 +67,7 @@ interface ColumnProps {
     },
   ) => void;
   onDeleteCard: (cardId: string) => void;
-  onSaveCard: (cardId: string, form: FormState) => void;
+  onSaveCard: (cardId: string, form: FormState, field: keyof FormState) => void;
   onDeleteColumn: (columnId: string) => void;
   onUpdateColumn: (
     columnId: string,

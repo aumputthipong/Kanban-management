@@ -1,9 +1,11 @@
 package handler
 
 import (
+	"log/slog"
 	"net/http"
 	"time"
 
+	"github.com/aumputthipong/mini-erp-kanban/backend/internal/core"
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/dto"
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/httputil"
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/middleware"
@@ -131,11 +133,9 @@ func (h *BoardHandler) CompleteMyTask(w http.ResponseWriter, r *http.Request) er
 		return httputil.NewAPIError(http.StatusNotFound, "Task not found", nil)
 	}
 
-	// Best-effort audit row so My Work completions show up on the board's
-	// activity feed alongside drag-to-done. Audit failures don't roll back
-	// the mutation — RecordAsync handles its own logging.
+	// Synchronous Record, not RecordAsync: the ACTIVITY_CREATED broadcast needs the row.
 	if h.activity != nil {
-		h.activity.RecordAsync(service.RecordParams{
+		act, aerr := h.activity.Record(r.Context(), service.RecordParams{
 			BoardID:    result.BoardID,
 			ActorID:    userID,
 			EventType:  service.EventCardDoneToggled,
@@ -147,7 +147,21 @@ func (h *BoardHandler) CompleteMyTask(w http.ResponseWriter, r *http.Request) er
 				"via":     "my_work",
 			},
 		})
+		if aerr != nil {
+			slog.Error("record activity failed", "card_id", cardID, "err", aerr)
+		} else {
+			emitTo(h.broadcaster, result.BoardID, core.WSActivityCreated, activityPayload(act))
+		}
 	}
+
+	// Same event as a drag or tick on the board, so an open board moves the card too.
+	emitTo(h.broadcaster, result.BoardID, core.WSCardMoved, map[string]any{
+		"card_id":       cardID,
+		"new_column_id": result.ColumnID,
+		"position":      result.Position,
+		"is_done":       true,
+		"completed_at":  result.CompletedAt,
+	})
 
 	w.WriteHeader(http.StatusNoContent)
 	return nil

@@ -108,6 +108,81 @@ describe("applyWsMessage CARD_UPDATED tags and notes", () => {
   });
 });
 
+describe("applyWsMessage CARD_SUBTASKS_UPDATED", () => {
+  const subtasks = [
+    { id: "s-1", card_id: "card-1", title: "Member filter", is_done: true, position: 1 },
+    { id: "s-2", card_id: "card-1", title: "Priority filter", is_done: true, position: 2 },
+    { id: "s-3", card_id: "card-1", title: "Tests", is_done: false, position: 3 },
+  ];
+
+  it("replaces the list and recomputes the progress counts", () => {
+    seed(makeCard({ subtasks: [], total_subtasks: 0, completed_subtasks: 0 }));
+
+    applyWsMessage({ type: WS_EVENT.CardSubtasksUpdated, payload: { card_id: "card-1", subtasks } });
+
+    expect(storedCard().subtasks).toEqual(subtasks);
+    expect(storedCard().total_subtasks).toBe(3);
+    expect(storedCard().completed_subtasks).toBe(2);
+  });
+
+  it("is idempotent when the same list arrives twice", () => {
+    seed(makeCard());
+    const msg = { type: WS_EVENT.CardSubtasksUpdated, payload: { card_id: "card-1", subtasks } };
+
+    applyWsMessage(msg);
+    applyWsMessage(msg);
+
+    expect(storedCard().total_subtasks).toBe(3);
+    expect(storedCard().completed_subtasks).toBe(2);
+  });
+
+  it("leaves other card fields untouched", () => {
+    seed(makeCard({ title: "Keep", assignee_id: "user-alice", assignee_name: "Alice" }));
+
+    applyWsMessage({ type: WS_EVENT.CardSubtasksUpdated, payload: { card_id: "card-1", subtasks: [] } });
+
+    expect(storedCard().title).toBe("Keep");
+    expect(storedCard().assignee_name).toBe("Alice");
+    expect(storedCard().total_subtasks).toBe(0);
+  });
+});
+
+describe("applyWsMessage TAG_DELETED", () => {
+  const design = { id: "t-1", board_id: "b-1", name: "design", color: "green" };
+  const bug = { id: "t-2", board_id: "b-1", name: "bug", color: "red" };
+
+  it("removes the tag from every card and from the active filter", () => {
+    useBoardStore.setState({
+      columns: [
+        { id: "col-1", title: "To Do", position: 1, category: "TODO", color: null, cards: [
+          makeCard({ id: "card-1", tags: [design, bug] }),
+          makeCard({ id: "card-2", tags: [design] }),
+        ] },
+      ],
+      filterTagIds: ["t-1", "t-2"],
+    });
+
+    applyWsMessage({ type: WS_EVENT.TagDeleted, payload: { tag_id: "t-1" } });
+
+    const [card1, card2] = useBoardStore.getState().columns[0].cards;
+    expect(card1.tags).toEqual([bug]);
+    expect(card2.tags).toEqual([]);
+    expect(useBoardStore.getState().filterTagIds).toEqual(["t-2"]);
+  });
+
+  it("keeps untouched cards as the same object", () => {
+    const untagged = makeCard({ id: "card-3", tags: [bug] });
+    useBoardStore.setState({
+      columns: [{ id: "col-1", title: "To Do", position: 1, category: "TODO", color: null, cards: [untagged] }],
+      filterTagIds: [],
+    });
+
+    applyWsMessage({ type: WS_EVENT.TagDeleted, payload: { tag_id: "t-1" } });
+
+    expect(useBoardStore.getState().columns[0].cards[0]).toBe(untagged);
+  });
+});
+
 describe("applyWsMessage CARD_CREATED", () => {
   it("resolves the assignee name from board members", () => {
     useBoardStore.setState({
@@ -121,6 +196,45 @@ describe("applyWsMessage CARD_CREATED", () => {
     });
 
     expect(storedCard().assignee_name).toBe("Alice");
+  });
+});
+
+describe("applyWsMessage BOARD_MEMBERS_UPDATED", () => {
+  it("replaces the member list, so new members resolve on later card events", () => {
+    seed(makeCard());
+    const CAROL: BoardMember = {
+      id: "m-3", role: "manager", user_id: "user-carol", email: "c@x.io", full_name: "Carol",
+    };
+
+    applyWsMessage({ type: WS_EVENT.BoardMembersUpdated, payload: { members: [ALICE, CAROL] } });
+    applyWsMessage(cardUpdated({ assignee_id: "user-carol" }));
+
+    expect(useBoardStore.getState().boardMembers).toEqual([ALICE, CAROL]);
+    expect(storedCard().assignee_name).toBe("Carol");
+  });
+});
+
+describe("applyWsMessage BOARD_MEMBERS_UPDATED removal", () => {
+  beforeEach(() => useBoardStore.setState({ currentUserId: "user-alice", removedFromBoard: false }));
+
+  it("flags the board when the current user is no longer a member", () => {
+    applyWsMessage({ type: WS_EVENT.BoardMembersUpdated, payload: { members: [BOB] } });
+
+    expect(useBoardStore.getState().removedFromBoard).toBe(true);
+  });
+
+  it("does not flag the board while the current user is still listed", () => {
+    applyWsMessage({ type: WS_EVENT.BoardMembersUpdated, payload: { members: [ALICE, BOB] } });
+
+    expect(useBoardStore.getState().removedFromBoard).toBe(false);
+  });
+
+  it("does not flag before the current user is known", () => {
+    useBoardStore.setState({ currentUserId: "" });
+
+    applyWsMessage({ type: WS_EVENT.BoardMembersUpdated, payload: { members: [BOB] } });
+
+    expect(useBoardStore.getState().removedFromBoard).toBe(false);
   });
 });
 

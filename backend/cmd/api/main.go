@@ -158,6 +158,8 @@ func run(ctx context.Context, cfg config) error {
 	boardCmdService := service.NewBoardCommandService(pool, queries)
 
 	hub := websocket.NewHub(cfg.FrontendURL)
+	// Handlers type-assert eviction off the Broadcaster; fail the build, not silently, if it drifts.
+	var _ handler.RoomEvictor = hub
 	go hub.Run()
 
 	boardService := service.NewBoardService(pool, queries)
@@ -168,15 +170,15 @@ func run(ctx context.Context, cfg config) error {
 	settingsService := service.NewUserSettingsService(queries)
 	inviteService := service.NewInviteService(pool, queries)
 
-	subtaskHandler := handler.NewSubtaskHandler(subtaskService)
+	subtaskHandler := handler.NewSubtaskHandler(subtaskService, boardService, activityService, hub)
 	boardHandler := handler.NewBoardHandler(boardService, settingsService, activityService, hub)
 	boardCmdHandler := handler.NewBoardCommandHandler(boardCmdService, boardService, activityService, hub)
-	tagHandler := handler.NewTagHandler(tagService)
+	tagHandler := handler.NewTagHandler(tagService, hub)
 	activityHandler := handler.NewActivityHandler(activityService)
 	planningHandler := handler.NewPlanningHandler(planningService, boardService, activityService)
 	authHandler := handler.NewAuthHandler(authService, cfg.Production, cfg.CrossSite)
 	settingsHandler := handler.NewUserSettingsHandler(settingsService)
-	inviteHandler := handler.NewInviteHandler(inviteService)
+	inviteHandler := handler.NewInviteHandler(inviteService, boardService, activityService, hub)
 	oauthHandler := handler.NewOAuthHandler(
 		cfg.GoogleClientID,
 		cfg.GoogleClientSecret,

@@ -29,15 +29,15 @@ function fieldEqual(field: keyof FormState, a: FormState, b: FormState): boolean
 
 /**
  * Owns the editable form for one card. State initialises from `card` once and is
- * never sync'd back — remount with `key={card.id}` to switch cards. Each field
- * commits the WHOLE snapshot, never a partial, or backend COALESCE clobbers
- * untouched fields.
+ * never sync'd back — remount with `key={card.id}` to switch cards. A commit names
+ * its field and only that field is saved: the rest of the form may be stale
+ * (docs/adr/0009-card-patch-sends-changed-fields.md).
  */
 export function useCardForm(
   card: Card,
   boardId: string,
   isOpen: boolean,
-  onCommit?: (form: FormState) => void,
+  onCommit?: (form: FormState, field: keyof FormState) => void,
 ) {
   const [form, setForm] = useState<FormState>(() => buildInitialForm(card));
 
@@ -71,7 +71,7 @@ export function useCardForm(
     if (fieldEqual(field, cur, committedRef.current)) return;
     committedRef.current = { ...committedRef.current, [field]: cur[field] };
     setError(null);
-    onCommit?.(cur);
+    onCommit?.(cur, field);
   }, [card.title, onCommit]);
 
   useEffect(() => {

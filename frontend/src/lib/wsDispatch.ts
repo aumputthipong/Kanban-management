@@ -44,6 +44,9 @@ export function applyWsMessage({ type, payload }: WebSocketMessage): void {
       // Full list, not a delta: re-applying it (including over our own optimistic edit) is safe.
       board.setSubtasksToCard(p.card_id, p.subtasks);
       return;
+    case WS_EVENT.TagDeleted:
+      board.removeTagFromBoard(p.tag_id);
+      return;
     case WS_EVENT.ColumnCreated:
       board.addColumnToStore({
         id: p.id, title: p.title, position: p.position, category: p.category,

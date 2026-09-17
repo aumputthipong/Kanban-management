@@ -64,7 +64,7 @@ func TestGetBoardTags_Success(t *testing.T) {
 			}, nil
 		},
 	}
-	h := NewTagHandler(svc)
+	h := NewTagHandler(svc, nil)
 
 	req := newTagRequest(http.MethodGet, "/boards/"+validBoardID+"/tags", "")
 	w := httptest.NewRecorder() // a fake ResponseWriter that records what was written
@@ -90,7 +90,7 @@ func TestGetBoardTags_NoTags_ReturnsEmptyArray(t *testing.T) {
 			return []db.Tag{}, nil
 		},
 	}
-	h := NewTagHandler(svc)
+	h := NewTagHandler(svc, nil)
 
 	req := newTagRequest(http.MethodGet, "/boards/"+validBoardID+"/tags", "")
 	w := httptest.NewRecorder()
@@ -107,7 +107,7 @@ func TestGetBoardTags_ServiceError_Returns500(t *testing.T) {
 			return nil, errors.New(`pq: relation "tags" does not exist`)
 		},
 	}
-	h := NewTagHandler(svc)
+	h := NewTagHandler(svc, nil)
 
 	req := newTagRequest(http.MethodGet, "/boards/"+validBoardID+"/tags", "")
 	w := httptest.NewRecorder()
@@ -121,7 +121,7 @@ func TestGetBoardTags_ServiceError_Returns500(t *testing.T) {
 func TestGetBoardTags_InvalidBoardID_Returns400(t *testing.T) {
 	// No Fn is set: reaching the service at all would panic, which is exactly
 	// the assertion we want — a malformed id must be rejected before any work.
-	h := NewTagHandler(&mock.MockTagService{})
+	h := NewTagHandler(&mock.MockTagService{}, nil)
 
 	req := newTagRequest(http.MethodGet, "/boards/not-a-uuid/tags", "", "boardID", "not-a-uuid")
 	w := httptest.NewRecorder()
@@ -144,7 +144,7 @@ func TestCreateBoardTag_Success_Returns201(t *testing.T) {
 			return db.Tag{ID: validTagID, BoardID: boardID, Name: name, Color: color}, nil
 		},
 	}
-	h := NewTagHandler(svc)
+	h := NewTagHandler(svc, nil)
 
 	req := newTagRequest(http.MethodPost, "/boards/"+validBoardID+"/tags",
 		`{"name":"bug","color":"#EF4444"}`)
@@ -169,7 +169,7 @@ func TestCreateBoardTag_BlankName_Returns422(t *testing.T) {
 			return db.Tag{}, service.ErrTagNameEmpty
 		},
 	}
-	h := NewTagHandler(svc)
+	h := NewTagHandler(svc, nil)
 
 	req := newTagRequest(http.MethodPost, "/boards/"+validBoardID+"/tags",
 		`{"name":"   ","color":"#EF4444"}`)
@@ -188,7 +188,7 @@ func TestCreateBoardTag_NameTooLong_Returns422(t *testing.T) {
 			return db.Tag{}, service.ErrTagNameTooLong
 		},
 	}
-	h := NewTagHandler(svc)
+	h := NewTagHandler(svc, nil)
 
 	// 20 Thai characters: 20 runes, 60 bytes. The validator's max=50 counts
 	// runes so this passes, while TagService's len(name) counts bytes so it
@@ -211,7 +211,7 @@ func TestCreateBoardTag_ServiceError_Returns500WithoutLeakingDBText(t *testing.T
 			return db.Tag{}, errors.New(`pq: duplicate key value violates unique constraint "tags_board_id_name_key"`)
 		},
 	}
-	h := NewTagHandler(svc)
+	h := NewTagHandler(svc, nil)
 
 	req := newTagRequest(http.MethodPost, "/boards/"+validBoardID+"/tags",
 		`{"name":"bug","color":"#EF4444"}`)
@@ -228,7 +228,7 @@ func TestCreateBoardTag_ServiceError_Returns500WithoutLeakingDBText(t *testing.T
 // The validator runs before the service, so a name that fails the DTO rules is
 // a 400 and never becomes a service call at all.
 func TestCreateBoardTag_EmptyName_RejectedByValidator_Returns400(t *testing.T) {
-	h := NewTagHandler(&mock.MockTagService{}) // no Fn set: a service call would panic
+	h := NewTagHandler(&mock.MockTagService{}, nil) // no Fn set: a service call would panic
 
 	req := newTagRequest(http.MethodPost, "/boards/"+validBoardID+"/tags",
 		`{"name":"","color":"#EF4444"}`)
@@ -242,7 +242,7 @@ func TestCreateBoardTag_EmptyName_RejectedByValidator_Returns400(t *testing.T) {
 // color carries `validate:"hexcolor"`, so a plain word is rejected at the DTO
 // boundary too.
 func TestCreateBoardTag_NonHexColor_Returns400(t *testing.T) {
-	h := NewTagHandler(&mock.MockTagService{})
+	h := NewTagHandler(&mock.MockTagService{}, nil)
 
 	req := newTagRequest(http.MethodPost, "/boards/"+validBoardID+"/tags",
 		`{"name":"bug","color":"red"}`)
@@ -269,7 +269,8 @@ func TestDeleteBoardTag_Success_Returns204(t *testing.T) {
 			return nil
 		},
 	}
-	h := NewTagHandler(svc)
+	bc := &mock.MockBroadcaster{}
+	h := NewTagHandler(svc, bc)
 
 	req := newTagRequest(http.MethodDelete, "/boards/"+validBoardID+"/tags/"+validTagID, "",
 		"boardID", validBoardID, "tagID", validTagID)
@@ -280,10 +281,22 @@ func TestDeleteBoardTag_Success_Returns204(t *testing.T) {
 	assert.Equal(t, http.StatusNoContent, w.Code)
 	assert.Empty(t, w.Body.String(), "204 must carry no body")
 	assert.True(t, called, "the delete must actually reach the service")
+
+	require.Len(t, bc.Sent, 1)
+	assert.Equal(t, validBoardID, bc.Sent[0].BoardID)
+	var msg struct {
+		Type    string `json:"type"`
+		Payload struct {
+			TagID string `json:"tag_id"`
+		} `json:"payload"`
+	}
+	require.NoError(t, json.Unmarshal(bc.Sent[0].Message, &msg))
+	assert.Equal(t, "TAG_DELETED", msg.Type)
+	assert.Equal(t, validTagID, msg.Payload.TagID)
 }
 
 func TestDeleteBoardTag_InvalidTagID_Returns400(t *testing.T) {
-	h := NewTagHandler(&mock.MockTagService{}) // a service call here would panic
+	h := NewTagHandler(&mock.MockTagService{}, nil) // a service call here would panic
 
 	req := newTagRequest(http.MethodDelete, "/boards/"+validBoardID+"/tags/not-a-uuid", "",
 		"boardID", validBoardID, "tagID", "not-a-uuid")
@@ -301,7 +314,8 @@ func TestDeleteBoardTag_ServiceError_Returns500(t *testing.T) {
 			return errors.New("db error")
 		},
 	}
-	h := NewTagHandler(svc)
+	bc := &mock.MockBroadcaster{}
+	h := NewTagHandler(svc, bc)
 
 	req := newTagRequest(http.MethodDelete, "/boards/"+validBoardID+"/tags/"+validTagID, "",
 		"boardID", validBoardID, "tagID", validTagID)
@@ -311,4 +325,5 @@ func TestDeleteBoardTag_ServiceError_Returns500(t *testing.T) {
 
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
 	assert.Equal(t, "Failed to delete tag", errorMessage(t, w))
+	assert.Empty(t, bc.Sent, "a failed delete must not tell clients to drop the tag")
 }

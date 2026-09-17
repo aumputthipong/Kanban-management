@@ -58,6 +58,7 @@ interface BoardState {
     updatedData: Partial<Subtask>,
   ) => void;
   deleteSubtaskFromCard: (cardId: string, subtaskId: string) => void;
+  removeTagFromBoard: (tagId: string) => void;
   addColumnToStore: (column: Column) => void;
   removeColumnFromStore: (columnId: string) => void;
   updateColumnInStore: (columnId: string, patch: Partial<Pick<Column, "title" | "category" | "color">>) => void;
@@ -178,6 +179,19 @@ export const useBoardStore = create<BoardState>((set) => ({
                   updated.completed_subtasks ?? card.completed_subtasks,
                 subtasks: updated.subtasks ?? card.subtasks,
               }
+            : card,
+        ),
+      })),
+    })),
+
+  removeTagFromBoard: (tagId) =>
+    set((state) => ({
+      filterTagIds: state.filterTagIds.filter((id) => id !== tagId),
+      columns: state.columns.map((col) => ({
+        ...col,
+        cards: col.cards.map((card) =>
+          card.tags?.some((t) => t.id === tagId)
+            ? { ...card, tags: card.tags.filter((t) => t.id !== tagId) }
             : card,
         ),
       })),

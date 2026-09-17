@@ -171,7 +171,7 @@ func run(ctx context.Context, cfg config) error {
 	subtaskHandler := handler.NewSubtaskHandler(subtaskService, boardService, hub)
 	boardHandler := handler.NewBoardHandler(boardService, settingsService, activityService, hub)
 	boardCmdHandler := handler.NewBoardCommandHandler(boardCmdService, boardService, activityService, hub)
-	tagHandler := handler.NewTagHandler(tagService)
+	tagHandler := handler.NewTagHandler(tagService, hub)
 	activityHandler := handler.NewActivityHandler(activityService)
 	planningHandler := handler.NewPlanningHandler(planningService, boardService, activityService)
 	authHandler := handler.NewAuthHandler(authService, cfg.Production, cfg.CrossSite)

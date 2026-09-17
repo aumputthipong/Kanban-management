@@ -147,6 +147,42 @@ describe("applyWsMessage CARD_SUBTASKS_UPDATED", () => {
   });
 });
 
+describe("applyWsMessage TAG_DELETED", () => {
+  const design = { id: "t-1", board_id: "b-1", name: "design", color: "green" };
+  const bug = { id: "t-2", board_id: "b-1", name: "bug", color: "red" };
+
+  it("removes the tag from every card and from the active filter", () => {
+    useBoardStore.setState({
+      columns: [
+        { id: "col-1", title: "To Do", position: 1, category: "TODO", color: null, cards: [
+          makeCard({ id: "card-1", tags: [design, bug] }),
+          makeCard({ id: "card-2", tags: [design] }),
+        ] },
+      ],
+      filterTagIds: ["t-1", "t-2"],
+    });
+
+    applyWsMessage({ type: WS_EVENT.TagDeleted, payload: { tag_id: "t-1" } });
+
+    const [card1, card2] = useBoardStore.getState().columns[0].cards;
+    expect(card1.tags).toEqual([bug]);
+    expect(card2.tags).toEqual([]);
+    expect(useBoardStore.getState().filterTagIds).toEqual(["t-2"]);
+  });
+
+  it("keeps untouched cards as the same object", () => {
+    const untagged = makeCard({ id: "card-3", tags: [bug] });
+    useBoardStore.setState({
+      columns: [{ id: "col-1", title: "To Do", position: 1, category: "TODO", color: null, cards: [untagged] }],
+      filterTagIds: [],
+    });
+
+    applyWsMessage({ type: WS_EVENT.TagDeleted, payload: { tag_id: "t-1" } });
+
+    expect(useBoardStore.getState().columns[0].cards[0]).toBe(untagged);
+  });
+});
+
 describe("applyWsMessage CARD_CREATED", () => {
   it("resolves the assignee name from board members", () => {
     useBoardStore.setState({

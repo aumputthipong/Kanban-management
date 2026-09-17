@@ -14,6 +14,7 @@ const (
 	WSCardUpdated         WSEvent = "CARD_UPDATED"
 	WSCardDeleted         WSEvent = "CARD_DELETED"
 	WSCardSubtasksUpdated WSEvent = "CARD_SUBTASKS_UPDATED"
+	WSTagDeleted          WSEvent = "TAG_DELETED"
 	WSColumnCreated       WSEvent = "COLUMN_CREATED"
 	WSColumnUpdated       WSEvent = "COLUMN_UPDATED"
 	WSColumnDeleted       WSEvent = "COLUMN_DELETED"

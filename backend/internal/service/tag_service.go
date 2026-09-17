@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/db"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -36,7 +37,8 @@ func (s *TagService) CreateTag(ctx context.Context, boardID, name, color string)
 	if name == "" {
 		return db.Tag{}, ErrTagNameEmpty
 	}
-	if len(name) > maxTagNameLen {
+	// Characters, not bytes: len() counts a Thai character as 3, rejecting short Thai tags.
+	if utf8.RuneCountInString(name) > maxTagNameLen {
 		return db.Tag{}, ErrTagNameTooLong
 	}
 	return s.queries.CreateTag(ctx, db.CreateTagParams{

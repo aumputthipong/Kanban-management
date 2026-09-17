@@ -190,11 +190,9 @@ func TestCreateBoardTag_NameTooLong_Returns422(t *testing.T) {
 	}
 	h := NewTagHandler(svc, nil)
 
-	// 20 Thai characters: 20 runes, 60 bytes. The validator's max=50 counts
-	// runes so this passes, while TagService's len(name) counts bytes so it
-	// rejects — the service is the layer that decides here.
+	// The service is stubbed to reject; this pins the sentinel-to-422 mapping.
 	req := newTagRequest(http.MethodPost, "/boards/"+validBoardID+"/tags",
-		`{"name":"`+strings.Repeat("ก", 20)+`","color":"#EF4444"}`)
+		`{"name":"release","color":"#EF4444"}`)
 	w := httptest.NewRecorder()
 
 	httputil.MakeHandler(h.CreateBoardTag)(w, req)

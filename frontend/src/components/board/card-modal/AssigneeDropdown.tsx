@@ -89,7 +89,7 @@ export function AssigneeDropdown({ members, value, onSelect }: AssigneeDropdownP
         ref={btnRef}
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center gap-2 text-sm border border-slate-200 rounded-lg px-3 py-2 bg-white hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-400 transition-colors"
+        className="w-full flex items-center gap-2 text-sm border border-slate-200 rounded-md px-2.5 py-2 bg-white hover:bg-slate-50 focus:outline-none focus:border-primary focus:ring-3 focus:ring-surface-tint transition-colors"
       >
         {current ? (
           <>

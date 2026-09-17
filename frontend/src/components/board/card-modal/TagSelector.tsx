@@ -251,8 +251,8 @@ function TagSelectorImpl({ boardId, selected, onChange, onCommit, canEdit }: Tag
           }}
           onFocus={() => setOpen(true)}
           onPointerDown={(e) => e.stopPropagation()}
-          placeholder="Add tag…"
-          className="w-full text-xs px-2 py-1 rounded-md border border-slate-200 bg-white text-slate-700 placeholder:text-slate-400 focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-300"
+          placeholder="+ Add tag…"
+          className="w-full h-6 text-xs px-2.5 rounded-full border border-dashed border-slate-200 bg-white text-slate-900 placeholder:text-slate-600 focus:outline-none focus:border-solid focus:border-primary focus:ring-3 focus:ring-surface-tint"
         />
       )}
 

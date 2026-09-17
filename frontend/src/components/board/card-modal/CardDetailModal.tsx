@@ -84,7 +84,10 @@ export function CardDetailModal({
 
       <div className="fixed inset-0 z-9999 flex items-center justify-center pointer-events-none px-4 py-6">
         <div
-          className="pointer-events-auto w-full max-w-3xl bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden max-h-full"
+          role="dialog"
+          aria-modal="true"
+          aria-label={form.title}
+          className="pointer-events-auto w-full max-w-3xl max-h-full flex flex-col overflow-hidden bg-white border border-slate-200 rounded-2xl shadow-2xl"
           onClick={(e) => e.stopPropagation()}
         >
           <CardModalHeader
@@ -98,8 +101,8 @@ export function CardDetailModal({
             onClose={onClose}
           />
 
-          <div className="flex flex-row flex-1 min-h-0 overflow-hidden">
-            <div className="flex-1 min-w-0 px-6 py-5 flex flex-col gap-6 overflow-y-auto overscroll-contain border-r border-slate-100">
+          <div className="flex flex-row flex-1 min-h-0 overflow-hidden border-t border-slate-200">
+            <div className="flex-1 min-w-0 px-6 pt-5 pb-6 flex flex-col gap-5.5 overflow-y-auto overscroll-contain">
               <CardSourceSection cardId={card.id} boardId={boardId} />
               <CardDescriptionField
                 value={form.description}
@@ -125,7 +128,7 @@ export function CardDetailModal({
               />
             </div>
 
-            <div className="w-56 shrink-0 px-5 py-5 bg-slate-50 overflow-y-auto overscroll-contain">
+            <div className="w-62 shrink-0 px-5 pt-5 pb-6 border-l border-slate-200 overflow-y-auto overscroll-contain">
               <CardFormFields
                 form={form}
                 members={members}

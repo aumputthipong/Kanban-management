@@ -23,25 +23,28 @@ export function CardModalFooter({
 
   return (
     <>
-      <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 shrink-0">
-        {canEdit ? (
+      <div className="flex items-center gap-2 px-6 py-3.5 border-t border-slate-200 shrink-0">
+        {canEdit && (
           <button
+            type="button"
             onClick={() => setConfirmOpen(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-sm font-medium text-danger hover:bg-red-100 rounded-md transition-colors"
           >
-            <Trash2 size={16} />
+            <Trash2 size={14} />
             Delete
           </button>
-        ) : (
-          <div />
         )}
 
-        <button
-          onClick={onClose}
-          className="px-4 py-2 text-sm rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors font-medium"
-        >
-          Close
-        </button>
+        <div className="ml-auto flex items-center gap-3">
+          {canEdit && <span className="text-xs text-slate-600">บันทึกอัตโนมัติ</span>}
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-3.5 py-2 text-sm font-medium rounded-md border border-slate-200 text-slate-900 hover:bg-slate-50 transition-colors"
+          >
+            Close
+          </button>
+        </div>
       </div>
 
       <ConfirmDialog

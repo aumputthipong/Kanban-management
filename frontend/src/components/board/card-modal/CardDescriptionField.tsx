@@ -2,6 +2,7 @@
 
 import { memo } from "react";
 import type { FormState } from "./CardDetailModal";
+import { FieldLabel } from "./modalParts";
 
 interface CardDescriptionFieldProps {
   value: string;
@@ -18,23 +19,22 @@ function CardDescriptionFieldImpl({
 }: CardDescriptionFieldProps) {
   return (
     <div>
-      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2">
-        Description
+      <label htmlFor="card-description">
+        <FieldLabel>Description</FieldLabel>
       </label>
       {canEdit ? (
         <textarea
+          id="card-description"
           rows={4}
           value={value}
           onChange={onChange}
           onBlur={() => onCommit("description")}
           placeholder="เพิ่มรายละเอียดงาน…"
-          className="w-full text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 resize-none"
+          className="mt-2 block w-full px-2.5 py-2 text-sm leading-relaxed text-slate-600 bg-transparent border border-transparent rounded-md resize-none hover:border-slate-200 focus:outline-none focus:text-slate-900 focus:border-primary focus:ring-3 focus:ring-surface-tint transition-colors placeholder:text-slate-400"
         />
       ) : (
-        <p className="text-sm text-slate-600 px-1 min-h-15 whitespace-pre-wrap">
-          {value || (
-            <span className="text-slate-300 italic">No description</span>
-          )}
+        <p className="mt-2 text-sm leading-relaxed text-slate-600 whitespace-pre-wrap">
+          {value || "ไม่มีคำอธิบาย"}
         </p>
       )}
     </div>

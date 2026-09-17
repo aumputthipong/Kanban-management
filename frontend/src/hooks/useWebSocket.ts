@@ -1,20 +1,9 @@
 "use client";
 
-import { useBoardStore } from "@/store/useBoardStore";
-import { useActivityStore } from "@/store/useActivityStore";
 import { logger } from "@/lib/logger";
 import { fetchWsTicket } from "@/lib/wsTicket";
-import { WS_EVENT } from "@/types/wsEvents";
+import { applyWsMessage } from "@/lib/wsDispatch";
 import { useEffect, useRef, useState } from "react";
-
-/**
- * Wire-format envelope for every inbound message. `payload` is `unknown` to force
- * handlers to narrow; its shape per `type` is set by the REST handlers that emit it.
- */
-export interface WebSocketMessage {
-  type: string;
-  payload: unknown;
-}
 
 /** Connection state for the UI. `closed` = gave up retrying; needs a reload. */
 export type WSStatus = "connecting" | "open" | "reconnecting" | "closed";
@@ -52,54 +41,7 @@ export const useWebSocket = (url: string) => {
 
     const handleMessage = (event: MessageEvent) => {
       try {
-        const parsedData = JSON.parse(event.data);
-
-        if (parsedData.type === WS_EVENT.CardMoved) {
-          const { card_id, new_column_id, position, is_done, completed_at } = parsedData.payload;
-          useBoardStore.getState().moveCard(card_id, new_column_id, position, is_done, completed_at);
-        }
-        if (parsedData.type === WS_EVENT.CardCreated) {
-          // The broadcast carries assignee_id but not the name — resolve it from
-          // boardMembers so the avatar renders without a round-trip.
-          const payload = parsedData.payload;
-          const { boardMembers } = useBoardStore.getState();
-          const assignee_name = payload.assignee_id
-            ? (boardMembers.find((m) => m.user_id === payload.assignee_id)?.full_name ?? null)
-            : null;
-          useBoardStore.getState().addCardToStore({ ...payload, assignee_name });
-        }
-        if (parsedData.type === WS_EVENT.CardDeleted) {
-          useBoardStore.getState().removeCardFromStore(parsedData.payload.card_id);
-        }
-        if (parsedData.type === WS_EVENT.CardUpdated) {
-          const { card_id, assignee_name, ...rest } = parsedData.payload;
-          useBoardStore.getState().updateCard({
-            id: card_id,
-            assignee_name: assignee_name ?? null,
-            ...rest,
-          });
-        }
-        if (parsedData.type === WS_EVENT.ColumnCreated) {
-          const { id, title, position, category, color } = parsedData.payload;
-          useBoardStore
-            .getState()
-            .addColumnToStore({ id, title, position, category, color: color ?? null, cards: [] });
-        }
-        if (parsedData.type === WS_EVENT.ColumnDeleted) {
-          useBoardStore.getState().removeColumnFromStore(parsedData.payload.column_id);
-        }
-        if (parsedData.type === WS_EVENT.ActivityCreated) {
-          useActivityStore.getState().prependActivity(parsedData.payload);
-          return;
-        }
-        if (parsedData.type === WS_EVENT.ColumnUpdated) {
-          const { column_id, title, category, color } = parsedData.payload;
-          useBoardStore.getState().updateColumnInStore(column_id, {
-            title,
-            category,
-            color: color || null,
-          });
-        }
+        applyWsMessage(JSON.parse(event.data));
       } catch (error) {
         logger.error("Error parsing WebSocket message:", error);
       }

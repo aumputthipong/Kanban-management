@@ -10,6 +10,7 @@ import (
 	"context"
 	"strings"
 	"testing"
+	"unicode/utf8"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -63,17 +64,18 @@ func TestCreateTag_51AsciiChars_ErrTagNameTooLong(t *testing.T) {
 	assert.ErrorIs(t, err, service.ErrTagNameTooLong)
 }
 
-// Documents a real bug (not fixed here): CreateTag checks len(name), which counts
-// bytes. 20 Thai characters are 60 bytes, so a short Thai tag is rejected against the
-// 50-character limit. The fix is utf8.RuneCountInString(name).
-func TestCreateTag_20ThaiChars_WronglyRejectedAsTooLong(t *testing.T) {
+// The limit counts characters. It used to count bytes, so 20 Thai characters (60 bytes)
+// were rejected against the 50-character limit on a Thai-first UI.
+func TestCreateTag_ThaiName_LimitCountsCharactersNotBytes(t *testing.T) {
 	ctx := context.Background()
 	f := newTagFixture(t)
-	name := strings.Repeat("ก", 20) // 20 runes, 60 bytes
 
-	_, err := f.svc.CreateTag(ctx, f.boardID, name, "red")
-	assert.ErrorIs(t, err, service.ErrTagNameTooLong,
-		"current (buggy) behaviour: 20 Thai characters trips the 50-char limit because len() counts 60 bytes, not 20 runes")
+	tag, err := f.svc.CreateTag(ctx, f.boardID, strings.Repeat("ก", 50), "red")
+	require.NoError(t, err, "50 Thai characters is exactly the limit (150 bytes)")
+	assert.Equal(t, 50, utf8.RuneCountInString(tag.Name))
+
+	_, err = f.svc.CreateTag(ctx, f.boardID, strings.Repeat("ข", 51), "red")
+	assert.ErrorIs(t, err, service.ErrTagNameTooLong)
 }
 
 // DeleteTag's query scopes the DELETE by board_id, so naming a tag id that

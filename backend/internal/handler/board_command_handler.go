@@ -24,6 +24,18 @@ type Broadcaster interface {
 	Broadcast(boardID string, message []byte)
 }
 
+// RoomEvictor drops a user's live connections to a board. It is type-asserted on the
+// Broadcaster (the hub implements both) so handler constructors stay unchanged.
+type RoomEvictor interface {
+	EvictUser(boardID, userID string)
+}
+
+func evictFromBoard(b Broadcaster, boardID, userID string) {
+	if ev, ok := b.(RoomEvictor); ok {
+		ev.EvictUser(boardID, userID)
+	}
+}
+
 // BoardCommandHandler is the REST write path for the kanban board: move, delete and
 // done-toggle a card, plus column CRUD. It persists through the same service the WS
 // handlers use and then broadcasts, so a dropped socket costs realtime, not the write.

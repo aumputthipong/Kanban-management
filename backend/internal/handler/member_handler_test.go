@@ -609,3 +609,55 @@ func TestRemoveBoardMember_ServiceError_DoesNotBroadcast(t *testing.T) {
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
 	assert.Empty(t, bc.Sent)
 }
+
+// Membership is only checked at the WS handshake, so a removed member must be evicted
+// from the room or they keep receiving the board live.
+func TestRemoveAndLeave_EvictTheUserFromTheBoardRoom(t *testing.T) {
+	svc := &mock.MockBoardService{
+		RemoveBoardMemberFn: func(ctx context.Context, boardID, userID string) error { return nil },
+		GetBoardMembersFn:   membersAfterChange(),
+	}
+
+	t.Run("remove", func(t *testing.T) {
+		bc := &mock.MockBroadcaster{}
+		h := NewBoardHandler(svc, nil, nil, bc)
+		req := chiCtx(httptest.NewRequest(http.MethodDelete, "/", nil), "boardID", validBoardID, "userID", otherUserID)
+		w := httptest.NewRecorder()
+
+		httputil.MakeHandler(h.RemoveBoardMember)(w, req)
+
+		require.Equal(t, http.StatusNoContent, w.Code)
+		assert.Equal(t, []string{validBoardID + "/" + otherUserID}, bc.Evicted)
+		assert.Len(t, bc.Sent, 1, "the member list goes out before the eviction")
+	})
+
+	t.Run("leave", func(t *testing.T) {
+		bc := &mock.MockBroadcaster{}
+		h := NewBoardHandler(svc, nil, nil, bc)
+		req := withBoardRole(withUserID(httptest.NewRequest(http.MethodDelete, "/", nil), otherUserID), "member")
+		req = chiCtx(req, "boardID", validBoardID)
+		w := httptest.NewRecorder()
+
+		httputil.MakeHandler(h.LeaveBoard)(w, req)
+
+		require.Equal(t, http.StatusNoContent, w.Code)
+		assert.Equal(t, []string{validBoardID + "/" + otherUserID}, bc.Evicted)
+	})
+}
+
+func TestUpdateMemberRole_DoesNotEvict(t *testing.T) {
+	svc := &mock.MockBoardService{
+		UpdateMemberRoleFn: func(ctx context.Context, boardID, userID, role string) error { return nil },
+		GetBoardMembersFn:  membersAfterChange(),
+	}
+	bc := &mock.MockBroadcaster{}
+	h := NewBoardHandler(svc, nil, nil, bc)
+	req := chiCtx(httptest.NewRequest(http.MethodPatch, "/", strings.NewReader(`{"role":"manager"}`)),
+		"boardID", validBoardID, "userID", otherUserID)
+	w := httptest.NewRecorder()
+
+	httputil.MakeHandler(h.UpdateMemberRole)(w, req)
+
+	require.Equal(t, http.StatusNoContent, w.Code)
+	assert.Empty(t, bc.Evicted)
+}

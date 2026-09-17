@@ -105,7 +105,9 @@ func (h *BoardHandler) RemoveBoardMember(w http.ResponseWriter, r *http.Request)
 	if err := h.boardService.RemoveBoardMember(r.Context(), boardID, userIDStr); err != nil {
 		return httputil.NewAPIError(http.StatusInternalServerError, "Failed to remove member", err)
 	}
+	// Broadcast first: the removed user's client needs the new list to leave the board.
 	broadcastMembers(r.Context(), h.boardService, h.broadcaster, boardID)
+	evictFromBoard(h.broadcaster, boardID, userIDStr)
 
 	w.WriteHeader(http.StatusNoContent)
 	return nil
@@ -164,6 +166,7 @@ func (h *BoardHandler) LeaveBoard(w http.ResponseWriter, r *http.Request) error 
 		return httputil.NewAPIError(http.StatusInternalServerError, "Failed to leave board", err)
 	}
 	broadcastMembers(r.Context(), h.boardService, h.broadcaster, boardID)
+	evictFromBoard(h.broadcaster, boardID, userID)
 
 	w.WriteHeader(http.StatusNoContent)
 	return nil

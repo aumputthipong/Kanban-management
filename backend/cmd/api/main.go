@@ -158,6 +158,8 @@ func run(ctx context.Context, cfg config) error {
 	boardCmdService := service.NewBoardCommandService(pool, queries)
 
 	hub := websocket.NewHub(cfg.FrontendURL)
+	// Handlers type-assert eviction off the Broadcaster; fail the build, not silently, if it drifts.
+	var _ handler.RoomEvictor = hub
 	go hub.Run()
 
 	boardService := service.NewBoardService(pool, queries)

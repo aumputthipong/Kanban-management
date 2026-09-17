@@ -9,6 +9,7 @@ type Hub struct {
 	broadcast  chan BroadcastMessage
 	register   chan *Client
 	unregister chan *Client
+	evict      chan roomMember
 	stop       chan struct{}
 	// allowedOrigin is the single trusted browser origin (FRONTEND_URL).
 	// Empty string disables origin checking — only acceptable in tests.
@@ -20,12 +21,18 @@ type BroadcastMessage struct {
 	Message []byte
 }
 
+type roomMember struct {
+	boardID string
+	userID  string
+}
+
 func NewHub(allowedOrigin string) *Hub {
 	return &Hub{
 		rooms:         make(map[string]map[*Client]bool),
 		broadcast:     make(chan BroadcastMessage),
 		register:      make(chan *Client),
 		unregister:    make(chan *Client),
+		evict:         make(chan roomMember),
 		stop:          make(chan struct{}),
 		allowedOrigin: allowedOrigin,
 	}
@@ -37,6 +44,16 @@ func NewHub(allowedOrigin string) *Hub {
 func (h *Hub) Broadcast(boardID string, message []byte) {
 	select {
 	case h.broadcast <- BroadcastMessage{BoardID: boardID, Message: message}:
+	case <-h.stop:
+	}
+}
+
+// EvictUser closes a user's connections to one board's room. Membership is checked only
+// at the handshake, so without this a removed member keeps receiving the board live.
+// Messages already queued (e.g. the member list that removed them) are still delivered.
+func (h *Hub) EvictUser(boardID, userID string) {
+	select {
+	case h.evict <- roomMember{boardID: boardID, userID: userID}:
 	case <-h.stop:
 	}
 }
@@ -82,6 +99,18 @@ func (h *Hub) Run() {
 						delete(h.rooms, client.boardID)
 					}
 				}
+			}
+
+		case m := <-h.evict:
+			clients := h.rooms[m.boardID]
+			for client := range clients {
+				if client.userID == m.userID {
+					delete(clients, client)
+					close(client.send)
+				}
+			}
+			if clients != nil && len(clients) == 0 {
+				delete(h.rooms, m.boardID)
 			}
 
 		case broadcastMsg := <-h.broadcast:

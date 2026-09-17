@@ -8,6 +8,7 @@ import (
 	"net/http"
 
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/core"
+	"github.com/aumputthipong/mini-erp-kanban/backend/internal/db"
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/dto"
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/httputil"
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/mapper"
@@ -30,6 +31,14 @@ func boardMembership(ctx context.Context, svc service.BoardServicer, boardID, us
 		return "", httputil.NewAPIError(http.StatusInternalServerError, "Failed to check board access", err)
 	}
 	return core.BoardRole(role), nil
+}
+
+// canEditCard is the card edit rule, and the subtask rule with it: creator or assignee,
+// otherwise manager or above. frontend/src/hooks/useCanEdit.ts mirrors it.
+func canEditCard(card db.Card, userID string, role core.BoardRole) bool {
+	isOwnCard := (card.CreatedBy != nil && *card.CreatedBy == userID) ||
+		(card.AssigneeID != nil && *card.AssigneeID == userID)
+	return isOwnCard || role == core.RoleOwner || role == core.RoleManager
 }
 
 func (h *BoardHandler) requireBoardMembership(r *http.Request, boardID, userID string) (core.BoardRole, *httputil.APIError) {
@@ -83,11 +92,7 @@ func (h *BoardHandler) UpdateCard(w http.ResponseWriter, r *http.Request) error 
 		return apiErr
 	}
 
-	// Creator / assignee can always edit their own card; everyone else needs
-	// manager or above.
-	isOwnCard := (existing.CreatedBy != nil && *existing.CreatedBy == userIDStr) ||
-		(existing.AssigneeID != nil && *existing.AssigneeID == userIDStr)
-	if !isOwnCard && role != core.RoleOwner && role != core.RoleManager {
+	if !canEditCard(existing, userIDStr, role) {
 		return httputil.NewAPIError(http.StatusForbidden, "You do not have permission to edit this card", nil)
 	}
 

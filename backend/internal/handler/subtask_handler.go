@@ -27,28 +27,52 @@ func NewSubtaskHandler(subtaskService service.SubtaskServicer, boardService serv
 	return &SubtaskHandler{subtaskService: subtaskService, boardService: boardService, broadcaster: broadcaster}
 }
 
-// cardBoard resolves the card's board and gates membership on it: an unknown card and
-// a board the caller is not on both 404 (docs/adr/0004).
-func (h *SubtaskHandler) cardBoard(r *http.Request) (cardID, boardID string, apiErr *httputil.APIError) {
-	cardID = chi.URLParam(r, "cardID")
+type subtaskCard struct {
+	cardID  string
+	boardID string
+	canEdit bool
+}
+
+// cardAccess resolves the card's board and gates membership on it: an unknown card and
+// a board the caller is not on both 404 (docs/adr/0004). canEdit follows canEditCard.
+func (h *SubtaskHandler) cardAccess(r *http.Request) (subtaskCard, *httputil.APIError) {
+	cardID := chi.URLParam(r, "cardID")
 	if _, err := uuid.Parse(cardID); err != nil {
-		return "", "", httputil.NewAPIError(http.StatusBadRequest, "Invalid card ID", err)
+		return subtaskCard{}, httputil.NewAPIError(http.StatusBadRequest, "Invalid card ID", err)
 	}
 	userID, ok := r.Context().Value(middleware.UserIDKey).(string)
 	if !ok || userID == "" {
-		return "", "", httputil.NewAPIError(http.StatusUnauthorized, "Unauthorized", nil)
+		return subtaskCard{}, httputil.NewAPIError(http.StatusUnauthorized, "Unauthorized", nil)
 	}
-	boardID, err := h.boardService.GetBoardIDByCard(r.Context(), cardID)
+	card, err := h.boardService.GetCard(r.Context(), cardID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return "", "", httputil.NewAPIError(http.StatusNotFound, "Not found", nil)
+			return subtaskCard{}, httputil.NewAPIError(http.StatusNotFound, "Not found", nil)
 		}
-		return "", "", httputil.NewAPIError(http.StatusInternalServerError, "Failed to resolve board", err)
+		return subtaskCard{}, httputil.NewAPIError(http.StatusInternalServerError, "Failed to load card", err)
 	}
-	if _, apiErr := boardMembership(r.Context(), h.boardService, boardID, userID); apiErr != nil {
-		return "", "", apiErr
+	boardID, err := h.boardService.GetBoardIDByColumn(r.Context(), card.ColumnID)
+	if err != nil {
+		return subtaskCard{}, httputil.NewAPIError(http.StatusInternalServerError, "Failed to resolve board", err)
 	}
-	return cardID, boardID, nil
+	role, apiErr := boardMembership(r.Context(), h.boardService, boardID, userID)
+	if apiErr != nil {
+		return subtaskCard{}, apiErr
+	}
+	return subtaskCard{cardID: cardID, boardID: boardID, canEdit: canEditCard(card, userID, role)}, nil
+}
+
+// cardForEdit is cardAccess plus the edit rule. A member without edit rights gets 403,
+// not 404: they can already see the card, so there is nothing left to hide.
+func (h *SubtaskHandler) cardForEdit(r *http.Request) (subtaskCard, *httputil.APIError) {
+	card, apiErr := h.cardAccess(r)
+	if apiErr != nil {
+		return subtaskCard{}, apiErr
+	}
+	if !card.canEdit {
+		return subtaskCard{}, httputil.NewAPIError(http.StatusForbidden, "You do not have permission to edit this card", nil)
+	}
+	return card, nil
 }
 
 // subtaskOnCard 404s a subtask that belongs to a different card, so access to one card
@@ -90,13 +114,13 @@ func (h *SubtaskHandler) CreateSubtask(w http.ResponseWriter, r *http.Request) e
 	if err := httputil.DecodeAndValidate(r, &payload); err != nil {
 		return err
 	}
-	cardID, boardID, apiErr := h.cardBoard(r)
+	card, apiErr := h.cardForEdit(r)
 	if apiErr != nil {
 		return apiErr
 	}
 
 	subtask, err := h.subtaskService.CreateSubtask(r.Context(), db.CreateSubtaskParams{
-		CardID:   cardID,
+		CardID:   card.cardID,
 		Title:    payload.Title,
 		Position: payload.Position,
 	})
@@ -104,18 +128,18 @@ func (h *SubtaskHandler) CreateSubtask(w http.ResponseWriter, r *http.Request) e
 		return httputil.NewAPIError(http.StatusInternalServerError, "Failed to create subtask", err)
 	}
 
-	h.broadcastSubtasks(r, boardID, cardID)
+	h.broadcastSubtasks(r, card.boardID, card.cardID)
 	httputil.RespondJSON(w, http.StatusCreated, mapper.ToSubtaskResponse(subtask))
 	return nil
 }
 
 func (h *SubtaskHandler) GetSubtasks(w http.ResponseWriter, r *http.Request) error {
-	cardID, _, apiErr := h.cardBoard(r)
+	card, apiErr := h.cardAccess(r)
 	if apiErr != nil {
 		return apiErr
 	}
 
-	subtasks, err := h.subtaskService.GetSubtasksByCardID(r.Context(), cardID)
+	subtasks, err := h.subtaskService.GetSubtasksByCardID(r.Context(), card.cardID)
 	if err != nil {
 		return httputil.NewAPIError(http.StatusInternalServerError, "Failed to retrieve subtasks", err)
 	}
@@ -129,11 +153,11 @@ func (h *SubtaskHandler) UpdateSubtask(w http.ResponseWriter, r *http.Request) e
 	if err := httputil.DecodeAndValidate(r, &req); err != nil {
 		return err
 	}
-	cardID, boardID, apiErr := h.cardBoard(r)
+	card, apiErr := h.cardForEdit(r)
 	if apiErr != nil {
 		return apiErr
 	}
-	existing, apiErr := h.subtaskOnCard(r, cardID)
+	existing, apiErr := h.subtaskOnCard(r, card.cardID)
 	if apiErr != nil {
 		return apiErr
 	}
@@ -143,17 +167,17 @@ func (h *SubtaskHandler) UpdateSubtask(w http.ResponseWriter, r *http.Request) e
 		return httputil.NewAPIError(http.StatusInternalServerError, "Failed to update subtask", err)
 	}
 
-	h.broadcastSubtasks(r, boardID, cardID)
+	h.broadcastSubtasks(r, card.boardID, card.cardID)
 	httputil.RespondJSON(w, http.StatusOK, mapper.ToSubtaskResponse(subtask))
 	return nil
 }
 
 func (h *SubtaskHandler) DeleteSubtask(w http.ResponseWriter, r *http.Request) error {
-	cardID, boardID, apiErr := h.cardBoard(r)
+	card, apiErr := h.cardForEdit(r)
 	if apiErr != nil {
 		return apiErr
 	}
-	existing, apiErr := h.subtaskOnCard(r, cardID)
+	existing, apiErr := h.subtaskOnCard(r, card.cardID)
 	if apiErr != nil {
 		return apiErr
 	}
@@ -162,17 +186,17 @@ func (h *SubtaskHandler) DeleteSubtask(w http.ResponseWriter, r *http.Request) e
 		return httputil.NewAPIError(http.StatusInternalServerError, "Failed to delete subtask", err)
 	}
 
-	h.broadcastSubtasks(r, boardID, cardID)
+	h.broadcastSubtasks(r, card.boardID, card.cardID)
 	w.WriteHeader(http.StatusNoContent)
 	return nil
 }
 
 func (h *SubtaskHandler) GetSubtask(w http.ResponseWriter, r *http.Request) error {
-	cardID, _, apiErr := h.cardBoard(r)
+	card, apiErr := h.cardAccess(r)
 	if apiErr != nil {
 		return apiErr
 	}
-	subtask, apiErr := h.subtaskOnCard(r, cardID)
+	subtask, apiErr := h.subtaskOnCard(r, card.cardID)
 	if apiErr != nil {
 		return apiErr
 	}

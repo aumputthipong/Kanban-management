@@ -27,27 +27,40 @@ const (
 	otherCardID    = "c3d4e5f6-a7b8-9012-cdef-123456789012"
 )
 
-// memberBoards resolves validCardID to validBoardID and makes the caller a member.
-func memberBoards() *mock.MockBoardService {
+// boardsFor resolves validCardID (in validColumnID on validBoardID) and gives the caller
+// role on that board; role "" makes the caller a non-member.
+func boardsFor(role string, card db.Card) *mock.MockBoardService {
 	return &mock.MockBoardService{
-		GetBoardIDByCardFn: func(ctx context.Context, cardID string) (string, error) {
+		GetCardFn: func(ctx context.Context, cardID string) (db.Card, error) {
 			if cardID != validCardID {
-				return "", pgx.ErrNoRows
+				return db.Card{}, pgx.ErrNoRows
 			}
+			return card, nil
+		},
+		GetBoardIDByColumnFn: func(ctx context.Context, columnID string) (string, error) {
 			return validBoardID, nil
 		},
 		GetBoardMemberRoleFn: func(ctx context.Context, boardID, userID string) (string, error) {
-			return "member", nil
+			if role == "" {
+				return "", pgx.ErrNoRows
+			}
+			return role, nil
 		},
 	}
 }
 
+// memberBoards: the caller is a plain member assigned to the card, so they may edit it.
+func memberBoards() *mock.MockBoardService {
+	return boardsFor("member", cardOwnedBy(ptr(otherUserID), ptr(validUserID)))
+}
+
+// bystanderBoards: the caller is a plain member on someone else's card.
+func bystanderBoards() *mock.MockBoardService {
+	return boardsFor("member", cardOwnedBy(ptr(otherUserID), ptr(otherUserID)))
+}
+
 func nonMemberBoards() *mock.MockBoardService {
-	boards := memberBoards()
-	boards.GetBoardMemberRoleFn = func(ctx context.Context, boardID, userID string) (string, error) {
-		return "", pgx.ErrNoRows
-	}
-	return boards
+	return boardsFor("", cardOwnedBy(ptr(otherUserID), ptr(validUserID)))
 }
 
 // subtaskService returns a service whose subtask lives on cardID and whose list read
@@ -389,4 +402,68 @@ func TestDeleteSubtask_ServiceError_Returns500(t *testing.T) {
 	httputil.MakeHandler(h.DeleteSubtask)(w, subtaskRequest(http.MethodDelete, "", "cardID", validCardID, "subtaskID", validSubtaskID))
 
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
+}
+
+// ────────────────────────────────────────────────
+// Edit rule (same as the card: creator, assignee, or manager+)
+// ────────────────────────────────────────────────
+
+func TestSubtaskWrites_MemberOnSomeoneElsesCard_Returns403(t *testing.T) {
+	cases := map[string]struct {
+		call   func(h *SubtaskHandler) httputil.APIFunc
+		method string
+		body   string
+	}{
+		"create": {func(h *SubtaskHandler) httputil.APIFunc { return h.CreateSubtask }, http.MethodPost, `{"title":"x","position":1}`},
+		"toggle": {func(h *SubtaskHandler) httputil.APIFunc { return h.UpdateSubtask }, http.MethodPatch, `{"is_done":true}`},
+		"delete": {func(h *SubtaskHandler) httputil.APIFunc { return h.DeleteSubtask }, http.MethodDelete, ""},
+	}
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			// No service Fn is set beyond reads: a write reaching the service would panic.
+			svc := &mock.MockSubtaskService{}
+			bc := &mock.MockBroadcaster{}
+			h := NewSubtaskHandler(svc, bystanderBoards(), bc)
+			w := httptest.NewRecorder()
+
+			httputil.MakeHandler(tc.call(h))(w, subtaskRequest(tc.method, tc.body, "cardID", validCardID, "subtaskID", validSubtaskID))
+
+			assert.Equal(t, http.StatusForbidden, w.Code)
+			assert.Empty(t, bc.Sent)
+		})
+	}
+}
+
+func TestSubtaskReads_MemberOnSomeoneElsesCard_Allowed(t *testing.T) {
+	h := NewSubtaskHandler(subtaskService(validCardID), bystanderBoards(), nil)
+
+	w := httptest.NewRecorder()
+	httputil.MakeHandler(h.GetSubtasks)(w, subtaskRequest(http.MethodGet, "", "cardID", validCardID))
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	w = httptest.NewRecorder()
+	httputil.MakeHandler(h.GetSubtask)(w, subtaskRequest(http.MethodGet, "", "cardID", validCardID, "subtaskID", validSubtaskID))
+	assert.Equal(t, http.StatusOK, w.Code)
+}
+
+func TestUpdateSubtask_EditRights_AllowedRoles(t *testing.T) {
+	for name, boards := range map[string]*mock.MockBoardService{
+		"creator":  boardsFor("member", cardOwnedBy(ptr(validUserID), nil)),
+		"assignee": boardsFor("member", cardOwnedBy(ptr(otherUserID), ptr(validUserID))),
+		"manager":  boardsFor("manager", cardOwnedBy(ptr(otherUserID), ptr(otherUserID))),
+		"owner":    boardsFor("owner", cardOwnedBy(ptr(otherUserID), nil)),
+	} {
+		t.Run(name, func(t *testing.T) {
+			svc := subtaskService(validCardID)
+			svc.UpdateSubtaskFn = func(ctx context.Context, subtaskID string, req dto.UpdateSubtaskRequest) (db.CardSubtask, error) {
+				return db.CardSubtask{ID: subtaskID, CardID: validCardID, IsDone: true}, nil
+			}
+			h := NewSubtaskHandler(svc, boards, &mock.MockBroadcaster{})
+			w := httptest.NewRecorder()
+
+			httputil.MakeHandler(h.UpdateSubtask)(w, subtaskRequest(http.MethodPatch, `{"is_done":true}`, "cardID", validCardID, "subtaskID", validSubtaskID))
+
+			assert.Equal(t, http.StatusOK, w.Code)
+		})
+	}
 }

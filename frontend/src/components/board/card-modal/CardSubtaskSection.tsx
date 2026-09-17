@@ -77,6 +77,7 @@ function CardSubtaskSectionImpl({
             onToggle={handleToggleSubtask}
             onUpdateTitle={handleUpdateSubtaskTitle}
             onDelete={handleDeleteSubtask}
+            canEdit={canEdit}
           />
         ))}
       </div>

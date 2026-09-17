@@ -20,16 +20,19 @@ import (
 type SubtaskHandler struct {
 	subtaskService service.SubtaskServicer
 	boardService   service.BoardServicer
+	activity       service.ActivityRecorder
 	broadcaster    Broadcaster
 }
 
-func NewSubtaskHandler(subtaskService service.SubtaskServicer, boardService service.BoardServicer, broadcaster Broadcaster) *SubtaskHandler {
-	return &SubtaskHandler{subtaskService: subtaskService, boardService: boardService, broadcaster: broadcaster}
+func NewSubtaskHandler(subtaskService service.SubtaskServicer, boardService service.BoardServicer, activity service.ActivityRecorder, broadcaster Broadcaster) *SubtaskHandler {
+	return &SubtaskHandler{subtaskService: subtaskService, boardService: boardService, activity: activity, broadcaster: broadcaster}
 }
 
 type subtaskCard struct {
 	cardID  string
 	boardID string
+	title   string
+	userID  string
 	canEdit bool
 }
 
@@ -59,7 +62,10 @@ func (h *SubtaskHandler) cardAccess(r *http.Request) (subtaskCard, *httputil.API
 	if apiErr != nil {
 		return subtaskCard{}, apiErr
 	}
-	return subtaskCard{cardID: cardID, boardID: boardID, canEdit: canEditCard(card, userID, role)}, nil
+	return subtaskCard{
+		cardID: cardID, boardID: boardID, title: card.Title, userID: userID,
+		canEdit: canEditCard(card, userID, role),
+	}, nil
 }
 
 // cardForEdit is cardAccess plus the edit rule. A member without edit rights gets 403,
@@ -97,16 +103,26 @@ func (h *SubtaskHandler) subtaskOnCard(r *http.Request, cardID string) (db.CardS
 
 // broadcastSubtasks sends the card's full subtask list, so a receiver that applies it
 // twice, or out of order with its own optimistic edit, still ends up correct.
-func (h *SubtaskHandler) broadcastSubtasks(r *http.Request, boardID, cardID string) {
+func (h *SubtaskHandler) broadcastSubtasks(r *http.Request, boardID, cardID string) []db.CardSubtask {
 	subtasks, err := h.subtaskService.GetSubtasksByCardID(r.Context(), cardID)
 	if err != nil {
 		slog.Error("load subtasks for broadcast failed", "card_id", cardID, "err", err)
-		return
+		return nil
 	}
 	emitTo(h.broadcaster, boardID, core.WSCardSubtasksUpdated, map[string]any{
 		"card_id":  cardID,
 		"subtasks": mapper.ToSubtaskResponses(subtasks),
 	})
+	return subtasks
+}
+
+func allDone(subtasks []db.CardSubtask) bool {
+	for _, st := range subtasks {
+		if !st.IsDone {
+			return false
+		}
+	}
+	return len(subtasks) > 0
 }
 
 func (h *SubtaskHandler) CreateSubtask(w http.ResponseWriter, r *http.Request) error {
@@ -167,7 +183,14 @@ func (h *SubtaskHandler) UpdateSubtask(w http.ResponseWriter, r *http.Request) e
 		return httputil.NewAPIError(http.StatusInternalServerError, "Failed to update subtask", err)
 	}
 
-	h.broadcastSubtasks(r, card.boardID, card.cardID)
+	subtasks := h.broadcastSubtasks(r, card.boardID, card.cardID)
+	if !existing.IsDone && subtask.IsDone && allDone(subtasks) {
+		recordActivity(r.Context(), h.activity, h.broadcaster, service.RecordParams{
+			BoardID: card.boardID, ActorID: card.userID, EventType: service.EventCardSubtasksCompleted,
+			EntityType: service.EntityCard, EntityID: &card.cardID,
+			Payload: service.CardSubtasksCompletedPayload{Title: card.title, Total: len(subtasks)},
+		})
+	}
 	httputil.RespondJSON(w, http.StatusOK, mapper.ToSubtaskResponse(subtask))
 	return nil
 }

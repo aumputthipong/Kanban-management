@@ -89,10 +89,14 @@ Constants live in [`backend/internal/service/activity_service.go`](backend/inter
 | Card | `card.updated` | `CardUpdatedPayload` (`fields []string`) |
 | Card | `card.deleted` | `CardDeletedPayload` |
 | Card | `card.done_toggled` | `CardDoneToggledPayload` |
+| Card | `card.subtasks_completed` | `CardSubtasksCompletedPayload` (`total`) |
 | Column | `column.created` | `ColumnCreatedPayload` |
 | Column | `column.deleted` | `ColumnDeletedPayload` |
 | Column | `column.renamed` | `ColumnRenamedPayload` |
-| Member | `member.added` | inline `{user_id, role}` |
+| Member | `member.added` | `MemberChangedPayload` (`via: "invite"` when joined by link) |
+| Member | `member.removed` | `MemberChangedPayload` |
+| Member | `member.left` | `MemberChangedPayload` |
+| Member | `member.role_changed` | `MemberChangedPayload` (`previous_role`) |
 | Planning · session | `planning.session_created` | `PlanningSessionCreatedPayload` |
 | Planning · session | `planning.session_updated` | `PlanningSessionUpdatedPayload` (`fields []string`) |
 | Planning · session | `planning.session_deleted` | `PlanningSessionDeletedPayload` |
@@ -108,6 +112,8 @@ Constants live in [`backend/internal/service/activity_service.go`](backend/inter
 | Planning · claim *(legacy)* | `planning.claim_auto_released_on_promote` | `PlanningItemReleasedPayload` |
 
 > **Legacy claim events** — the planning-item "claim" feature was removed (UI + endpoints + `claimed_*` columns dropped in migration `000017`). These three event types are **no longer emitted**, but the constants/payloads (Go) and the feed renderer cases (`describeActivity`/`eventBadge`) are **kept** because historical `activities` rows still reference them. Don't delete the renderer cases — that would surface raw event-type strings on old rows.
+
+> **Subtasks are the one deliberate gap** — create/rename/delete/tick are not logged, because a feed full of checkbox ticks hides the events people act on. Only `card.subtasks_completed` (the last open subtask ticked) is recorded.
 
 **Adding a new event:**
 1. Add the constant + payload struct in `activity_service.go`.

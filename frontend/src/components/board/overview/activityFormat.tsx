@@ -9,6 +9,9 @@ import {
   Undo2,
   Eye,
   EyeOff,
+  UserPlus,
+  UserMinus,
+  ListChecks,
 } from "lucide-react";
 import type { Activity } from "@/types/activity";
 
@@ -118,6 +121,11 @@ const FIELD_LABELS: Record<string, string> = {
   is_done: "status",
 };
 
+// Older member.added rows carry only user_id; fall back to a generic label, never the raw id.
+function memberName(p: Record<string, unknown>): string {
+  return typeof p.name === "string" && p.name ? p.name : "a member";
+}
+
 export function describeActivity(
   a: Activity,
   columnTitleById: Map<string, string>,
@@ -141,6 +149,20 @@ export function describeActivity(
       return { action: "deleted card", target: title, dest: "" };
     case "card.done_toggled":
       return { action: p.is_done ? "completed card" : "reopened card", target: title, dest: "" };
+    case "card.subtasks_completed": {
+      const total = typeof p.total === "number" ? p.total : 0;
+      return { action: "completed all subtasks", target: title, dest: total ? `${total}/${total}` : "" };
+    }
+    case "member.added":
+      return p.via === "invite"
+        ? { action: "joined via invite link", target: "", dest: "" }
+        : { action: "added member", target: memberName(p), dest: "" };
+    case "member.removed":
+      return { action: "removed member", target: memberName(p), dest: "" };
+    case "member.left":
+      return { action: "left the board", target: "", dest: "" };
+    case "member.role_changed":
+      return { action: "changed role of", target: memberName(p), dest: typeof p.role === "string" ? p.role : "" };
     case "column.created":
       return { action: "created column", target: title, dest: "" };
     case "column.deleted":
@@ -196,6 +218,12 @@ export function eventBadge(
   eventType: string,
   payload: Record<string, unknown>,
 ): { Icon: typeof Plus; bg: string } {
+  if (eventType === "member.added") return { Icon: UserPlus, bg: "bg-blue-500" };
+  if (eventType === "member.removed" || eventType === "member.left") {
+    return { Icon: UserMinus, bg: "bg-rose-500" };
+  }
+  if (eventType === "member.role_changed") return { Icon: Pencil, bg: "bg-violet-500" };
+  if (eventType === "card.subtasks_completed") return { Icon: ListChecks, bg: "bg-emerald-500" };
   if (eventType === "card.done_toggled") {
     return payload.is_done === true
       ? { Icon: Check, bg: "bg-emerald-500" }
@@ -243,5 +271,8 @@ export type ActivityCategory = "all" | "moved" | "addremove" | "edited";
 export function activityCategory(eventType: string): Exclude<ActivityCategory, "all"> {
   if (eventType === "card.moved" || eventType === "planning.item_promoted") return "moved";
   if (eventType.endsWith(".created") || eventType.endsWith(".deleted")) return "addremove";
+  if (eventType === "member.added" || eventType === "member.removed" || eventType === "member.left") {
+    return "addremove";
+  }
   return "edited";
 }

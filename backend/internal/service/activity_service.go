@@ -19,6 +19,11 @@ const (
 	EventColumnDeleted   = "column.deleted"
 	EventColumnRenamed   = "column.renamed"
 	EventMemberAdded     = "member.added"
+	EventMemberRemoved   = "member.removed"
+	EventMemberLeft      = "member.left"
+	EventMemberRole      = "member.role_changed"
+	// Logged once, when the last open subtask is ticked; single ticks are too noisy for the feed.
+	EventCardSubtasksCompleted = "card.subtasks_completed"
 
 	// Planning section. PromoteItem turns an item into a card, but only the planning side
 	// is logged (planning.item_promoted) so the feed does not carry duplicate card noise.
@@ -229,6 +234,20 @@ type CardDeletedPayload struct {
 type CardDoneToggledPayload struct {
 	Title  string `json:"title"`
 	IsDone bool   `json:"is_done"`
+}
+
+// MemberChangedPayload carries the member's name so the feed still reads after they leave.
+type MemberChangedPayload struct {
+	UserID       string `json:"user_id"`
+	Name         string `json:"name"`
+	Role         string `json:"role"`
+	PreviousRole string `json:"previous_role,omitempty"`
+	Via          string `json:"via,omitempty"`
+}
+
+type CardSubtasksCompletedPayload struct {
+	Title string `json:"title"`
+	Total int    `json:"total"`
 }
 
 type ColumnCreatedPayload struct {

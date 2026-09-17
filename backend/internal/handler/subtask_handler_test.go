@@ -17,6 +17,7 @@ import (
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/db"
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/dto"
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/httputil"
+	"github.com/aumputthipong/mini-erp-kanban/backend/internal/service"
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/service/mock"
 )
 
@@ -115,7 +116,7 @@ func TestCreateSubtask_Success_BroadcastsList(t *testing.T) {
 		return db.CardSubtask{ID: validSubtaskID, CardID: validCardID, Title: "Write tests", Position: 1}, nil
 	}
 	bc := &mock.MockBroadcaster{}
-	h := NewSubtaskHandler(svc, memberBoards(), bc)
+	h := NewSubtaskHandler(svc, memberBoards(), nil, bc)
 	w := httptest.NewRecorder()
 
 	httputil.MakeHandler(h.CreateSubtask)(w, subtaskRequest(http.MethodPost, `{"title":"Write tests","position":1}`, "cardID", validCardID))
@@ -134,7 +135,7 @@ func TestCreateSubtask_NonMember_Returns404(t *testing.T) {
 			return db.CardSubtask{}, nil
 		},
 	}
-	h := NewSubtaskHandler(svc, nonMemberBoards(), &mock.MockBroadcaster{})
+	h := NewSubtaskHandler(svc, nonMemberBoards(), nil, &mock.MockBroadcaster{})
 	w := httptest.NewRecorder()
 
 	httputil.MakeHandler(h.CreateSubtask)(w, subtaskRequest(http.MethodPost, `{"title":"x","position":1}`, "cardID", validCardID))
@@ -143,7 +144,7 @@ func TestCreateSubtask_NonMember_Returns404(t *testing.T) {
 }
 
 func TestCreateSubtask_UnknownCard_Returns404(t *testing.T) {
-	h := NewSubtaskHandler(&mock.MockSubtaskService{}, memberBoards(), &mock.MockBroadcaster{})
+	h := NewSubtaskHandler(&mock.MockSubtaskService{}, memberBoards(), nil, &mock.MockBroadcaster{})
 	w := httptest.NewRecorder()
 
 	httputil.MakeHandler(h.CreateSubtask)(w, subtaskRequest(http.MethodPost, `{"title":"x","position":1}`, "cardID", otherCardID))
@@ -152,7 +153,7 @@ func TestCreateSubtask_UnknownCard_Returns404(t *testing.T) {
 }
 
 func TestCreateSubtask_InvalidJSON_Returns400(t *testing.T) {
-	h := NewSubtaskHandler(&mock.MockSubtaskService{}, memberBoards(), &mock.MockBroadcaster{})
+	h := NewSubtaskHandler(&mock.MockSubtaskService{}, memberBoards(), nil, &mock.MockBroadcaster{})
 	w := httptest.NewRecorder()
 
 	httputil.MakeHandler(h.CreateSubtask)(w, subtaskRequest(http.MethodPost, `{bad json}`, "cardID", validCardID))
@@ -167,7 +168,7 @@ func TestCreateSubtask_ServiceError_Returns500WithoutBroadcast(t *testing.T) {
 		},
 	}
 	bc := &mock.MockBroadcaster{}
-	h := NewSubtaskHandler(svc, memberBoards(), bc)
+	h := NewSubtaskHandler(svc, memberBoards(), nil, bc)
 	w := httptest.NewRecorder()
 
 	httputil.MakeHandler(h.CreateSubtask)(w, subtaskRequest(http.MethodPost, `{"title":"x","position":1}`, "cardID", validCardID))
@@ -181,7 +182,7 @@ func TestCreateSubtask_ServiceError_Returns500WithoutBroadcast(t *testing.T) {
 // ────────────────────────────────────────────────
 
 func TestGetSubtasks_Success(t *testing.T) {
-	h := NewSubtaskHandler(subtaskService(validCardID), memberBoards(), nil)
+	h := NewSubtaskHandler(subtaskService(validCardID), memberBoards(), nil, nil)
 	w := httptest.NewRecorder()
 
 	httputil.MakeHandler(h.GetSubtasks)(w, subtaskRequest(http.MethodGet, "", "cardID", validCardID))
@@ -193,7 +194,7 @@ func TestGetSubtasks_Success(t *testing.T) {
 }
 
 func TestGetSubtasks_InvalidCardID_Returns400(t *testing.T) {
-	h := NewSubtaskHandler(&mock.MockSubtaskService{}, memberBoards(), nil)
+	h := NewSubtaskHandler(&mock.MockSubtaskService{}, memberBoards(), nil, nil)
 	w := httptest.NewRecorder()
 
 	httputil.MakeHandler(h.GetSubtasks)(w, subtaskRequest(http.MethodGet, "", "cardID", "not-a-uuid"))
@@ -202,7 +203,7 @@ func TestGetSubtasks_InvalidCardID_Returns400(t *testing.T) {
 }
 
 func TestGetSubtasks_NonMember_Returns404(t *testing.T) {
-	h := NewSubtaskHandler(subtaskService(validCardID), nonMemberBoards(), nil)
+	h := NewSubtaskHandler(subtaskService(validCardID), nonMemberBoards(), nil, nil)
 	w := httptest.NewRecorder()
 
 	httputil.MakeHandler(h.GetSubtasks)(w, subtaskRequest(http.MethodGet, "", "cardID", validCardID))
@@ -216,7 +217,7 @@ func TestGetSubtasks_ServiceError_Returns500(t *testing.T) {
 			return nil, errors.New("db error")
 		},
 	}
-	h := NewSubtaskHandler(svc, memberBoards(), nil)
+	h := NewSubtaskHandler(svc, memberBoards(), nil, nil)
 	w := httptest.NewRecorder()
 
 	httputil.MakeHandler(h.GetSubtasks)(w, subtaskRequest(http.MethodGet, "", "cardID", validCardID))
@@ -225,7 +226,7 @@ func TestGetSubtasks_ServiceError_Returns500(t *testing.T) {
 }
 
 func TestGetSubtask_Success(t *testing.T) {
-	h := NewSubtaskHandler(subtaskService(validCardID), memberBoards(), nil)
+	h := NewSubtaskHandler(subtaskService(validCardID), memberBoards(), nil, nil)
 	w := httptest.NewRecorder()
 
 	httputil.MakeHandler(h.GetSubtask)(w, subtaskRequest(http.MethodGet, "", "cardID", validCardID, "subtaskID", validSubtaskID))
@@ -239,7 +240,7 @@ func TestGetSubtask_NotFound_Returns404(t *testing.T) {
 			return db.CardSubtask{}, pgx.ErrNoRows
 		},
 	}
-	h := NewSubtaskHandler(svc, memberBoards(), nil)
+	h := NewSubtaskHandler(svc, memberBoards(), nil, nil)
 	w := httptest.NewRecorder()
 
 	httputil.MakeHandler(h.GetSubtask)(w, subtaskRequest(http.MethodGet, "", "cardID", validCardID, "subtaskID", validSubtaskID))
@@ -250,7 +251,7 @@ func TestGetSubtask_NotFound_Returns404(t *testing.T) {
 // A member of one board must not reach a subtask on another board by pairing a card
 // they can see with a foreign subtask ID.
 func TestGetSubtask_SubtaskOnAnotherCard_Returns404(t *testing.T) {
-	h := NewSubtaskHandler(subtaskService(otherCardID), memberBoards(), nil)
+	h := NewSubtaskHandler(subtaskService(otherCardID), memberBoards(), nil, nil)
 	w := httptest.NewRecorder()
 
 	httputil.MakeHandler(h.GetSubtask)(w, subtaskRequest(http.MethodGet, "", "cardID", validCardID, "subtaskID", validSubtaskID))
@@ -269,7 +270,7 @@ func TestUpdateSubtask_Success_BroadcastsList(t *testing.T) {
 		return db.CardSubtask{ID: validSubtaskID, CardID: validCardID, Title: "Done", IsDone: true, Position: 1}, nil
 	}
 	bc := &mock.MockBroadcaster{}
-	h := NewSubtaskHandler(svc, memberBoards(), bc)
+	h := NewSubtaskHandler(svc, memberBoards(), nil, bc)
 	w := httptest.NewRecorder()
 
 	httputil.MakeHandler(h.UpdateSubtask)(w, subtaskRequest(http.MethodPatch, `{"is_done":true}`, "cardID", validCardID, "subtaskID", validSubtaskID))
@@ -285,7 +286,7 @@ func TestUpdateSubtask_SubtaskOnAnotherCard_Returns404(t *testing.T) {
 		return db.CardSubtask{}, nil
 	}
 	bc := &mock.MockBroadcaster{}
-	h := NewSubtaskHandler(svc, memberBoards(), bc)
+	h := NewSubtaskHandler(svc, memberBoards(), nil, bc)
 	w := httptest.NewRecorder()
 
 	httputil.MakeHandler(h.UpdateSubtask)(w, subtaskRequest(http.MethodPatch, `{"is_done":true}`, "cardID", validCardID, "subtaskID", validSubtaskID))
@@ -295,7 +296,7 @@ func TestUpdateSubtask_SubtaskOnAnotherCard_Returns404(t *testing.T) {
 }
 
 func TestUpdateSubtask_NonMember_Returns404(t *testing.T) {
-	h := NewSubtaskHandler(subtaskService(validCardID), nonMemberBoards(), &mock.MockBroadcaster{})
+	h := NewSubtaskHandler(subtaskService(validCardID), nonMemberBoards(), nil, &mock.MockBroadcaster{})
 	w := httptest.NewRecorder()
 
 	httputil.MakeHandler(h.UpdateSubtask)(w, subtaskRequest(http.MethodPatch, `{"is_done":true}`, "cardID", validCardID, "subtaskID", validSubtaskID))
@@ -304,7 +305,7 @@ func TestUpdateSubtask_NonMember_Returns404(t *testing.T) {
 }
 
 func TestUpdateSubtask_InvalidSubtaskID_Returns400(t *testing.T) {
-	h := NewSubtaskHandler(&mock.MockSubtaskService{}, memberBoards(), nil)
+	h := NewSubtaskHandler(&mock.MockSubtaskService{}, memberBoards(), nil, nil)
 	w := httptest.NewRecorder()
 
 	httputil.MakeHandler(h.UpdateSubtask)(w, subtaskRequest(http.MethodPatch, `{"is_done":true}`, "cardID", validCardID, "subtaskID", ""))
@@ -313,7 +314,7 @@ func TestUpdateSubtask_InvalidSubtaskID_Returns400(t *testing.T) {
 }
 
 func TestUpdateSubtask_InvalidJSON_Returns400(t *testing.T) {
-	h := NewSubtaskHandler(&mock.MockSubtaskService{}, memberBoards(), nil)
+	h := NewSubtaskHandler(&mock.MockSubtaskService{}, memberBoards(), nil, nil)
 	w := httptest.NewRecorder()
 
 	httputil.MakeHandler(h.UpdateSubtask)(w, subtaskRequest(http.MethodPatch, `{bad json}`, "cardID", validCardID, "subtaskID", validSubtaskID))
@@ -326,7 +327,7 @@ func TestUpdateSubtask_ServiceError_Returns500(t *testing.T) {
 	svc.UpdateSubtaskFn = func(ctx context.Context, subtaskID string, req dto.UpdateSubtaskRequest) (db.CardSubtask, error) {
 		return db.CardSubtask{}, errors.New("db error")
 	}
-	h := NewSubtaskHandler(svc, memberBoards(), &mock.MockBroadcaster{})
+	h := NewSubtaskHandler(svc, memberBoards(), nil, &mock.MockBroadcaster{})
 	w := httptest.NewRecorder()
 
 	httputil.MakeHandler(h.UpdateSubtask)(w, subtaskRequest(http.MethodPatch, `{"is_done":true}`, "cardID", validCardID, "subtaskID", validSubtaskID))
@@ -345,7 +346,7 @@ func TestUpdateSubtask_BroadcastReadFails_StillReturns200(t *testing.T) {
 		return nil, errors.New("db error")
 	}
 	bc := &mock.MockBroadcaster{}
-	h := NewSubtaskHandler(svc, memberBoards(), bc)
+	h := NewSubtaskHandler(svc, memberBoards(), nil, bc)
 	w := httptest.NewRecorder()
 
 	httputil.MakeHandler(h.UpdateSubtask)(w, subtaskRequest(http.MethodPatch, `{"is_done":true}`, "cardID", validCardID, "subtaskID", validSubtaskID))
@@ -367,7 +368,7 @@ func TestDeleteSubtask_Success_BroadcastsList(t *testing.T) {
 		return nil
 	}
 	bc := &mock.MockBroadcaster{}
-	h := NewSubtaskHandler(svc, memberBoards(), bc)
+	h := NewSubtaskHandler(svc, memberBoards(), nil, bc)
 	w := httptest.NewRecorder()
 
 	httputil.MakeHandler(h.DeleteSubtask)(w, subtaskRequest(http.MethodDelete, "", "cardID", validCardID, "subtaskID", validSubtaskID))
@@ -383,7 +384,7 @@ func TestDeleteSubtask_SubtaskOnAnotherCard_Returns404(t *testing.T) {
 		t.Fatal("a subtask on another card must not be deleted")
 		return nil
 	}
-	h := NewSubtaskHandler(svc, memberBoards(), &mock.MockBroadcaster{})
+	h := NewSubtaskHandler(svc, memberBoards(), nil, &mock.MockBroadcaster{})
 	w := httptest.NewRecorder()
 
 	httputil.MakeHandler(h.DeleteSubtask)(w, subtaskRequest(http.MethodDelete, "", "cardID", validCardID, "subtaskID", validSubtaskID))
@@ -396,7 +397,7 @@ func TestDeleteSubtask_ServiceError_Returns500(t *testing.T) {
 	svc.DeleteSubtaskFn = func(ctx context.Context, subtaskID string) error {
 		return errors.New("db error")
 	}
-	h := NewSubtaskHandler(svc, memberBoards(), &mock.MockBroadcaster{})
+	h := NewSubtaskHandler(svc, memberBoards(), nil, &mock.MockBroadcaster{})
 	w := httptest.NewRecorder()
 
 	httputil.MakeHandler(h.DeleteSubtask)(w, subtaskRequest(http.MethodDelete, "", "cardID", validCardID, "subtaskID", validSubtaskID))
@@ -423,7 +424,7 @@ func TestSubtaskWrites_MemberOnSomeoneElsesCard_Returns403(t *testing.T) {
 			// No service Fn is set beyond reads: a write reaching the service would panic.
 			svc := &mock.MockSubtaskService{}
 			bc := &mock.MockBroadcaster{}
-			h := NewSubtaskHandler(svc, bystanderBoards(), bc)
+			h := NewSubtaskHandler(svc, bystanderBoards(), nil, bc)
 			w := httptest.NewRecorder()
 
 			httputil.MakeHandler(tc.call(h))(w, subtaskRequest(tc.method, tc.body, "cardID", validCardID, "subtaskID", validSubtaskID))
@@ -435,7 +436,7 @@ func TestSubtaskWrites_MemberOnSomeoneElsesCard_Returns403(t *testing.T) {
 }
 
 func TestSubtaskReads_MemberOnSomeoneElsesCard_Allowed(t *testing.T) {
-	h := NewSubtaskHandler(subtaskService(validCardID), bystanderBoards(), nil)
+	h := NewSubtaskHandler(subtaskService(validCardID), bystanderBoards(), nil, nil)
 
 	w := httptest.NewRecorder()
 	httputil.MakeHandler(h.GetSubtasks)(w, subtaskRequest(http.MethodGet, "", "cardID", validCardID))
@@ -458,12 +459,64 @@ func TestUpdateSubtask_EditRights_AllowedRoles(t *testing.T) {
 			svc.UpdateSubtaskFn = func(ctx context.Context, subtaskID string, req dto.UpdateSubtaskRequest) (db.CardSubtask, error) {
 				return db.CardSubtask{ID: subtaskID, CardID: validCardID, IsDone: true}, nil
 			}
-			h := NewSubtaskHandler(svc, boards, &mock.MockBroadcaster{})
+			h := NewSubtaskHandler(svc, boards, nil, &mock.MockBroadcaster{})
 			w := httptest.NewRecorder()
 
 			httputil.MakeHandler(h.UpdateSubtask)(w, subtaskRequest(http.MethodPatch, `{"is_done":true}`, "cardID", validCardID, "subtaskID", validSubtaskID))
 
 			assert.Equal(t, http.StatusOK, w.Code)
+		})
+	}
+}
+
+// ────────────────────────────────────────────────
+// card.subtasks_completed activity
+// ────────────────────────────────────────────────
+
+func TestUpdateSubtask_SubtasksCompletedActivity(t *testing.T) {
+	cases := map[string]struct {
+		wasDone   bool
+		nowDone   bool
+		afterList []db.CardSubtask
+		wantEvent bool
+	}{
+		"last open subtask ticked": {false, true, []db.CardSubtask{{IsDone: true}, {IsDone: true}}, true},
+		"others still open":        {false, true, []db.CardSubtask{{IsDone: true}, {IsDone: false}}, false},
+		"unticked":                 {true, false, []db.CardSubtask{{IsDone: false}}, false},
+		"rename of a done subtask": {true, true, []db.CardSubtask{{IsDone: true}}, false},
+	}
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			var got []service.RecordParams
+			svc := &mock.MockSubtaskService{
+				GetSubtaskByIDFn: func(ctx context.Context, id string) (db.CardSubtask, error) {
+					return db.CardSubtask{ID: id, CardID: validCardID, IsDone: tc.wasDone}, nil
+				},
+				UpdateSubtaskFn: func(ctx context.Context, id string, req dto.UpdateSubtaskRequest) (db.CardSubtask, error) {
+					return db.CardSubtask{ID: id, CardID: validCardID, IsDone: tc.nowDone}, nil
+				},
+				GetSubtasksByCardIDFn: func(ctx context.Context, cardID string) ([]db.CardSubtask, error) {
+					return tc.afterList, nil
+				},
+			}
+			rec := &spyRecorder{record: func(ctx context.Context, p service.RecordParams) error {
+				got = append(got, p)
+				return nil
+			}}
+			h := NewSubtaskHandler(svc, memberBoards(), rec, &mock.MockBroadcaster{})
+			w := httptest.NewRecorder()
+
+			httputil.MakeHandler(h.UpdateSubtask)(w, subtaskRequest(http.MethodPatch, `{"is_done":true}`, "cardID", validCardID, "subtaskID", validSubtaskID))
+
+			require.Equal(t, http.StatusOK, w.Code)
+			if !tc.wantEvent {
+				assert.Empty(t, got)
+				return
+			}
+			require.Len(t, got, 1)
+			assert.Equal(t, service.EventCardSubtasksCompleted, got[0].EventType)
+			assert.Equal(t, validUserID, got[0].ActorID)
+			assert.Equal(t, service.CardSubtasksCompletedPayload{Title: "Existing", Total: 2}, got[0].Payload)
 		})
 	}
 }

@@ -661,3 +661,118 @@ func TestUpdateMemberRole_DoesNotEvict(t *testing.T) {
 	require.Equal(t, http.StatusNoContent, w.Code)
 	assert.Empty(t, bc.Evicted)
 }
+
+// ────────────────────────────────────────────────
+// Member activity
+// ────────────────────────────────────────────────
+
+func spyMemberRecorder(got *[]service.RecordParams) *spyRecorder {
+	return &spyRecorder{record: func(ctx context.Context, p service.RecordParams) error {
+		*got = append(*got, p)
+		return nil
+	}}
+}
+
+func memberPayload(t *testing.T, p service.RecordParams) service.MemberChangedPayload {
+	t.Helper()
+	payload, ok := p.Payload.(service.MemberChangedPayload)
+	require.True(t, ok, "member events carry MemberChangedPayload")
+	return payload
+}
+
+func TestAddBoardMember_RecordsMemberAdded(t *testing.T) {
+	var got []service.RecordParams
+	svc := &mock.MockBoardService{
+		AddBoardMemberByEmailFn: func(ctx context.Context, boardID, email, role string) error { return nil },
+		GetBoardMembersFn:       membersAfterChange(),
+	}
+	h := NewBoardHandler(svc, nil, spyMemberRecorder(&got), &mock.MockBroadcaster{})
+	req := withUserID(httptest.NewRequest(http.MethodPost, "/", strings.NewReader(`{"email":"B@x.io","role":"manager"}`)), validUserID)
+	w := httptest.NewRecorder()
+
+	httputil.MakeHandler(h.AddBoardMember)(w, chiCtx(req, "boardID", validBoardID))
+
+	require.Equal(t, http.StatusCreated, w.Code)
+	require.Len(t, got, 1)
+	assert.Equal(t, service.EventMemberAdded, got[0].EventType)
+	assert.Equal(t, validUserID, got[0].ActorID)
+	assert.Equal(t, service.MemberChangedPayload{UserID: otherUserID, Name: "Bob", Role: "manager"}, memberPayload(t, got[0]))
+}
+
+// The name is read before the row is deleted, or the feed could not say who was removed.
+func TestRemoveBoardMember_RecordsNameReadBeforeRemoval(t *testing.T) {
+	var got []service.RecordParams
+	removed := false
+	svc := &mock.MockBoardService{
+		RemoveBoardMemberFn: func(ctx context.Context, boardID, userID string) error { removed = true; return nil },
+		GetBoardMembersFn: func(ctx context.Context, boardID string) ([]db.GetBoardMembersRow, error) {
+			if removed {
+				return []db.GetBoardMembersRow{{UserID: validUserID, Role: "owner", FullName: "Owner"}}, nil
+			}
+			return membersAfterChange()(ctx, boardID)
+		},
+	}
+	h := NewBoardHandler(svc, nil, spyMemberRecorder(&got), &mock.MockBroadcaster{})
+	req := withUserID(httptest.NewRequest(http.MethodDelete, "/", nil), validUserID)
+	w := httptest.NewRecorder()
+
+	httputil.MakeHandler(h.RemoveBoardMember)(w, chiCtx(req, "boardID", validBoardID, "userID", otherUserID))
+
+	require.Equal(t, http.StatusNoContent, w.Code)
+	require.Len(t, got, 1)
+	assert.Equal(t, service.EventMemberRemoved, got[0].EventType)
+	assert.Equal(t, "Bob", memberPayload(t, got[0]).Name)
+}
+
+func TestUpdateMemberRole_RecordsPreviousRole(t *testing.T) {
+	var got []service.RecordParams
+	svc := &mock.MockBoardService{
+		UpdateMemberRoleFn: func(ctx context.Context, boardID, userID, role string) error { return nil },
+		GetBoardMembersFn:  membersAfterChange(), // Bob is currently a manager
+	}
+	h := NewBoardHandler(svc, nil, spyMemberRecorder(&got), &mock.MockBroadcaster{})
+	req := withUserID(httptest.NewRequest(http.MethodPatch, "/", strings.NewReader(`{"role":"member"}`)), validUserID)
+	w := httptest.NewRecorder()
+
+	httputil.MakeHandler(h.UpdateMemberRole)(w, chiCtx(req, "boardID", validBoardID, "userID", otherUserID))
+
+	require.Equal(t, http.StatusNoContent, w.Code)
+	require.Len(t, got, 1)
+	assert.Equal(t, service.EventMemberRole, got[0].EventType)
+	assert.Equal(t, service.MemberChangedPayload{UserID: otherUserID, Name: "Bob", Role: "member", PreviousRole: "manager"}, memberPayload(t, got[0]))
+}
+
+func TestUpdateMemberRole_SameRole_RecordsNothing(t *testing.T) {
+	var got []service.RecordParams
+	svc := &mock.MockBoardService{
+		UpdateMemberRoleFn: func(ctx context.Context, boardID, userID, role string) error { return nil },
+		GetBoardMembersFn:  membersAfterChange(),
+	}
+	h := NewBoardHandler(svc, nil, spyMemberRecorder(&got), &mock.MockBroadcaster{})
+	req := withUserID(httptest.NewRequest(http.MethodPatch, "/", strings.NewReader(`{"role":"manager"}`)), validUserID)
+	w := httptest.NewRecorder()
+
+	httputil.MakeHandler(h.UpdateMemberRole)(w, chiCtx(req, "boardID", validBoardID, "userID", otherUserID))
+
+	require.Equal(t, http.StatusNoContent, w.Code)
+	assert.Empty(t, got)
+}
+
+func TestLeaveBoard_RecordsMemberLeft(t *testing.T) {
+	var got []service.RecordParams
+	svc := &mock.MockBoardService{
+		RemoveBoardMemberFn: func(ctx context.Context, boardID, userID string) error { return nil },
+		GetBoardMembersFn:   membersAfterChange(),
+	}
+	h := NewBoardHandler(svc, nil, spyMemberRecorder(&got), &mock.MockBroadcaster{})
+	req := withBoardRole(withUserID(httptest.NewRequest(http.MethodDelete, "/", nil), otherUserID), "manager")
+	w := httptest.NewRecorder()
+
+	httputil.MakeHandler(h.LeaveBoard)(w, chiCtx(req, "boardID", validBoardID))
+
+	require.Equal(t, http.StatusNoContent, w.Code)
+	require.Len(t, got, 1)
+	assert.Equal(t, service.EventMemberLeft, got[0].EventType)
+	assert.Equal(t, otherUserID, got[0].ActorID)
+	assert.Equal(t, "Bob", memberPayload(t, got[0]).Name)
+}

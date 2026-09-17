@@ -1,10 +1,8 @@
 //go:build integration
 
-// Integration tests for BoardService's member methods (member_service.go).
-// AddBoardMemberByEmail/RemoveBoardMember/UpdateMemberRole all resolve the
-// caller's role by hitting *db.Queries first, then branch on it in Go — a
-// mock could confirm the branching but not that the owner-role guard is
-// checked against the row actually in the database.
+// Integration tests for BoardService's member methods. They branch in Go on a role
+// read from the database; a mock could confirm the branching but not that the
+// owner-role guard is checked against the stored row.
 package service_test
 
 import (

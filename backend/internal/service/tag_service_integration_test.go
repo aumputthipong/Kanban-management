@@ -63,12 +63,9 @@ func TestCreateTag_51AsciiChars_ErrTagNameTooLong(t *testing.T) {
 	assert.ErrorIs(t, err, service.ErrTagNameTooLong)
 }
 
-// Documents a real bug (not fixed here): CreateTag checks len(name), which
-// counts BYTES, against a 50-char limit meant for the user-facing character
-// count. 20 Thai characters is well under any reasonable "50 characters"
-// limit, but each is 3 bytes — 60 bytes — so it is wrongly rejected as too
-// long on a Thai-first UI. A correct check would use
-// utf8.RuneCountInString(name) instead of len(name).
+// Documents a real bug (not fixed here): CreateTag checks len(name), which counts
+// bytes. 20 Thai characters are 60 bytes, so a short Thai tag is rejected against the
+// 50-character limit. The fix is utf8.RuneCountInString(name).
 func TestCreateTag_20ThaiChars_WronglyRejectedAsTooLong(t *testing.T) {
 	ctx := context.Background()
 	f := newTagFixture(t)

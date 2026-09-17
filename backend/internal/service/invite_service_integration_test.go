@@ -1,9 +1,8 @@
 //go:build integration
 
-// Integration tests for InviteService. CreateInvite runs a transaction
-// (revoke-then-create, "a board has at most one live link"); AcceptInvite
-// chains three separate reads/writes with idempotent-join semantics. Neither
-// property is observable through a mock.
+// Integration tests for InviteService. CreateInvite revokes-then-creates in one
+// transaction (one live link per board); AcceptInvite joins idempotently. Neither
+// is observable through a mock.
 package service_test
 
 import (
@@ -123,10 +122,8 @@ func TestAcceptInvite_NewUser_JoinsAsMember(t *testing.T) {
 	assert.Equal(t, "member", role)
 }
 
-// Accepting twice must not error or duplicate the membership row — the
-// UNIQUE(board_id, user_id) constraint would reject a naive second insert,
-// so this pins that the idempotent-join check actually short-circuits before
-// that.
+// Accepting twice must not error or duplicate the membership row: UNIQUE(board_id,
+// user_id) would reject a naive second insert, so the idempotent check must run first.
 func TestAcceptInvite_AlreadyMember_IdempotentNoDuplicateRow(t *testing.T) {
 	ctx := context.Background()
 	f := newInviteFixture(t)

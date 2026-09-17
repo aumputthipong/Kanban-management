@@ -1,10 +1,8 @@
 //go:build integration
 
-// Integration tests for ActivityService — the audit log AGENTS.md calls the
-// source of truth. Record hits *db.Queries directly (JSON marshal + insert),
-// and RecordAsync hands off to a background worker goroutine a mock cannot
-// exercise at all: whether the write actually lands, and whether it survives
-// the caller's own context being long gone by the time it runs.
+// Integration tests for ActivityService, the audit log. RecordAsync hands off to a
+// background worker a mock cannot exercise: whether the write lands, and whether it
+// survives the caller's context being gone by the time it runs.
 package service_test
 
 import (

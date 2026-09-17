@@ -1,10 +1,8 @@
 //go:build integration
 
-// Integration tests for SubtaskService. UpdateSubtask does a
-// read-then-merge-then-write in Go rather than letting the SQL's own
-// COALESCE resolve unset fields (see the file's own comment) — that shape
-// only shows a problem under concurrency, so this needs real overlapping
-// requests against a real Postgres, not a mock.
+// Integration tests for SubtaskService. UpdateSubtask reads, merges in Go, then writes;
+// that shape only misbehaves under concurrency, so it needs overlapping requests
+// against a real Postgres.
 package service_test
 
 import (
@@ -68,13 +66,9 @@ func TestUpdateSubtask_PartialUpdate_PreservesOtherFields(t *testing.T) {
 	assert.False(t, updated.IsDone)
 }
 
-// Demonstrates the cost of the read-then-merge shape (not a fix): two callers
-// editing DIFFERENT fields of the same subtask "at the same time" each start
-// from the same stale snapshot. Whichever writes second overwrites the
-// first's change to the field IT didn't touch, because its own merge still
-// carries the old value for that field. A single UPDATE ... SET x =
-// COALESCE(...) statement (bypassing the Go-side read) would not have this
-// problem — this is the T3 finding from the earlier audit.
+// Documents a known lost-update (audit finding T3, not fixed here): two concurrent
+// edits to different fields both merge from the same stale read, so the second write
+// restores the first one's field. A single UPDATE with COALESCE would not.
 func TestUpdateSubtask_ConcurrentDifferentFieldEdits_OneEditIsLost(t *testing.T) {
 	ctx := context.Background()
 	f := newSubtaskFixture(t)
@@ -100,11 +94,8 @@ func TestUpdateSubtask_ConcurrentDifferentFieldEdits_OneEditIsLost(t *testing.T)
 
 	final, err := f.queries.GetSubtask(ctx, f.subtaskID)
 	require.NoError(t, err)
-	// Not asserting a specific outcome — which write "won" depends on
-	// goroutine scheduling. The point this test exists to make is that BOTH
-	// edits together are not guaranteed to land: log the observed state so a
-	// lost edit is visible when it happens, without making the test flaky
-	// by asserting a fixed order.
+	// No assertion: which write wins depends on scheduling, and asserting an order
+	// would make the test flaky. Logging makes a lost edit visible when it happens.
 	t.Logf("T3: after concurrent edits, title=%q is_done=%v (a correct fix would guarantee both land: title=%q is_done=true)",
 		final.Title, final.IsDone, newTitle)
 }

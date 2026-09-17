@@ -214,6 +214,30 @@ describe("applyWsMessage BOARD_MEMBERS_UPDATED", () => {
   });
 });
 
+describe("applyWsMessage BOARD_MEMBERS_UPDATED removal", () => {
+  beforeEach(() => useBoardStore.setState({ currentUserId: "user-alice", removedFromBoard: false }));
+
+  it("flags the board when the current user is no longer a member", () => {
+    applyWsMessage({ type: WS_EVENT.BoardMembersUpdated, payload: { members: [BOB] } });
+
+    expect(useBoardStore.getState().removedFromBoard).toBe(true);
+  });
+
+  it("does not flag the board while the current user is still listed", () => {
+    applyWsMessage({ type: WS_EVENT.BoardMembersUpdated, payload: { members: [ALICE, BOB] } });
+
+    expect(useBoardStore.getState().removedFromBoard).toBe(false);
+  });
+
+  it("does not flag before the current user is known", () => {
+    useBoardStore.setState({ currentUserId: "" });
+
+    applyWsMessage({ type: WS_EVENT.BoardMembersUpdated, payload: { members: [BOB] } });
+
+    expect(useBoardStore.getState().removedFromBoard).toBe(false);
+  });
+});
+
 describe("applyWsMessage unknown type", () => {
   it("leaves the store unchanged", () => {
     seed(makeCard());

@@ -1,6 +1,7 @@
 import { useBoardStore } from "@/store/useBoardStore";
 import { useActivityStore } from "@/store/useActivityStore";
 import { WS_EVENT } from "@/types/wsEvents";
+import type { BoardMember } from "@/types/board";
 
 /**
  * Wire-format envelope for every inbound message. `payload` is `unknown` to force
@@ -61,9 +62,15 @@ export function applyWsMessage({ type, payload }: WebSocketMessage): void {
         title: p.title, category: p.category, color: p.color || null,
       });
       return;
-    case WS_EVENT.BoardMembersUpdated:
-      board.setBoardMembers(p.members);
+    case WS_EVENT.BoardMembersUpdated: {
+      const members: BoardMember[] = p.members;
+      board.setBoardMembers(members);
+      // The server evicts this socket right after; the provider takes the user off the board.
+      if (board.currentUserId && !members.some((m) => m.user_id === board.currentUserId)) {
+        board.setRemovedFromBoard(true);
+      }
       return;
+    }
     case WS_EVENT.ActivityCreated:
       useActivityStore.getState().prependActivity(p);
       return;

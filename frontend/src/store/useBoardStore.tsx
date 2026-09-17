@@ -24,6 +24,8 @@ export const UNASSIGNED_FILTER = "unassigned";
 interface BoardState {
   columns: Column[];
   currentUserId: string;
+  /** Set when a member-list broadcast no longer includes the current user. */
+  removedFromBoard: boolean;
   boardMembers: BoardMember[];
   boardMeta: BoardMeta | null;
   isLoading: boolean;
@@ -32,6 +34,7 @@ interface BoardState {
   filterTagIds: string[];
   setColumns: (columns: Column[]) => void;
   setCurrentUser: (userId: string) => void;
+  setRemovedFromBoard: (removed: boolean) => void;
   setBoardMembers: (members: BoardMember[]) => void;
   setBoardMeta: (meta: BoardMeta | null) => void;
   patchBoardMeta: (patch: Partial<BoardMeta>) => void;
@@ -67,6 +70,7 @@ interface BoardState {
 export const useBoardStore = create<BoardState>((set) => ({
   columns: [],
   currentUserId: "",
+  removedFromBoard: false,
   boardMembers: [],
   boardMeta: null,
   isLoading: false,
@@ -75,6 +79,7 @@ export const useBoardStore = create<BoardState>((set) => ({
   filterTagIds: [],
   setColumns: (columns) => set({ columns }),
   setCurrentUser: (userId) => set({ currentUserId: userId }),
+  setRemovedFromBoard: (removed) => set({ removedFromBoard: removed }),
   setBoardMembers: (members) => set({ boardMembers: members }),
   setBoardMeta: (meta) => set({ boardMeta: meta }),
   patchBoardMeta: (patch) =>

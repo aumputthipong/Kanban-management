@@ -66,6 +66,27 @@ jobs:
           }
           govulncheck ./... || echo "::warning::govulncheck reported vulnerabilities — review the log and bump go.mod or deps when patches are available"
 
+  # The service layer's real coverage lives behind the integration tag (locks, migrations,
+  # cross-table transactions). Without this job those tests only ever ran on a laptop.
+  backend-integration:
+    name: Backend integration (Postgres)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      # testcontainers starts postgres:15-alpine through the runner's Docker daemon.
+      - name: Run integration tests
+        run: go test -race -tags=integration ./...
+
   frontend:
     name: Frontend (typecheck + test + build)
     runs-on: ubuntu-latest

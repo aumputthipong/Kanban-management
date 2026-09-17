@@ -496,9 +496,9 @@ func TestUpdateCard_Success(t *testing.T) {
 		GetBoardMemberRoleFn: func(ctx context.Context, boardID, uid string) (string, error) {
 			return "member", nil
 		},
-		UpdateCardFn: func(ctx context.Context, arg service.UpdateCardParams) (db.Card, error) {
+		UpdateCardFn: func(ctx context.Context, arg service.UpdateCardParams) (service.UpdateCardResult, error) {
 			assert.Equal(t, validCardID, arg.ID)
-			return db.Card{ID: validCardID, ColumnID: validColumnID, Title: "Updated"}, nil
+			return service.UpdateCardResult{Card: db.Card{ID: validCardID, ColumnID: validColumnID, Title: "Updated"}}, nil
 		},
 	}
 	h := NewBoardHandler(svc, nil, nil, nil)
@@ -554,8 +554,8 @@ func TestUpdateCard_ServiceError(t *testing.T) {
 		GetBoardMemberRoleFn: func(ctx context.Context, boardID, uid string) (string, error) {
 			return "member", nil
 		},
-		UpdateCardFn: func(ctx context.Context, arg service.UpdateCardParams) (db.Card, error) {
-			return db.Card{}, errors.New("db error")
+		UpdateCardFn: func(ctx context.Context, arg service.UpdateCardParams) (service.UpdateCardResult, error) {
+			return service.UpdateCardResult{}, errors.New("db error")
 		},
 	}
 	h := NewBoardHandler(svc, nil, nil, nil)

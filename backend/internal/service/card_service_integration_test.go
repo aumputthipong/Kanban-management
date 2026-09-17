@@ -76,9 +76,9 @@ func TestUpdateCard_Success_UpdatesGivenFields(t *testing.T) {
 		Description: util.StringToPtr("New description"),
 	})
 	require.NoError(t, err)
-	assert.Equal(t, "New Title", updated.Title)
-	require.NotNil(t, updated.Description)
-	assert.Equal(t, "New description", *updated.Description)
+	assert.Equal(t, "New Title", updated.Card.Title)
+	require.NotNil(t, updated.Card.Description)
+	assert.Equal(t, "New description", *updated.Card.Description)
 }
 
 // These columns are plain SET, not COALESCE — the caller is expected to have merged in
@@ -97,7 +97,7 @@ func TestUpdateCard_NilDescription_ClearsIt_NotCOALESCEd(t *testing.T) {
 		ID: f.cardID, Title: "Has a description", Description: nil,
 	})
 	require.NoError(t, err)
-	assert.Nil(t, updated.Description, "unlike AcceptanceCriteria/ImplementationNote, Description has no COALESCE — nil overwrites, it doesn't preserve")
+	assert.Nil(t, updated.Card.Description, "unlike AcceptanceCriteria/ImplementationNote, Description has no COALESCE — nil overwrites, it doesn't preserve")
 }
 
 // The one pair of fields that IS COALESCE'd: an update that only touches
@@ -122,11 +122,11 @@ func TestUpdateCard_AcceptanceCriteriaAndNote_PreservedWhenNotTouched(t *testing
 	})
 	require.NoError(t, err)
 
-	assert.Equal(t, "Renamed", updated.Title)
-	require.NotNil(t, updated.AcceptanceCriteria)
-	assert.Equal(t, ac, *updated.AcceptanceCriteria, "AC must survive an edit that never touched it")
-	require.NotNil(t, updated.ImplementationNote)
-	assert.Equal(t, note, *updated.ImplementationNote, "dev note must survive an edit that never touched it")
+	assert.Equal(t, "Renamed", updated.Card.Title)
+	require.NotNil(t, updated.Card.AcceptanceCriteria)
+	assert.Equal(t, ac, *updated.Card.AcceptanceCriteria, "AC must survive an edit that never touched it")
+	require.NotNil(t, updated.Card.ImplementationNote)
+	assert.Equal(t, note, *updated.Card.ImplementationNote, "dev note must survive an edit that never touched it")
 }
 
 // ────────────────────────────────────────────────
@@ -140,12 +140,15 @@ func TestUpdateCard_NilTagIDs_LeavesExistingTagsUntouched(t *testing.T) {
 	tag := seed.Tag(ctx, f.boardID, "bug")
 	require.NoError(t, f.queries.InsertCardTag(ctx, db.InsertCardTagParams{CardID: f.cardID, TagID: tag}))
 
-	_, err := f.svc.UpdateCard(ctx, service.UpdateCardParams{
+	res, err := f.svc.UpdateCard(ctx, service.UpdateCardParams{
 		ID: f.cardID, Title: "Renamed only", TagIDs: nil,
 	})
 	require.NoError(t, err)
 
 	assert.Equal(t, []string{tag}, f.cardTags(ctx, t), "nil TagIDs must mean \"don't touch tags\", not \"clear them\"")
+	// The handler broadcasts res.Tags; returning empty here would wipe tags on every client.
+	require.Len(t, res.Tags, 1)
+	assert.Equal(t, tag, res.Tags[0].ID)
 }
 
 func TestUpdateCard_EmptyTagIDs_ClearsAllTags(t *testing.T) {
@@ -156,12 +159,14 @@ func TestUpdateCard_EmptyTagIDs_ClearsAllTags(t *testing.T) {
 	require.NoError(t, f.queries.InsertCardTag(ctx, db.InsertCardTagParams{CardID: f.cardID, TagID: tag}))
 
 	empty := []string{}
-	_, err := f.svc.UpdateCard(ctx, service.UpdateCardParams{
+	res, err := f.svc.UpdateCard(ctx, service.UpdateCardParams{
 		ID: f.cardID, Title: "Clearing tags", TagIDs: &empty,
 	})
 	require.NoError(t, err)
 
 	assert.Empty(t, f.cardTags(ctx, t))
+	assert.NotNil(t, res.Tags, "an untagged card returns [], not nil")
+	assert.Empty(t, res.Tags)
 }
 
 func TestUpdateCard_ReplaceTagIDs_SwapsToExactlyTheNewSet(t *testing.T) {
@@ -173,12 +178,15 @@ func TestUpdateCard_ReplaceTagIDs_SwapsToExactlyTheNewSet(t *testing.T) {
 	require.NoError(t, f.queries.InsertCardTag(ctx, db.InsertCardTagParams{CardID: f.cardID, TagID: oldTag}))
 
 	newSet := []string{newTag}
-	_, err := f.svc.UpdateCard(ctx, service.UpdateCardParams{
+	res, err := f.svc.UpdateCard(ctx, service.UpdateCardParams{
 		ID: f.cardID, Title: "Swapping tags", TagIDs: &newSet,
 	})
 	require.NoError(t, err)
 
 	assert.Equal(t, []string{newTag}, f.cardTags(ctx, t))
+	require.Len(t, res.Tags, 1)
+	assert.Equal(t, newTag, res.Tags[0].ID)
+	assert.Equal(t, "new", res.Tags[0].Name)
 }
 
 // The >5 tag check runs AFTER qtx.UpdateCard applied the field change, in the same

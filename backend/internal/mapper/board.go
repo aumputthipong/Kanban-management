@@ -83,10 +83,7 @@ func timePtrToRFC3339(t *time.Time) *string {
 }
 
 func ToCardResponse(card service.CardData) dto.CardResponse {
-	tags := make([]dto.TagResponse, len(card.Tags))
-	for i, t := range card.Tags {
-		tags[i] = dto.TagResponse{ID: t.ID, BoardID: t.BoardID, Name: t.Name, Color: t.Color}
-	}
+	tags := toTagResponses(card.Tags)
 	return dto.CardResponse{
 		ID:                card.ID,
 		ColumnID:          card.ColumnID,
@@ -181,10 +178,18 @@ func ToColumnResponses(columns []service.ColumnData) []dto.ColumnResponse {
 	return result
 }
 
-// ToCardResponseFromRow maps the row a write returns into the snake_case wire shape.
-// Tags are left empty: a write returns the card only, and GET /cards/{id} is the
-// hydrated read.
-func ToCardResponseFromRow(card db.Card) dto.CardResponse {
+func toTagResponses(tags []service.TagData) []dto.TagResponse {
+	out := make([]dto.TagResponse, len(tags))
+	for i, t := range tags {
+		out[i] = dto.TagResponse{ID: t.ID, BoardID: t.BoardID, Name: t.Name, Color: t.Color}
+	}
+	return out
+}
+
+// ToCardResponseFromUpdate maps an UpdateCard result into the snake_case wire shape,
+// tags included. Subtask counts and assignee name are not part of the write result.
+func ToCardResponseFromUpdate(res service.UpdateCardResult) dto.CardResponse {
+	card := res.Card
 	return dto.CardResponse{
 		ID:                 card.ID,
 		ColumnID:           card.ColumnID,
@@ -199,7 +204,7 @@ func ToCardResponseFromRow(card db.Card) dto.CardResponse {
 		CompletedAt:        timePtrToRFC3339(util.TimestamptzToTimePtr(card.CompletedAt)),
 		CreatedAt:          timePtrToRFC3339(util.TimestamptzToTimePtr(card.CreatedAt)),
 		CreatedBy:          card.CreatedBy,
-		Tags:               []dto.TagResponse{},
+		Tags:               toTagResponses(res.Tags),
 		AcceptanceCriteria: card.AcceptanceCriteria,
 		ImplementationNote: card.ImplementationNote,
 	}

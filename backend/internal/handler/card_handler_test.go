@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/db"
+	"github.com/aumputthipong/mini-erp-kanban/backend/internal/dto"
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/httputil"
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/service"
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/service/mock"
@@ -67,8 +68,8 @@ func TestUpdateCard_ManagerEditsAnyCard_Success(t *testing.T) {
 		GetBoardMemberRoleFn: func(ctx context.Context, boardID, userID string) (string, error) {
 			return "manager", nil
 		},
-		UpdateCardFn: func(ctx context.Context, arg service.UpdateCardParams) (db.Card, error) {
-			return db.Card{ID: arg.ID, Title: arg.Title}, nil
+		UpdateCardFn: func(ctx context.Context, arg service.UpdateCardParams) (service.UpdateCardResult, error) {
+			return service.UpdateCardResult{Card: db.Card{ID: arg.ID, Title: arg.Title}}, nil
 		},
 	}
 	h := NewBoardHandler(svc, nil, nil, nil)
@@ -96,8 +97,8 @@ func TestUpdateCard_MemberEditsOwnCard_Success(t *testing.T) {
 		GetBoardMemberRoleFn: func(ctx context.Context, boardID, userID string) (string, error) {
 			return "member", nil
 		},
-		UpdateCardFn: func(ctx context.Context, arg service.UpdateCardParams) (db.Card, error) {
-			return db.Card{ID: arg.ID, Title: arg.Title}, nil
+		UpdateCardFn: func(ctx context.Context, arg service.UpdateCardParams) (service.UpdateCardResult, error) {
+			return service.UpdateCardResult{Card: db.Card{ID: arg.ID, Title: arg.Title}}, nil
 		},
 	}
 	h := NewBoardHandler(svc, nil, nil, nil)
@@ -126,8 +127,8 @@ func TestUpdateCard_MemberEditsAssignedCard_Success(t *testing.T) {
 		GetBoardMemberRoleFn: func(ctx context.Context, boardID, userID string) (string, error) {
 			return "member", nil
 		},
-		UpdateCardFn: func(ctx context.Context, arg service.UpdateCardParams) (db.Card, error) {
-			return db.Card{ID: arg.ID}, nil
+		UpdateCardFn: func(ctx context.Context, arg service.UpdateCardParams) (service.UpdateCardResult, error) {
+			return service.UpdateCardResult{Card: db.Card{ID: arg.ID}}, nil
 		},
 	}
 	h := NewBoardHandler(svc, nil, nil, nil)
@@ -157,9 +158,9 @@ func TestUpdateCard_MemberEditsOthersCard_Returns403(t *testing.T) {
 		GetBoardMemberRoleFn: func(ctx context.Context, boardID, userID string) (string, error) {
 			return "member", nil
 		},
-		UpdateCardFn: func(ctx context.Context, arg service.UpdateCardParams) (db.Card, error) {
+		UpdateCardFn: func(ctx context.Context, arg service.UpdateCardParams) (service.UpdateCardResult, error) {
 			t.Fatal("UpdateCard must not run when permission check fails")
-			return db.Card{}, nil
+			return service.UpdateCardResult{}, nil
 		},
 	}
 	h := NewBoardHandler(svc, nil, nil, nil)
@@ -249,9 +250,9 @@ func TestUpdateCard_PATCHSemantics_OmittedTitle(t *testing.T) {
 		GetBoardMemberRoleFn: func(ctx context.Context, boardID, userID string) (string, error) {
 			return "member", nil
 		},
-		UpdateCardFn: func(ctx context.Context, arg service.UpdateCardParams) (db.Card, error) {
+		UpdateCardFn: func(ctx context.Context, arg service.UpdateCardParams) (service.UpdateCardResult, error) {
 			received = arg
-			return db.Card{ID: arg.ID}, nil
+			return service.UpdateCardResult{Card: db.Card{ID: arg.ID}}, nil
 		},
 	}
 	h := NewBoardHandler(svc, nil, nil, nil)
@@ -295,9 +296,9 @@ func TestUpdateCard_PartialPatch_PreservesUntouchedFields(t *testing.T) {
 		GetBoardMemberRoleFn: func(ctx context.Context, boardID, userID string) (string, error) {
 			return "member", nil // not manager — relies on the assignee carve-out
 		},
-		UpdateCardFn: func(ctx context.Context, arg service.UpdateCardParams) (db.Card, error) {
+		UpdateCardFn: func(ctx context.Context, arg service.UpdateCardParams) (service.UpdateCardResult, error) {
 			received = arg
-			return db.Card{ID: arg.ID}, nil
+			return service.UpdateCardResult{Card: db.Card{ID: arg.ID}}, nil
 		},
 	}
 	h := NewBoardHandler(svc, nil, nil, nil)
@@ -331,9 +332,9 @@ func TestUpdateCard_PATCHSemantics_EmptyTitleRejected(t *testing.T) {
 		GetCardFn: func(ctx context.Context, cardID string) (db.Card, error) {
 			return cardOwnedBy(creator, nil), nil
 		},
-		UpdateCardFn: func(ctx context.Context, arg service.UpdateCardParams) (db.Card, error) {
+		UpdateCardFn: func(ctx context.Context, arg service.UpdateCardParams) (service.UpdateCardResult, error) {
 			t.Fatal("UpdateCard must not be called when validation fails")
-			return db.Card{}, nil
+			return service.UpdateCardResult{}, nil
 		},
 	}
 	h := NewBoardHandler(svc, nil, nil, nil)
@@ -443,8 +444,8 @@ func TestUpdateCard_RespondsWithSnakeCase(t *testing.T) {
 		GetBoardMemberRoleFn: func(ctx context.Context, boardID, userID string) (string, error) {
 			return "member", nil
 		},
-		UpdateCardFn: func(ctx context.Context, arg service.UpdateCardParams) (db.Card, error) {
-			return db.Card{ID: arg.ID, ColumnID: validColumnID, Title: arg.Title}, nil
+		UpdateCardFn: func(ctx context.Context, arg service.UpdateCardParams) (service.UpdateCardResult, error) {
+			return service.UpdateCardResult{Card: db.Card{ID: arg.ID, ColumnID: validColumnID, Title: arg.Title}}, nil
 		},
 	}
 	h := NewBoardHandler(svc, nil, nil, nil)
@@ -483,8 +484,8 @@ func TestUpdateCard_OmittedDueDate_BroadcastsStoredValue(t *testing.T) {
 		GetBoardMemberRoleFn: func(ctx context.Context, boardID, userID string) (string, error) {
 			return "member", nil
 		},
-		UpdateCardFn: func(ctx context.Context, arg service.UpdateCardParams) (db.Card, error) {
-			return db.Card{ID: arg.ID, ColumnID: validColumnID, Title: arg.Title, DueDate: arg.DueDate}, nil
+		UpdateCardFn: func(ctx context.Context, arg service.UpdateCardParams) (service.UpdateCardResult, error) {
+			return service.UpdateCardResult{Card: db.Card{ID: arg.ID, ColumnID: validColumnID, Title: arg.Title, DueDate: arg.DueDate}}, nil
 		},
 	}
 	bc := &mock.MockBroadcaster{}
@@ -510,4 +511,55 @@ func TestUpdateCard_OmittedDueDate_BroadcastsStoredValue(t *testing.T) {
 	assert.Equal(t, "CARD_UPDATED", msg.Type)
 	require.NotNil(t, msg.Payload.DueDate, "due_date must not be null when the caller omitted it")
 	assert.Equal(t, "2026-03-14", *msg.Payload.DueDate)
+}
+
+// Tags and dev notes come from the update result, so an edit that omitted them still
+// broadcasts the stored values instead of blanking them on other clients.
+func TestUpdateCard_BroadcastsStoredTagsAndNotes(t *testing.T) {
+	creator := ptr(validUserID)
+	ac := "Filters by priority"
+	svc := &mock.MockBoardService{
+		GetCardFn: func(ctx context.Context, cardID string) (db.Card, error) {
+			return cardOwnedBy(creator, nil), nil
+		},
+		GetBoardIDByColumnFn: func(ctx context.Context, columnID string) (string, error) {
+			return validBoardID, nil
+		},
+		GetBoardMemberRoleFn: func(ctx context.Context, boardID, userID string) (string, error) {
+			return "member", nil
+		},
+		UpdateCardFn: func(ctx context.Context, arg service.UpdateCardParams) (service.UpdateCardResult, error) {
+			return service.UpdateCardResult{
+				Card: db.Card{ID: arg.ID, ColumnID: validColumnID, Title: arg.Title, AcceptanceCriteria: &ac},
+				Tags: []service.TagData{{ID: "tag-1", BoardID: validBoardID, Name: "feat", Color: "blue"}},
+			}, nil
+		},
+	}
+	bc := &mock.MockBroadcaster{}
+	h := NewBoardHandler(svc, nil, nil, bc)
+
+	req := withUserID(httptest.NewRequest(http.MethodPatch, "/cards/"+validCardID,
+		jsonBody(t, map[string]any{"title": "renamed"})), validUserID)
+	req = chiCtx(req, "cardID", validCardID)
+	w := httptest.NewRecorder()
+
+	httputil.MakeHandler(h.UpdateCard)(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+	require.Len(t, bc.Sent, 1)
+	var msg struct {
+		Payload struct {
+			Tags               []dto.TagResponse `json:"tags"`
+			AcceptanceCriteria *string           `json:"acceptance_criteria"`
+		} `json:"payload"`
+	}
+	require.NoError(t, json.Unmarshal(bc.Sent[0].Message, &msg))
+	require.Len(t, msg.Payload.Tags, 1)
+	assert.Equal(t, "feat", msg.Payload.Tags[0].Name)
+	require.NotNil(t, msg.Payload.AcceptanceCriteria)
+	assert.Equal(t, ac, *msg.Payload.AcceptanceCriteria)
+
+	var resp dto.CardResponse
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+	require.Len(t, resp.Tags, 1, "the response carries the stored tags too")
 }

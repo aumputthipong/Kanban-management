@@ -106,9 +106,9 @@ type CreateCardRequest struct {
 type UpdateCardRequest struct {
 	Title              *string   `json:"title"               validate:"omitempty,min=1,max=200"`
 	Description        *string   `json:"description"         validate:"omitempty,max=5000"`
-	DueDate            *string   `json:"due_date"            validate:"omitempty,datetime=2006-01-02"`
-	AssigneeID         *string   `json:"assignee_id"         validate:"omitempty,uuid"`
-	Priority           *string   `json:"priority"            validate:"omitempty,oneof=low medium high"`
+	DueDate            *string   `json:"due_date"            validate:"omitempty,eq=|datetime=2006-01-02"`
+	AssigneeID         *string   `json:"assignee_id"         validate:"omitempty,eq=|uuid"`
+	Priority           *string   `json:"priority"            validate:"omitempty,eq=|oneof=low medium high"`
 	EstimatedHours     *float64  `json:"estimated_hours"     validate:"omitempty,gte=0,lte=10000"`
 	TagIDs             *[]string `json:"tag_ids"             validate:"omitempty,dive,uuid"`
 	AcceptanceCriteria *string   `json:"acceptance_criteria" validate:"omitempty,max=10000"`

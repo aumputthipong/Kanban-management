@@ -5,10 +5,7 @@ import { useRouter } from "next/navigation";
 import { useDashboardStats } from "@/hooks/useDashboardStats";
 import { useBoardStore } from "@/store/useBoardStore";
 import { useBoardActions } from "@/hooks/useBoardActions";
-import {
-  CardDetailModal,
-  FormState,
-} from "@/components/board/card-modal/CardDetailModal";
+import { CardDetailModal } from "@/components/board/card-modal/CardDetailModal";
 import type { Card } from "@/types/board";
 import { BarChart3, Plus } from "lucide-react";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -113,7 +110,7 @@ export function BoardDashboard({ boardId }: BoardDashboardProps) {
           boardId={boardId}
           isOpen={true}
           onClose={() => setSelectedCard(null)}
-          onUpdated={(cardId, form: FormState) => handleUpdateCard(cardId, form)}
+          onUpdated={handleUpdateCard}
           onDelete={(cardId) => {
             handleDeleteCard(cardId);
             setSelectedCard(null);

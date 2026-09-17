@@ -107,17 +107,23 @@ func (h *BoardHandler) UpdateCard(w http.ResponseWriter, r *http.Request) error 
 	if req.DueDate != nil {
 		dueDate = util.PtrStringToTimePtr(req.DueDate)
 	}
+	// JSON null is indistinguishable from omitted, so clearing needs a sentinel:
+	// "" for assignee/priority/due_date (stored NULL, not "" — uuid/enum columns) and 0
+	// for estimated_hours. docs/adr/0009-card-patch-sends-changed-fields.md
 	assigneeID := existing.AssigneeID
 	if req.AssigneeID != nil {
-		assigneeID = req.AssigneeID
+		assigneeID = emptyToNil(req.AssigneeID)
 	}
 	priority := existing.Priority
 	if req.Priority != nil {
-		priority = req.Priority
+		priority = emptyToNil(req.Priority)
 	}
 	estimatedHours := util.PgNumericToFloat64Ptr(existing.EstimatedHours)
 	if req.EstimatedHours != nil {
 		estimatedHours = req.EstimatedHours
+		if *estimatedHours == 0 {
+			estimatedHours = nil
+		}
 	}
 
 	updated, err := h.boardService.UpdateCard(r.Context(), service.UpdateCardParams{
@@ -198,4 +204,11 @@ func (h *BoardHandler) GetCard(w http.ResponseWriter, r *http.Request) error {
 
 	httputil.RespondJSON(w, http.StatusOK, mapper.ToCardDetailResponse(detail))
 	return nil
+}
+
+func emptyToNil(s *string) *string {
+	if s == nil || *s == "" {
+		return nil
+	}
+	return s
 }

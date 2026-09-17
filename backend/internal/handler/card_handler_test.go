@@ -563,3 +563,97 @@ func TestUpdateCard_BroadcastsStoredTagsAndNotes(t *testing.T) {
 	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
 	require.Len(t, resp.Tags, 1, "the response carries the stored tags too")
 }
+
+// JSON null cannot clear a field (it decodes like an omitted key), so "" and 0 are the
+// clear sentinels. See docs/adr/0009.
+func TestUpdateCard_ClearSentinels_StoreNull(t *testing.T) {
+	var received service.UpdateCardParams
+	svc := &mock.MockBoardService{
+		GetCardFn: func(ctx context.Context, cardID string) (db.Card, error) {
+			card := cardOwnedBy(ptr(validUserID), ptr(validUserID))
+			card.Priority = ptr("high")
+			card.DueDate = &time.Time{}
+			return card, nil
+		},
+		GetBoardIDByColumnFn: func(ctx context.Context, columnID string) (string, error) {
+			return validBoardID, nil
+		},
+		GetBoardMemberRoleFn: func(ctx context.Context, boardID, userID string) (string, error) {
+			return "member", nil
+		},
+		UpdateCardFn: func(ctx context.Context, arg service.UpdateCardParams) (service.UpdateCardResult, error) {
+			received = arg
+			return service.UpdateCardResult{Card: db.Card{ID: arg.ID}}, nil
+		},
+	}
+	h := NewBoardHandler(svc, nil, nil, nil)
+
+	body := strings.NewReader(`{"assignee_id": "", "priority": "", "due_date": "", "estimated_hours": 0}`)
+	req := withUserID(httptest.NewRequest(http.MethodPatch, "/cards/"+validCardID, body), validUserID)
+	req = chiCtx(req, "cardID", validCardID)
+	w := httptest.NewRecorder()
+
+	httputil.MakeHandler(h.UpdateCard)(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	assert.Nil(t, received.AssigneeID, `assignee_id "" must store NULL, not an invalid uuid`)
+	assert.Nil(t, received.Priority)
+	assert.Nil(t, received.DueDate)
+	assert.Nil(t, received.EstimatedHours, "estimated_hours 0 means no estimate")
+}
+
+func TestUpdateCard_NullValue_LeavesFieldUnchanged(t *testing.T) {
+	var received service.UpdateCardParams
+	svc := &mock.MockBoardService{
+		GetCardFn: func(ctx context.Context, cardID string) (db.Card, error) {
+			return cardOwnedBy(ptr(validUserID), ptr(otherUserID)), nil
+		},
+		GetBoardIDByColumnFn: func(ctx context.Context, columnID string) (string, error) {
+			return validBoardID, nil
+		},
+		GetBoardMemberRoleFn: func(ctx context.Context, boardID, userID string) (string, error) {
+			return "member", nil
+		},
+		UpdateCardFn: func(ctx context.Context, arg service.UpdateCardParams) (service.UpdateCardResult, error) {
+			received = arg
+			return service.UpdateCardResult{Card: db.Card{ID: arg.ID}}, nil
+		},
+	}
+	h := NewBoardHandler(svc, nil, nil, nil)
+
+	body := strings.NewReader(`{"assignee_id": null}`)
+	req := withUserID(httptest.NewRequest(http.MethodPatch, "/cards/"+validCardID, body), validUserID)
+	req = chiCtx(req, "cardID", validCardID)
+	w := httptest.NewRecorder()
+
+	httputil.MakeHandler(h.UpdateCard)(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+	require.NotNil(t, received.AssigneeID)
+	assert.Equal(t, otherUserID, *received.AssigneeID)
+}
+
+func TestUpdateCard_InvalidClearableValues_Return400(t *testing.T) {
+	for name, raw := range map[string]string{
+		"assignee not uuid": `{"assignee_id": "nope"}`,
+		"priority unknown":  `{"priority": "urgent"}`,
+		"due_date bad":      `{"due_date": "17/09/2026"}`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			svc := &mock.MockBoardService{
+				UpdateCardFn: func(ctx context.Context, arg service.UpdateCardParams) (service.UpdateCardResult, error) {
+					t.Fatal("UpdateCard must not run when validation fails")
+					return service.UpdateCardResult{}, nil
+				},
+			}
+			h := NewBoardHandler(svc, nil, nil, nil)
+			req := withUserID(httptest.NewRequest(http.MethodPatch, "/cards/"+validCardID, strings.NewReader(raw)), validUserID)
+			req = chiCtx(req, "cardID", validCardID)
+			w := httptest.NewRecorder()
+
+			httputil.MakeHandler(h.UpdateCard)(w, req)
+
+			assert.Equal(t, http.StatusBadRequest, w.Code)
+		})
+	}
+}

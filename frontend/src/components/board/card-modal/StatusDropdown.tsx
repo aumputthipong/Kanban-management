@@ -54,9 +54,6 @@ export function StatusDropdown({
   }, []);
 
   const currentHex = getColumnColorHex(current?.color);
-  const pillBg = currentHex ? `${currentHex}22` : "#f1f5f9";
-  const pillBorder = currentHex ?? "#cbd5e1";
-  const pillColor = currentHex ?? "#475569";
 
   return (
     <>
@@ -65,15 +62,15 @@ export function StatusDropdown({
         type="button"
         disabled={disabled}
         onClick={() => setOpen((v) => !v)}
-        className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-md border transition-colors disabled:opacity-60 disabled:cursor-not-allowed hover:brightness-95 cursor-pointer"
-        style={{ backgroundColor: pillBg, borderColor: pillBorder, color: pillColor }}
+        aria-label="Status"
+        className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full border border-slate-200 bg-white text-xs font-medium tracking-wide text-slate-900 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed cursor-pointer"
       >
         <span
-          className="w-2 h-2 rounded-full shrink-0"
+          className="w-1.25 h-1.25 rounded-full shrink-0"
           style={{ backgroundColor: currentHex ?? "#94a3b8" }}
         />
         <span className="truncate max-w-32">{current?.title ?? "—"}</span>
-        {!disabled && <ChevronDown size={12} />}
+        {!disabled && <ChevronDown size={12} className="text-slate-600" />}
       </button>
 
       {open &&

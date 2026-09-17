@@ -37,6 +37,12 @@ typography:
     fontWeight: 600
     lineHeight: 2rem
     letterSpacing: -0.01em
+  h3:
+    fontFamily: Inter
+    fontSize: 1.25rem
+    fontWeight: 600
+    lineHeight: 1.75rem
+    letterSpacing: -0.01em
   body-md:
     fontFamily: Inter
     fontSize: 1rem
@@ -69,6 +75,8 @@ size:
   avatar-sm: 18px
   status-icon: 14px
   popover-max: 320px
+  progress-h: 2px
+  modal-rail-w: 248px
 breakpoints:
   md: 768px
   lg: 1024px
@@ -127,14 +135,17 @@ The palette is built around a near-white surface, a deep-ink text color, and a s
 
 ## Typography
 
-Inter at four steps. One family, four weights, predictable rhythm.
+Inter at five steps. One family, predictable rhythm.
 
 - **h1 — 2rem / 700:** Page titles ("Board: Q2 Roadmap", "My Tasks"). One per view.
-- **h2 — 1.5rem / 600:** Section headers, modal titles, column titles.
+- **h2 — 1.5rem / 600:** Section headers, large modal titles (settings, create flows), column titles.
+- **h3 — 1.25rem / 600:** Task modal titles (`task-modal`, `task-quick-view`) — the card title is long user text, so it steps down from h2 to keep two-line titles calm.
 - **body-md — 1rem / 400:** Card titles, descriptions, form inputs.
 - **label-sm — 0.75rem / 500 / +0.02em:** Metadata, chip labels, helper text. Slight letter-spacing keeps small caps legible at low weight.
 
-Negative letter-spacing on h1 / h2 (`-0.02em`, `-0.01em`) tightens display type without making it feel cramped.
+Form and field labels use `label-sm` in sentence case (`Assignee`, `Due date`) and `secondary` slate — never the old `10–11px / bold / UPPERCASE / tracking-wider` treatment.
+
+Negative letter-spacing on h1 / h2 / h3 (`-0.02em`, `-0.01em`, `-0.01em`) tightens display type without making it feel cramped.
 
 ## Layout
 
@@ -182,6 +193,11 @@ larger surfaces step up, chips step down. Larger surface ⇒ larger radius.
 - **panel-container:** One `surface` container, `rounded.2xl`, 1px `slate-200` outline, on the `background` canvas. Internal bands (header, tab bar, list) are separated by 1px `slate-200` rules — **not** by tinted fills.
 - **tab-underline:** Tabs inside a panel. Sit on the bar's bottom rule; active = 2px `primary` underline + `on-surface` semibold label; inactive = transparent underline, `secondary` text. Count badge: `surface-tint` + `primary` when active, `slate-100` otherwise, `state-overdue` colors when it counts overdue work.
 - **priority-chip:** Outlined `rounded.full` chip, `label-sm`, English label (High / Medium / Low) with a small `priority.*` disc. The disc is the only place priority color appears inside a list row.
+- **task-quick-view:** Read-only task modal (My Work, Calendar). `panel-container` treatment (`surface`, `rounded.2xl`, 1px `slate-200` outline) at ~448px, with an `on-surface` `accent-bar`. Header = `tag-dot` + project / column in `label-sm` `secondary`, close button, `h3` title. Then a row of `meta-chip`s, `slate-200`-ruled rows (fixed-width `label-sm` label on the left, value on the right), the `subtask-list`, and a footer band with at most one `button-primary` (My Work: "ทำเสร็จ"; Calendar: "เปิด task"). Secondary actions are borderless text buttons in `secondary`.
+- **task-modal:** Editable board card modal, ≤768px. Header = `surface-tint` icon tile, project name in `label-sm`, inline-editable `h3` title, status chip (outlined `rounded.full`, column-color `tag-dot`). Body splits into a main column (description, `subtask-list`, dashed "+ Acceptance criteria / + Dev note" buttons) and a `modal-rail-w` rail on `surface` separated by a 1px `slate-200` rule — no tinted rail fill. Fields auto-save, so the footer has no Save button: destructive "Delete" as `danger` text on the left, an "auto-saved" hint and an outlined Close on the right.
+- **meta-chip:** Outlined `rounded.full` chip, `pill-h` tall, `label-sm`. Carries one fact (due date, priority with its `priority.*` disc, estimate, tag with its color dot). `on-surface` text for due date / priority, `secondary` for the rest.
+- **subtask-list:** Count badge (`surface-tint` + `primary`; `state-done-bg` + `state-done-fg` once complete) above a `progress-h` bar (`state-progress-fg` fill → `success` when complete, `slate-200` track). Rows are `rounded.md` with a 1px `slate-200` outline; a ticked row switches to `state-done-bg` with a `state-done-fg` check. No strikethrough.
+- **segmented-control:** Joined outlined buttons in one `rounded.md` group, divided by 1px rules. Pressed = `surface-tint` background + `on-surface` semibold. Used for priority (each option with its `priority.*` disc).
 
 ## Responsive
 
@@ -214,7 +230,7 @@ Turtask รองรับ **viewport ≥ 768px** (tablet ขึ้นไป). �
 
 - Use **one** `button-primary` per view. If two actions compete for primary, demote one to `button-secondary`.
 - Reserve `success` / `danger` for status signals on chips and toasts.
-- Stick to the four typography steps. New sizes mean a spec change, not an inline override.
+- Stick to the five typography steps. New sizes mean a spec change, not an inline override.
 - Let `background` and `surface` carry hierarchy — cards lift off the board canvas through the surface delta alone, not borders.
 - Split color roughly 60 / 30 / 10: `surface` + `background` dominate, rules/outlines and neutral text are the middle layer, `primary` is the small accent. No gradients.
 
@@ -224,7 +240,7 @@ Turtask รองรับ **viewport ≥ 768px** (tablet ขึ้นไป). �
 - Don't tint `danger` red into prose or pink alerts. Status colors are component-scoped.
 - Don't reach for an arbitrary `rounded-[Npx]` value — use a named step from the scale. Adding a *new* step is a spec change, not an inline override.
 - Don't pair saturated colors against each other (e.g. `primary` text on `danger` background) — every paired surface in this system uses `on-primary` (white) for text on saturation.
-- Don't use `priority.*` colors as a background — they live **only** on the 3px left bar of `pill-task` (and as a small disc inside the priority chip in a popover). Priority is signal, not fill.
+- Don't use `priority.*` colors as a background — they live **only** on the 3px left bar of `pill-task` and as a `tag-dot`-sized disc (inside `priority-chip`, `meta-chip`, or a priority `segmented-control` option). Priority is signal, not fill.
 - Don't use strikethrough to indicate "done" — that pattern leaked from the old calendar where both completed and past-due cards were struck out, making the two indistinguishable. Use the check icon + `state-done-bg` instead.
 - Don't grow calendar cells to fit content. Every day cell is the same height; overflow becomes a "+N more" affordance that opens a `popover-card`.
 - Don't reach for raw Tailwind color utilities (`bg-rose-50`, `bg-amber-100`, `text-emerald-600`) in calendar code. If a state needs a color, it goes in `state-*` / `priority.*` tokens first.

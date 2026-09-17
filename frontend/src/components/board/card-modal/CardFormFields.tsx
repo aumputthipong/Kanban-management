@@ -1,11 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { Calendar, Clock, User, Tag } from "lucide-react";
+import { Calendar, Clock } from "lucide-react";
 import type { BoardMember, Tag as TagType } from "@/types/board";
 import { FormState } from "./CardDetailModal";
 import { TagSelector } from "./TagSelector";
 import { AssigneeDropdown } from "./AssigneeDropdown";
+import { Dot, FieldLabel, PRIORITY_DOT, PRIORITY_LABEL } from "./modalParts";
 import { formatThaiDate } from "@/utils/date_helper";
 import { QUICK_DATE_OPTIONS, QUICK_HOURS_OPTIONS } from "@/utils/quickSelect";
 import { getAvatarColor } from "@/utils/avatar";
@@ -22,228 +23,185 @@ interface CardFormFieldsProps {
   canEdit: boolean;
 }
 
+const VALUE_BOX =
+  "flex-1 min-w-0 px-2.5 py-2 text-sm text-slate-900 bg-white border border-slate-200 rounded-md hover:bg-slate-50 focus:outline-none focus:border-primary focus:ring-3 focus:ring-surface-tint transition-colors";
+
+function localISODate(offsetDays: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() + offsetDays);
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().split("T")[0];
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex flex-col gap-1.75">
+      <FieldLabel>{label}</FieldLabel>
+      {children}
+    </div>
+  );
+}
+
+function QuickToggle({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="shrink-0 px-2 py-2 text-xs font-medium text-slate-600 border border-slate-200 rounded-md hover:bg-slate-50 hover:text-slate-900 transition-colors"
+    >
+      Quick
+    </button>
+  );
+}
+
+function QuickChips({ options, isActive, onPick }: {
+  options: readonly { label: string }[];
+  isActive: (i: number) => boolean;
+  onPick: (i: number) => void;
+}) {
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {options.map((o, i) => (
+        <button
+          key={o.label}
+          type="button"
+          onClick={() => onPick(i)}
+          className={`h-6 px-2.5 text-xs font-medium tracking-wide rounded-full border transition-colors ${
+            isActive(i)
+              ? "bg-surface-tint border-transparent text-primary"
+              : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+          }`}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export function CardFormFields({ form, members, assigneeName, boardId, onChange, onTagsChange, onCommit, error, canEdit }: CardFormFieldsProps) {
   const [showQuickDates, setShowQuickDates] = useState(false);
   const [showQuickHours, setShowQuickHours] = useState(false);
 
+  const set = (field: keyof FormState, value: string) => {
+    onChange(field)({ target: { value } } as React.ChangeEvent<HTMLInputElement>);
+    onCommit(field);
+  };
+
   return (
-    // PropRow rhythm: each group separated by a hairline divider (design A right rail)
-    <div className="flex flex-col [&>div]:pt-4 [&>div]:mt-4 [&>div]:border-t [&>div]:border-slate-100 [&>div:first-child]:pt-0 [&>div:first-child]:mt-0 [&>div:first-child]:border-t-0">
-      {/* Assignee */}
-      <div>
-        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1 mb-2">
-          <User size={10} /> Assignee
-        </label>
+    <div className="flex flex-col gap-4.5">
+      <Field label="Assignee">
         {canEdit ? (
-          <AssigneeDropdown
-            members={members}
-            value={form.assignee_id}
-            onSelect={(id) => {
-              onChange("assignee_id")({
-                target: { value: id },
-              } as React.ChangeEvent<HTMLSelectElement>);
-              onCommit("assignee_id");
-            }}
-          />
+          <AssigneeDropdown members={members} value={form.assignee_id} onSelect={(id) => set("assignee_id", id)} />
+        ) : assigneeName ? (
+          <span className="flex items-center gap-2 text-sm text-slate-900">
+            <span className={`w-4.5 h-4.5 rounded-full grid place-items-center text-white text-[10px] font-semibold shrink-0 ${getAvatarColor(form.assignee_id)}`}>
+              {assigneeName.charAt(0).toUpperCase()}
+            </span>
+            {assigneeName}
+          </span>
         ) : (
-          <div className="flex items-center gap-2 px-1">
-            {assigneeName ? (
+          <span className="text-sm text-slate-600">ยังไม่มีผู้รับผิดชอบ</span>
+        )}
+      </Field>
+
+      <Field label="Priority">
+        {canEdit ? (
+          <div className="flex rounded-md border border-slate-200 overflow-hidden" role="group" aria-label="Priority">
+            {(["low", "medium", "high"] as const).map((p) => (
+              <button
+                key={p}
+                type="button"
+                aria-pressed={form.priority === p}
+                onClick={() => set("priority", p)}
+                className={`flex-1 inline-flex items-center justify-center gap-1.5 py-2 text-xs border-r border-slate-200 last:border-r-0 transition-colors ${
+                  form.priority === p
+                    ? "bg-surface-tint text-slate-900 font-semibold"
+                    : "text-slate-600 font-medium hover:bg-slate-50"
+                }`}
+              >
+                <Dot className={PRIORITY_DOT[p]} />
+                {PRIORITY_LABEL[p]}
+              </button>
+            ))}
+          </div>
+        ) : (
+          <span className="flex items-center gap-2 text-sm text-slate-900">
+            {form.priority ? (
               <>
-                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-white text-[10px] font-bold shrink-0 ${getAvatarColor(form.assignee_id)}`}>
-                  {assigneeName.charAt(0).toUpperCase()}
-                </div>
-                <span className="text-sm text-slate-700">{assigneeName}</span>
+                <Dot className={PRIORITY_DOT[form.priority]} />
+                {PRIORITY_LABEL[form.priority]}
               </>
-            ) : (
-              <span className="text-sm text-slate-400 italic">Unassigned</span>
-            )}
-          </div>
+            ) : "—"}
+          </span>
         )}
-      </div>
+      </Field>
 
-      {/* Priority */}
-      <div>
-        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2">
-          Priority
-        </label>
-        {canEdit ? (
-          // Segmented control (design A): pill track, active = white chip with a
-          // colored 3px priority bar + colored label. Priority colour stays on
-          // the bar/label of the selected segment only.
-          <div className="flex gap-0.5 p-0.5 bg-slate-50 border border-slate-200 rounded-md">
-            {(["low", "medium", "high"] as const).map((p) => {
-              const active = form.priority === p;
-              const text =
-                p === "high"
-                  ? "text-red-600"
-                  : p === "medium"
-                    ? "text-amber-600"
-                    : "text-emerald-600";
-              const bar =
-                p === "high"
-                  ? "bg-red-600"
-                  : p === "medium"
-                    ? "bg-amber-500"
-                    : "bg-emerald-500";
-              return (
-                <button
-                  key={p}
-                  type="button"
-                  onClick={() => {
-                    onChange("priority")({
-                      target: { value: p },
-                    } as React.ChangeEvent<HTMLInputElement>);
-                    onCommit("priority");
-                  }}
-                  className={`flex-1 inline-flex items-center justify-center gap-1.5 py-1 rounded text-xs font-medium capitalize transition-colors ${
-                    active ? `bg-white shadow-sm ${text}` : "text-slate-500 hover:text-slate-700"
-                  }`}
-                >
-                  <span
-                    aria-hidden
-                    className={`w-[3px] h-3 rounded-sm ${active ? bar : "bg-slate-300"}`}
-                  />
-                  {p}
-                </button>
-              );
-            })}
-          </div>
-        ) : (
-          <p className="text-sm text-slate-600 px-1">
-            {form.priority ? form.priority.charAt(0).toUpperCase() + form.priority.slice(1) : "—"}
-          </p>
-        )}
-      </div>
-
-      {/* Due Date */}
-      <div>
-        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1 mb-2">
-          <Calendar size={10} /> Due Date
-        </label>
+      <Field label="Due date">
         {canEdit ? (
           <>
             <div className="flex items-center gap-1.5">
               <input
                 type="date"
+                aria-label="Due date"
                 value={form.due_date}
                 onChange={(e) => {
                   onChange("due_date")(e);
                   onCommit("due_date");
                 }}
-                className="flex-1 min-w-0 text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400 text-slate-600"
+                className={VALUE_BOX}
               />
-              <button
-                type="button"
-                onClick={() => setShowQuickDates((v) => !v)}
-                className="text-[10px] text-slate-400 hover:text-primary px-1.5 py-1 rounded border border-slate-200 hover:border-blue-300 transition-colors shrink-0"
-              >
-                Quick
-              </button>
+              <QuickToggle onClick={() => setShowQuickDates((v) => !v)} />
             </div>
             {showQuickDates && (
-              <div className="flex flex-wrap gap-1.5 mt-2">
-                {QUICK_DATE_OPTIONS.map((choice) => {
-                  const targetDate = new Date();
-                  targetDate.setDate(targetDate.getDate() + choice.days);
-                  const formattedDate = new Date(
-                    targetDate.getTime() - targetDate.getTimezoneOffset() * 60000,
-                  )
-                    .toISOString()
-                    .split("T")[0];
-                  const isActive = form.due_date === formattedDate;
-                  return (
-                    <button
-                      key={choice.label}
-                      type="button"
-                      onClick={() => {
-                        onChange("due_date")({
-                          target: { value: formattedDate },
-                        } as React.ChangeEvent<HTMLInputElement>);
-                        onCommit("due_date");
-                      }}
-                      className={`px-2.5 py-1 text-[11px] font-semibold rounded-md transition-colors border ${
-                        isActive
-                          ? "bg-blue-50 border-blue-200 text-blue-700"
-                          : "bg-white border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-800"
-                      }`}
-                    >
-                      {choice.label}
-                    </button>
-                  );
-                })}
-              </div>
+              <QuickChips
+                options={QUICK_DATE_OPTIONS}
+                isActive={(i) => form.due_date === localISODate(QUICK_DATE_OPTIONS[i].days)}
+                onPick={(i) => set("due_date", localISODate(QUICK_DATE_OPTIONS[i].days))}
+              />
             )}
           </>
         ) : (
-          <p className="text-sm text-slate-600 px-1">{formatThaiDate(form.due_date) || "—"}</p>
+          <span className="flex items-center gap-2 text-sm text-slate-900">
+            <Calendar size={13} className="text-slate-600" />
+            {formatThaiDate(form.due_date) || "—"}
+          </span>
         )}
-      </div>
+      </Field>
 
-      {/* Estimated Hours */}
-      <div>
-        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1 mb-2">
-          <Clock size={10} /> Est. Hours
-        </label>
+      <Field label="Est. hours">
         {canEdit ? (
           <>
             <div className="flex items-center gap-1.5">
               <input
                 type="number"
+                aria-label="Est. hours"
                 min="0"
                 step="0.5"
                 value={form.estimated_hours}
                 onChange={onChange("estimated_hours")}
                 onBlur={() => onCommit("estimated_hours")}
                 placeholder="0"
-                className="flex-1 min-w-0 text-sm border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                className={VALUE_BOX}
               />
-              <button
-                type="button"
-                onClick={() => setShowQuickHours((v) => !v)}
-                className="text-[10px] text-slate-400 hover:text-primary px-1.5 py-1 rounded border border-slate-200 hover:border-blue-300 transition-colors shrink-0"
-              >
-                Quick
-              </button>
+              <QuickToggle onClick={() => setShowQuickHours((v) => !v)} />
             </div>
             {showQuickHours && (
-              <div className="flex flex-wrap gap-1.5 mt-2">
-                {QUICK_HOURS_OPTIONS.map((choice) => {
-                  const isActive = form.estimated_hours === choice.value;
-                  return (
-                    <button
-                      key={choice.label}
-                      type="button"
-                      onClick={() => {
-                        onChange("estimated_hours")({
-                          target: { value: choice.value },
-                        } as React.ChangeEvent<HTMLInputElement>);
-                        onCommit("estimated_hours");
-                      }}
-                      className={`px-2.5 py-1 text-[11px] font-semibold rounded-md transition-colors border ${
-                        isActive
-                          ? "bg-blue-50 border-blue-200 text-blue-700"
-                          : "bg-white border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-800"
-                      }`}
-                    >
-                      {choice.label}
-                    </button>
-                  );
-                })}
-              </div>
+              <QuickChips
+                options={QUICK_HOURS_OPTIONS}
+                isActive={(i) => form.estimated_hours === QUICK_HOURS_OPTIONS[i].value}
+                onPick={(i) => set("estimated_hours", QUICK_HOURS_OPTIONS[i].value)}
+              />
             )}
           </>
         ) : (
-          <p className="text-sm text-slate-600 px-1">
-            {form.estimated_hours ? `${form.estimated_hours}h` : "—"}
-          </p>
+          <span className="flex items-center gap-2 text-sm text-slate-900">
+            <Clock size={13} className="text-slate-600" />
+            {form.estimated_hours ? `${form.estimated_hours} ชม.` : "—"}
+          </span>
         )}
-      </div>
+      </Field>
 
-      {/* Tags */}
-      <div>
-        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1 mb-2">
-          <Tag size={10} /> Tags
-        </label>
+      <Field label="Tags">
         <TagSelector
           boardId={boardId}
           selected={form.tags}
@@ -251,9 +209,9 @@ export function CardFormFields({ form, members, assigneeName, boardId, onChange,
           onCommit={() => onCommit("tags")}
           canEdit={canEdit}
         />
-      </div>
+      </Field>
 
-      {error && <p className="text-xs text-red-500">{error}</p>}
+      {error && <p className="text-xs text-danger">{error}</p>}
     </div>
   );
 }

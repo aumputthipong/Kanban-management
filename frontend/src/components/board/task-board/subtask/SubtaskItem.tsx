@@ -1,6 +1,7 @@
 import { memo, useEffect, useRef, useState } from "react";
 import { MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import type { Subtask } from "@/types/board";
+import { SubtaskCheckbox, subtaskRowClass } from "../../card-modal/modalParts";
 
 interface SubtaskItemProps {
   cardId: string;
@@ -53,13 +54,12 @@ export const SubtaskItem = memo(function SubtaskItem({
   };
 
   return (
-    <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-slate-50 transition-colors group relative">
-      <input
-        type="checkbox"
+    <div className={`relative ${subtaskRowClass(subtask.is_done)}`}>
+      <SubtaskCheckbox
         checked={subtask.is_done}
         disabled={!canEdit}
-        onChange={() => onToggle(cardId, subtask.id, subtask.is_done)}
-        className="shrink-0 rounded border-slate-300 text-primary focus:ring-blue-500 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
+        label={`${subtask.is_done ? "ยกเลิก" : "ทำ"}เครื่องหมายเสร็จ: ${subtask.title}`}
+        onToggle={() => onToggle(cardId, subtask.id, subtask.is_done)}
       />
 
       {isEditing ? (
@@ -67,7 +67,7 @@ export const SubtaskItem = memo(function SubtaskItem({
           autoFocus
           value={editTitle}
           onChange={(e) => setEditTitle(e.target.value)}
-          className="flex-1 text-sm px-2 py-0.5 border border-blue-400 rounded outline-none focus:ring-2 focus:ring-blue-100"
+          className="flex-1 min-w-0 text-sm px-1.5 py-0.5 bg-white border border-primary rounded-md outline-none focus:ring-3 focus:ring-surface-tint"
           onBlur={handleSave}
           onKeyDown={(e) => {
             if (e.key === "Enter") handleSave();
@@ -78,11 +78,7 @@ export const SubtaskItem = memo(function SubtaskItem({
           }}
         />
       ) : (
-        <span
-          className={`flex-1 text-sm px-2 py-0.5 truncate ${
-            subtask.is_done ? "line-through text-slate-400" : "text-slate-700"
-          }`}
-        >
+        <span className="flex-1 min-w-0 truncate">
           {subtask.title}
         </span>
       )}
@@ -95,7 +91,7 @@ export const SubtaskItem = memo(function SubtaskItem({
             className={`p-1 rounded transition-colors ${
               menuOpen
                 ? "bg-slate-200 text-slate-700"
-                : "text-slate-400 opacity-0 group-hover:opacity-100 hover:bg-slate-200 hover:text-slate-700"
+                : "text-slate-400 opacity-0 group-hover:opacity-100 hover:bg-white hover:text-slate-900"
             }`}
             aria-label="Subtask options"
           >
@@ -118,7 +114,7 @@ export const SubtaskItem = memo(function SubtaskItem({
                   setMenuOpen(false);
                   onDelete(cardId, subtask.id);
                 }}
-                className="flex items-center gap-2 w-full px-3 py-1.5 text-xs text-red-600 hover:bg-red-50 cursor-pointer"
+                className="flex items-center gap-2 w-full px-3 py-1.5 text-xs text-danger hover:bg-red-100 cursor-pointer"
               >
                 <Trash2 size={12} />
                 Delete

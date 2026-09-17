@@ -120,7 +120,7 @@ func (h *BoardHandler) UpdateCard(w http.ResponseWriter, r *http.Request) error 
 		estimatedHours = req.EstimatedHours
 	}
 
-	card, err := h.boardService.UpdateCard(r.Context(), service.UpdateCardParams{
+	updated, err := h.boardService.UpdateCard(r.Context(), service.UpdateCardParams{
 		ID:                 cardIDStr,
 		Title:              title,
 		Description:        description,
@@ -141,7 +141,7 @@ func (h *BoardHandler) UpdateCard(w http.ResponseWriter, r *http.Request) error 
 		act, aerr := h.activity.Record(r.Context(), service.RecordParams{
 			BoardID: boardID, ActorID: userIDStr,
 			EventType: service.EventCardUpdated, EntityType: service.EntityCard, EntityID: &cardIDStr,
-			Payload: service.CardUpdatedPayload{Title: card.Title, Fields: req.ChangedFields},
+			Payload: service.CardUpdatedPayload{Title: updated.Card.Title, Fields: req.ChangedFields},
 		})
 		if aerr != nil {
 			slog.Error("record activity failed", "card_id", cardIDStr, "err", aerr)
@@ -153,17 +153,19 @@ func (h *BoardHandler) UpdateCard(w http.ResponseWriter, r *http.Request) error 
 	// Response and broadcast both read from resp. Sourcing a broadcast field from req
 	// instead would send null for anything the caller omitted, and the receiving store
 	// spreads the payload over its copy — the field would vanish on every other client.
-	resp := mapper.ToCardResponseFromRow(card)
+	resp := mapper.ToCardResponseFromUpdate(updated)
 
-	// Same payload the WS path sent, so existing listeners are unchanged.
 	emitTo(h.broadcaster, boardID, core.WSCardUpdated, map[string]any{
-		"card_id":         cardIDStr,
-		"title":           resp.Title,
-		"description":     resp.Description,
-		"due_date":        resp.DueDate,
-		"assignee_id":     resp.AssigneeID,
-		"priority":        resp.Priority,
-		"estimated_hours": resp.EstimatedHours,
+		"card_id":             cardIDStr,
+		"title":               resp.Title,
+		"description":         resp.Description,
+		"due_date":            resp.DueDate,
+		"assignee_id":         resp.AssigneeID,
+		"priority":            resp.Priority,
+		"estimated_hours":     resp.EstimatedHours,
+		"tags":                resp.Tags,
+		"acceptance_criteria": resp.AcceptanceCriteria,
+		"implementation_note": resp.ImplementationNote,
 	})
 
 	httputil.RespondJSON(w, http.StatusOK, resp)

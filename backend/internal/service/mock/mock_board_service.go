@@ -34,7 +34,7 @@ type MockBoardService struct {
 	GetCardFn       func(ctx context.Context, cardID string) (db.Card, error)
 	GetCardDetailFn func(ctx context.Context, cardID string) (service.CardDetailData, error)
 	CreateCardFn    func(ctx context.Context, arg db.CreateCardParams) (db.CreateCardRow, error)
-	UpdateCardFn    func(ctx context.Context, arg service.UpdateCardParams) (db.Card, error)
+	UpdateCardFn    func(ctx context.Context, arg service.UpdateCardParams) (service.UpdateCardResult, error)
 
 	GetAllUsersFn func(ctx context.Context) ([]db.GetAllUsersRow, error)
 }
@@ -130,7 +130,7 @@ func (m *MockBoardService) CreateCard(ctx context.Context, arg db.CreateCardPara
 	return m.CreateCardFn(ctx, arg)
 }
 
-func (m *MockBoardService) UpdateCard(ctx context.Context, arg service.UpdateCardParams) (db.Card, error) {
+func (m *MockBoardService) UpdateCard(ctx context.Context, arg service.UpdateCardParams) (service.UpdateCardResult, error) {
 	return m.UpdateCardFn(ctx, arg)
 }
 

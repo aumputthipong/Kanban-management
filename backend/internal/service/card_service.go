@@ -70,10 +70,17 @@ func (s *BoardService) GetCardDetail(ctx context.Context, cardID string) (CardDe
 	return CardDetailData{Card: card, AssigneeName: assigneeName, Subtasks: subs, Tags: tags}, nil
 }
 
-func (s *BoardService) UpdateCard(ctx context.Context, arg UpdateCardParams) (db.Card, error) {
+// UpdateCardResult is the stored card plus its tags after the write. Tags are always
+// loaded (never nil), so the caller can broadcast them without clobbering other clients.
+type UpdateCardResult struct {
+	Card db.Card
+	Tags []TagData
+}
+
+func (s *BoardService) UpdateCard(ctx context.Context, arg UpdateCardParams) (UpdateCardResult, error) {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
-		return db.Card{}, fmt.Errorf("begin tx: %w", err)
+		return UpdateCardResult{}, fmt.Errorf("begin tx: %w", err)
 	}
 	defer tx.Rollback(ctx)
 
@@ -91,27 +98,36 @@ func (s *BoardService) UpdateCard(ctx context.Context, arg UpdateCardParams) (db
 		ImplementationNote: arg.ImplementationNote,
 	})
 	if err != nil {
-		return db.Card{}, fmt.Errorf("update card: %w", err)
+		return UpdateCardResult{}, fmt.Errorf("update card: %w", err)
 	}
 
 	if arg.TagIDs != nil {
 		if len(*arg.TagIDs) > 5 {
-			return db.Card{}, fmt.Errorf("card cannot have more than 5 tags")
+			return UpdateCardResult{}, fmt.Errorf("card cannot have more than 5 tags")
 		}
 		if err := qtx.ClearCardTags(ctx, arg.ID); err != nil {
-			return db.Card{}, fmt.Errorf("clear card tags: %w", err)
+			return UpdateCardResult{}, fmt.Errorf("clear card tags: %w", err)
 		}
 		for _, tagID := range *arg.TagIDs {
 			if err := qtx.InsertCardTag(ctx, db.InsertCardTagParams{CardID: arg.ID, TagID: tagID}); err != nil {
-				return db.Card{}, fmt.Errorf("insert card tag: %w", err)
+				return UpdateCardResult{}, fmt.Errorf("insert card tag: %w", err)
 			}
 		}
 	}
 
-	if err := tx.Commit(ctx); err != nil {
-		return db.Card{}, fmt.Errorf("commit tx: %w", err)
+	tagRows, err := qtx.GetTagsByCardIDs(ctx, []string{arg.ID})
+	if err != nil {
+		return UpdateCardResult{}, fmt.Errorf("fetch card tags: %w", err)
 	}
-	return card, nil
+	tags := make([]TagData, len(tagRows))
+	for i, row := range tagRows {
+		tags[i] = TagData{ID: row.ID, BoardID: row.BoardID, Name: row.Name, Color: row.Color}
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return UpdateCardResult{}, fmt.Errorf("commit tx: %w", err)
+	}
+	return UpdateCardResult{Card: card, Tags: tags}, nil
 }
 
 func (s *BoardService) GetAllUsers(ctx context.Context) ([]db.GetAllUsersRow, error) {

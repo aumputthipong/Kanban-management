@@ -108,6 +108,45 @@ describe("applyWsMessage CARD_UPDATED tags and notes", () => {
   });
 });
 
+describe("applyWsMessage CARD_SUBTASKS_UPDATED", () => {
+  const subtasks = [
+    { id: "s-1", card_id: "card-1", title: "Member filter", is_done: true, position: 1 },
+    { id: "s-2", card_id: "card-1", title: "Priority filter", is_done: true, position: 2 },
+    { id: "s-3", card_id: "card-1", title: "Tests", is_done: false, position: 3 },
+  ];
+
+  it("replaces the list and recomputes the progress counts", () => {
+    seed(makeCard({ subtasks: [], total_subtasks: 0, completed_subtasks: 0 }));
+
+    applyWsMessage({ type: WS_EVENT.CardSubtasksUpdated, payload: { card_id: "card-1", subtasks } });
+
+    expect(storedCard().subtasks).toEqual(subtasks);
+    expect(storedCard().total_subtasks).toBe(3);
+    expect(storedCard().completed_subtasks).toBe(2);
+  });
+
+  it("is idempotent when the same list arrives twice", () => {
+    seed(makeCard());
+    const msg = { type: WS_EVENT.CardSubtasksUpdated, payload: { card_id: "card-1", subtasks } };
+
+    applyWsMessage(msg);
+    applyWsMessage(msg);
+
+    expect(storedCard().total_subtasks).toBe(3);
+    expect(storedCard().completed_subtasks).toBe(2);
+  });
+
+  it("leaves other card fields untouched", () => {
+    seed(makeCard({ title: "Keep", assignee_id: "user-alice", assignee_name: "Alice" }));
+
+    applyWsMessage({ type: WS_EVENT.CardSubtasksUpdated, payload: { card_id: "card-1", subtasks: [] } });
+
+    expect(storedCard().title).toBe("Keep");
+    expect(storedCard().assignee_name).toBe("Alice");
+    expect(storedCard().total_subtasks).toBe(0);
+  });
+});
+
 describe("applyWsMessage CARD_CREATED", () => {
   it("resolves the assignee name from board members", () => {
     useBoardStore.setState({

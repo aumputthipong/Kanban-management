@@ -1,8 +1,7 @@
 //go:build integration
 
-// Integration tests for SubtaskService. UpdateSubtask reads, merges in Go, then writes;
-// that shape only misbehaves under concurrency, so it needs overlapping requests
-// against a real Postgres.
+// Integration tests for SubtaskService. Position assignment and partial updates only
+// misbehave under concurrency, so they need overlapping requests against a real Postgres.
 package service_test
 
 import (
@@ -120,8 +119,6 @@ func TestCreateSubtask_Success(t *testing.T) {
 }
 
 // A partial update (title only) must leave is_done/position as they were.
-// This currently works — but via the Go-side read-then-merge, not the SQL's
-// COALESCE, which is why the next test demonstrates where that shape breaks.
 func TestUpdateSubtask_PartialUpdate_PreservesOtherFields(t *testing.T) {
 	ctx := context.Background()
 	f := newSubtaskFixture(t)
@@ -133,38 +130,47 @@ func TestUpdateSubtask_PartialUpdate_PreservesOtherFields(t *testing.T) {
 	assert.False(t, updated.IsDone)
 }
 
-// Documents a known lost-update (audit finding T3, not fixed here): two concurrent
-// edits to different fields both merge from the same stale read, so the second write
-// restores the first one's field. A single UPDATE with COALESCE would not.
-func TestUpdateSubtask_ConcurrentDifferentFieldEdits_OneEditIsLost(t *testing.T) {
+// Regression for the old read-modify-write: two edits of different fields raced and
+// the later full-row write discarded the other. Repeated because one round can pass by luck.
+func TestUpdateSubtask_ConcurrentDifferentFieldEdits_BothLand(t *testing.T) {
 	ctx := context.Background()
 	f := newSubtaskFixture(t)
 
-	var wg sync.WaitGroup
-	start := make(chan struct{})
-	newTitle := "Title changed by A"
-	done := true
+	for round := 0; round < 20; round++ {
+		reset, notDone := "original", false
+		_, err := f.svc.UpdateSubtask(ctx, f.subtaskID, dto.UpdateSubtaskRequest{Title: &reset, IsDone: &notDone})
+		require.NoError(t, err)
 
-	wg.Add(2)
-	go func() {
-		defer wg.Done()
-		<-start
-		_, _ = f.svc.UpdateSubtask(ctx, f.subtaskID, dto.UpdateSubtaskRequest{Title: &newTitle})
-	}()
-	go func() {
-		defer wg.Done()
-		<-start
-		_, _ = f.svc.UpdateSubtask(ctx, f.subtaskID, dto.UpdateSubtaskRequest{IsDone: &done})
-	}()
-	close(start)
-	wg.Wait()
+		var wg sync.WaitGroup
+		start := make(chan struct{})
+		newTitle, done := "Title changed by A", true
+		wg.Add(2)
+		go func() {
+			defer wg.Done()
+			<-start
+			_, _ = f.svc.UpdateSubtask(ctx, f.subtaskID, dto.UpdateSubtaskRequest{Title: &newTitle})
+		}()
+		go func() {
+			defer wg.Done()
+			<-start
+			_, _ = f.svc.UpdateSubtask(ctx, f.subtaskID, dto.UpdateSubtaskRequest{IsDone: &done})
+		}()
+		close(start)
+		wg.Wait()
 
-	final, err := f.queries.GetSubtask(ctx, f.subtaskID)
-	require.NoError(t, err)
-	// No assertion: which write wins depends on scheduling, and asserting an order
-	// would make the test flaky. Logging makes a lost edit visible when it happens.
-	t.Logf("T3: after concurrent edits, title=%q is_done=%v (a correct fix would guarantee both land: title=%q is_done=true)",
-		final.Title, final.IsDone, newTitle)
+		final, err := f.queries.GetSubtask(ctx, f.subtaskID)
+		require.NoError(t, err)
+		require.Equal(t, newTitle, final.Title, "round %d: title edit lost", round)
+		require.True(t, final.IsDone, "round %d: is_done edit lost", round)
+	}
+}
+
+func TestUpdateSubtask_NotFound_Errors(t *testing.T) {
+	f := newSubtaskFixture(t)
+	title := "x"
+
+	_, err := f.svc.UpdateSubtask(context.Background(), "00000000-0000-0000-0000-000000000000", dto.UpdateSubtaskRequest{Title: &title})
+	assert.Error(t, err)
 }
 
 func TestDeleteSubtask_Success(t *testing.T) {

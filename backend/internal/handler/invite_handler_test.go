@@ -92,10 +92,10 @@ func TestGetActiveInvite_Found_Returns200(t *testing.T) {
 
 func TestAcceptInvite_Success(t *testing.T) {
 	svc := &mock.MockInviteService{
-		AcceptInviteFn: func(ctx context.Context, token, userID string) (string, error) {
+		AcceptInviteFn: func(ctx context.Context, token, userID string) (string, bool, error) {
 			assert.Equal(t, "tok123", token)
 			assert.Equal(t, validUserID, userID)
-			return validBoardID, nil
+			return validBoardID, false, nil
 		},
 	}
 	h := NewInviteHandler(svc, nil, nil, nil)
@@ -125,8 +125,8 @@ func TestAcceptInvite_Unauthorized_Returns401(t *testing.T) {
 
 func TestAcceptInvite_Invalid_Returns404(t *testing.T) {
 	svc := &mock.MockInviteService{
-		AcceptInviteFn: func(ctx context.Context, token, userID string) (string, error) {
-			return "", service.ErrInviteInvalid
+		AcceptInviteFn: func(ctx context.Context, token, userID string) (string, bool, error) {
+			return "", false, service.ErrInviteInvalid
 		},
 	}
 	h := NewInviteHandler(svc, nil, nil, nil)
@@ -142,8 +142,8 @@ func TestAcceptInvite_Invalid_Returns404(t *testing.T) {
 
 func TestAcceptInvite_Expired_Returns410(t *testing.T) {
 	svc := &mock.MockInviteService{
-		AcceptInviteFn: func(ctx context.Context, token, userID string) (string, error) {
-			return "", service.ErrInviteExpired
+		AcceptInviteFn: func(ctx context.Context, token, userID string) (string, bool, error) {
+			return "", false, service.ErrInviteExpired
 		},
 	}
 	h := NewInviteHandler(svc, nil, nil, nil)
@@ -159,8 +159,8 @@ func TestAcceptInvite_Expired_Returns410(t *testing.T) {
 
 func TestAcceptInvite_Success_BroadcastsMemberList(t *testing.T) {
 	svc := &mock.MockInviteService{
-		AcceptInviteFn: func(ctx context.Context, token, userID string) (string, error) {
-			return validBoardID, nil
+		AcceptInviteFn: func(ctx context.Context, token, userID string) (string, bool, error) {
+			return validBoardID, true, nil
 		},
 	}
 	boards := &mock.MockBoardService{GetBoardMembersFn: membersAfterChange()}
@@ -178,7 +178,7 @@ func TestAcceptInvite_Success_BroadcastsMemberList(t *testing.T) {
 func TestAcceptInvite_RecordsMemberAddedViaInvite(t *testing.T) {
 	var got []service.RecordParams
 	svc := &mock.MockInviteService{
-		AcceptInviteFn: func(ctx context.Context, token, userID string) (string, error) { return validBoardID, nil },
+		AcceptInviteFn: func(ctx context.Context, token, userID string) (string, bool, error) { return validBoardID, true, nil },
 	}
 	boards := &mock.MockBoardService{GetBoardMembersFn: membersAfterChange()}
 	h := NewInviteHandler(svc, boards, spyMemberRecorder(&got), &mock.MockBroadcaster{})
@@ -191,4 +191,23 @@ func TestAcceptInvite_RecordsMemberAddedViaInvite(t *testing.T) {
 	require.Len(t, got, 1)
 	assert.Equal(t, service.EventMemberAdded, got[0].EventType)
 	assert.Equal(t, service.MemberChangedPayload{UserID: otherUserID, Name: "Bob", Role: "manager", Via: "invite"}, got[0].Payload)
+}
+
+// Re-opening the link (or a double-click) as an existing member must not re-log
+// "joined the board" or re-broadcast an unchanged member list.
+func TestAcceptInvite_AlreadyMember_NoActivityNoBroadcast(t *testing.T) {
+	var got []service.RecordParams
+	svc := &mock.MockInviteService{
+		AcceptInviteFn: func(ctx context.Context, token, userID string) (string, bool, error) { return validBoardID, false, nil },
+	}
+	bc := &mock.MockBroadcaster{}
+	h := NewInviteHandler(svc, &mock.MockBoardService{GetBoardMembersFn: membersAfterChange()}, spyMemberRecorder(&got), bc)
+	req := withUserID(chiCtx(httptest.NewRequest(http.MethodPost, "/invites/tok/accept", nil), "token", "tok"), otherUserID)
+	w := httptest.NewRecorder()
+
+	httputil.MakeHandler(h.AcceptInvite)(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+	assert.Empty(t, got)
+	assert.Empty(t, bc.Sent)
 }

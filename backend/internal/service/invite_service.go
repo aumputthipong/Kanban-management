@@ -93,41 +93,36 @@ func (s *InviteService) RevokeInvites(ctx context.Context, boardID string) error
 }
 
 // AcceptInvite validates a token and joins the caller to the board as a member.
-// Idempotent — an existing member just gets the board id back. Returns
+// Idempotent — an existing member gets the board id back with joined=false. Returns
 // ErrInviteInvalid (unknown / revoked) or ErrInviteExpired.
-func (s *InviteService) AcceptInvite(ctx context.Context, token, userID string) (string, error) {
+func (s *InviteService) AcceptInvite(ctx context.Context, token, userID string) (string, bool, error) {
 	inv, err := s.queries.GetBoardInviteByToken(ctx, token)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return "", ErrInviteInvalid
+			return "", false, ErrInviteInvalid
 		}
-		return "", fmt.Errorf("lookup invite: %w", err)
+		return "", false, fmt.Errorf("lookup invite: %w", err)
 	}
 	if inv.RevokedAt != nil {
-		return "", ErrInviteInvalid
+		return "", false, ErrInviteInvalid
 	}
 	if !inv.ExpiresAt.After(time.Now()) {
-		return "", ErrInviteExpired
+		return "", false, ErrInviteExpired
 	}
 
-	// Already a member → idempotent no-op join.
-	if _, err := s.queries.GetBoardMemberRole(ctx, db.GetBoardMemberRoleParams{
-		BoardID: inv.BoardID,
-		UserID:  userID,
-	}); err == nil {
-		return inv.BoardID, nil
-	} else if !errors.Is(err, pgx.ErrNoRows) {
-		return "", fmt.Errorf("check membership: %w", err)
-	}
-
-	if _, err := s.queries.AddBoardMember(ctx, db.AddBoardMemberParams{
+	// ON CONFLICT keeps a double-clicked join idempotent; a read-then-insert 500s the loser.
+	_, err = s.queries.JoinBoardMember(ctx, db.JoinBoardMemberParams{
 		BoardID: inv.BoardID,
 		UserID:  userID,
 		Role:    "member",
-	}); err != nil {
-		return "", fmt.Errorf("add member: %w", err)
+	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return inv.BoardID, false, nil
 	}
-	return inv.BoardID, nil
+	if err != nil {
+		return "", false, fmt.Errorf("add member: %w", err)
+	}
+	return inv.BoardID, true, nil
 }
 
 // generateInviteToken returns an opaque, URL-safe random token (192 bits).

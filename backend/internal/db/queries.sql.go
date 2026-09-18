@@ -1858,6 +1858,34 @@ func (q *Queries) InsertRefreshToken(ctx context.Context, arg InsertRefreshToken
 	return id, err
 }
 
+const joinBoardMember = `-- name: JoinBoardMember :one
+INSERT INTO board_members (board_id, user_id, role)
+VALUES ($1, $2, $3)
+ON CONFLICT (board_id, user_id) DO NOTHING
+RETURNING id, board_id, user_id, role, joined_at, last_accessed_at
+`
+
+type JoinBoardMemberParams struct {
+	BoardID string
+	UserID  string
+	Role    string
+}
+
+// No row returned (pgx.ErrNoRows) means the user was already a member.
+func (q *Queries) JoinBoardMember(ctx context.Context, arg JoinBoardMemberParams) (BoardMember, error) {
+	row := q.db.QueryRow(ctx, joinBoardMember, arg.BoardID, arg.UserID, arg.Role)
+	var i BoardMember
+	err := row.Scan(
+		&i.ID,
+		&i.BoardID,
+		&i.UserID,
+		&i.Role,
+		&i.JoinedAt,
+		&i.LastAccessedAt,
+	)
+	return i, err
+}
+
 const listActivitiesByBoard = `-- name: ListActivitiesByBoard :many
 SELECT
     a.id,

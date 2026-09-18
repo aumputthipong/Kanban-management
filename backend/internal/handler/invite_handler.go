@@ -90,7 +90,7 @@ func (h *InviteHandler) AcceptInvite(w http.ResponseWriter, r *http.Request) err
 	if !ok || userID == "" {
 		return httputil.NewAPIError(http.StatusUnauthorized, "Unauthorized", nil)
 	}
-	boardID, err := h.invites.AcceptInvite(r.Context(), token, userID)
+	boardID, joined, err := h.invites.AcceptInvite(r.Context(), token, userID)
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrInviteInvalid):
@@ -100,6 +100,10 @@ func (h *InviteHandler) AcceptInvite(w http.ResponseWriter, r *http.Request) err
 		default:
 			return httputil.NewAPIError(http.StatusInternalServerError, "Failed to accept invite", err)
 		}
+	}
+	if !joined {
+		httputil.RespondJSON(w, http.StatusOK, dto.AcceptInviteResponse{BoardID: boardID})
+		return nil
 	}
 	members := broadcastMembers(r.Context(), h.boards, h.broadcaster, boardID)
 	for _, m := range members {

@@ -2764,28 +2764,28 @@ func (q *Queries) UpdatePlanningSession(ctx context.Context, arg UpdatePlanningS
 
 const updateSubtask = `-- name: UpdateSubtask :one
 UPDATE card_subtasks
-SET 
-    title = COALESCE($2, title),
-    is_done = COALESCE($3, is_done),
-    position = COALESCE($4, position),
+SET
+    title = COALESCE($1::text, title),
+    is_done = COALESCE($2::boolean, is_done),
+    position = COALESCE($3::double precision, position),
     updated_at = CURRENT_TIMESTAMP
-WHERE id = $1
+WHERE id = $4
 RETURNING id, card_id, title, is_done, position, created_at, updated_at
 `
 
 type UpdateSubtaskParams struct {
+	Title    *string
+	IsDone   *bool
+	Position *float64
 	ID       string
-	Title    string
-	IsDone   bool
-	Position float64
 }
 
 func (q *Queries) UpdateSubtask(ctx context.Context, arg UpdateSubtaskParams) (CardSubtask, error) {
 	row := q.db.QueryRow(ctx, updateSubtask,
-		arg.ID,
 		arg.Title,
 		arg.IsDone,
 		arg.Position,
+		arg.ID,
 	)
 	var i CardSubtask
 	err := row.Scan(

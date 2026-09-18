@@ -56,37 +56,15 @@ func (s *SubtaskService) GetSubtasksByCardID(ctx context.Context, cardID string)
 
 	return subtasks, nil
 }
+// UpdateSubtask patches only the fields present in req. The merge happens in SQL
+// (COALESCE) — reading the row into Go first lets concurrent edits of different fields clobber each other.
 func (s *SubtaskService) UpdateSubtask(ctx context.Context, subtaskID string, req dto.UpdateSubtaskRequest) (db.CardSubtask, error) {
-
-	// Read-modify-write: start from the existing row, override provided fields.
-	existing, err := s.queries.GetSubtask(ctx, subtaskID)
-	if err != nil {
-		return db.CardSubtask{}, fmt.Errorf("subtask not found: %w", err)
-	}
-
-	title := existing.Title
-	if req.Title != nil {
-		title = *req.Title
-	}
-
-	isDone := existing.IsDone
-	if req.IsDone != nil {
-		isDone = *req.IsDone
-	}
-
-	position := existing.Position
-	if req.Position != nil {
-		position = *req.Position
-	}
-
-	params := db.UpdateSubtaskParams{
+	updatedSubtask, err := s.queries.UpdateSubtask(ctx, db.UpdateSubtaskParams{
 		ID:       subtaskID,
-		Title:    title,
-		IsDone:   isDone,
-		Position: position,
-	}
-
-	updatedSubtask, err := s.queries.UpdateSubtask(ctx, params)
+		Title:    req.Title,
+		IsDone:   req.IsDone,
+		Position: req.Position,
+	})
 	if err != nil {
 		return db.CardSubtask{}, fmt.Errorf("failed to update subtask in db: %w", err)
 	}

@@ -431,12 +431,12 @@ SELECT id FROM cards WHERE id = $1 FOR UPDATE;
 
 -- name: UpdateSubtask :one
 UPDATE card_subtasks
-SET 
-    title = COALESCE($2, title),
-    is_done = COALESCE($3, is_done),
-    position = COALESCE($4, position),
+SET
+    title = COALESCE(sqlc.narg(title)::text, title),
+    is_done = COALESCE(sqlc.narg(is_done)::boolean, is_done),
+    position = COALESCE(sqlc.narg(position)::double precision, position),
     updated_at = CURRENT_TIMESTAMP
-WHERE id = $1
+WHERE id = sqlc.arg(id)
 RETURNING *;
 
 -- name: DeleteSubtask :exec

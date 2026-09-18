@@ -344,6 +344,13 @@ INSERT INTO board_members (board_id, user_id, role)
 VALUES ($1, $2, $3)
 RETURNING *;
 
+-- name: JoinBoardMember :one
+-- No row returned (pgx.ErrNoRows) means the user was already a member.
+INSERT INTO board_members (board_id, user_id, role)
+VALUES ($1, $2, $3)
+ON CONFLICT (board_id, user_id) DO NOTHING
+RETURNING *;
+
 -- name: GetBoardMembers :many
 SELECT 
     bm.id,

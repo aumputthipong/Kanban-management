@@ -1221,11 +1221,20 @@ func (q *Queries) GetMembersForActiveBoards(ctx context.Context, userID string) 
 }
 
 const getMyTasks = `-- name: GetMyTasks :many
-WITH first_todo AS (
-    SELECT board_id, MIN(position) AS first_pos
-    FROM columns
-    WHERE category = 'TODO'
-    GROUP BY board_id
+WITH inbox AS (
+    SELECT c.id
+    FROM cards c
+    WHERE c.assignee_id = $2::uuid
+      AND c.is_done = FALSE
+    UNION
+    SELECT c.id
+    FROM board_members bm
+    JOIN columns col ON col.board_id = bm.board_id
+    JOIN cards   c   ON c.column_id = col.id
+    WHERE $3::boolean = TRUE
+      AND bm.user_id = $2::uuid
+      AND c.assignee_id IS NULL
+      AND c.is_done = FALSE
 )
 SELECT
     c.id,
@@ -1240,7 +1249,10 @@ SELECT
     (SELECT COUNT(*) FROM card_subtasks cs WHERE cs.card_id = c.id) AS total_subtasks,
     (SELECT COUNT(*) FROM card_subtasks cs WHERE cs.card_id = c.id AND cs.is_done) AS completed_subtasks,
     CASE
-        WHEN col.category = 'TODO' AND col.position = ft.first_pos THEN 'todo'
+        WHEN col.category = 'TODO' AND col.position = (
+            SELECT MIN(ft.position) FROM columns ft
+            WHERE ft.board_id = col.board_id AND ft.category = 'TODO'
+        ) THEN 'todo'
         WHEN col.category = 'TODO' THEN 'in_progress'
         ELSE 'todo'
     END::text AS status,
@@ -1251,22 +1263,11 @@ SELECT
         WHEN c.due_date <= ($1::date + INTERVAL '6 days') THEN 'this_week'
         ELSE 'later'
     END::text AS work_group
-FROM cards c
+FROM inbox i
+JOIN cards   c   ON c.id = i.id
 JOIN columns col ON col.id = c.column_id
 JOIN boards  b   ON b.id  = col.board_id
-LEFT JOIN first_todo ft ON ft.board_id = col.board_id
-WHERE c.is_done = FALSE
-  AND b.deleted_at IS NULL
-  AND (
-        c.assignee_id = $2::uuid
-     OR (
-            $3::boolean = TRUE
-        AND c.assignee_id IS NULL
-        AND col.board_id IN (
-                SELECT board_id FROM board_members WHERE user_id = $2::uuid
-            )
-        )
-      )
+WHERE b.deleted_at IS NULL
 ORDER BY
     CASE WHEN c.due_date IS NULL THEN 1 ELSE 0 END,
     c.due_date ASC,
@@ -1310,6 +1311,9 @@ type GetMyTasksRow struct {
 //	this_week — due_date within the next 6 days after today
 //	later     — due_date further out
 //	no_date   — due_date IS NULL
+//
+// Driven from the caller's own rows (assignee index / membership), never a scan of all
+// cards or columns, so cost tracks the inbox size rather than the whole database.
 func (q *Queries) GetMyTasks(ctx context.Context, arg GetMyTasksParams) ([]GetMyTasksRow, error) {
 	rows, err := q.db.Query(ctx, getMyTasks, arg.Today, arg.UserID, arg.IncludeUnassigned)
 	if err != nil {

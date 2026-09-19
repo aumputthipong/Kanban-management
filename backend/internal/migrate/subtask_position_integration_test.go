@@ -24,7 +24,8 @@ func TestMigration000019_RenumbersDuplicatePositionsInDisplayOrder(t *testing.T)
 	m, err := migrate.New(toFileURL(migrationsDir()), toPgx5(pool.Config().ConnString()))
 	require.NoError(t, err)
 	t.Cleanup(func() { _, _ = m.Close() })
-	require.NoError(t, m.Steps(-1), "step back to before 000019")
+	// Absolute versions, not Steps(±1): later migrations must not shift what this targets.
+	require.NoError(t, m.Migrate(18), "step back to before 000019")
 
 	// The real shape from production data: a gap at 2, then two rows sharing 3.
 	_, err = pool.Exec(ctx, `
@@ -34,7 +35,7 @@ func TestMigration000019_RenumbersDuplicatePositionsInDisplayOrder(t *testing.T)
 		($1, 'g',             3, '2026-09-17 05:31:40+00')`, cardID)
 	require.NoError(t, err)
 
-	require.NoError(t, m.Steps(1), "000019 up must succeed on data with duplicates")
+	require.NoError(t, m.Migrate(19), "000019 up must succeed on data with duplicates")
 
 	rows, err := pool.Query(ctx, `SELECT title, position FROM card_subtasks WHERE card_id = $1 ORDER BY position`, cardID)
 	require.NoError(t, err)

@@ -9,7 +9,7 @@ export function useBoardMembers(boardId: string) {
   const [isAdding, setIsAdding] = useState(false);
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const { setBoardMembers } = useBoardStore();
+  const setBoardMembers = useBoardStore((s) => s.setBoardMembers);
 
   useEffect(() => {
     let cancelled = false;

@@ -14,8 +14,11 @@ interface MeResponse {
  * page can distinguish a missing board from a generic failure.
  */
 export function useBoardData(boardId: string) {
-  const { setColumns, setCurrentUser, setBoardMembers, setBoardMeta, setLoading } =
-    useBoardStore();
+  const setColumns = useBoardStore((s) => s.setColumns);
+  const setCurrentUser = useBoardStore((s) => s.setCurrentUser);
+  const setBoardMembers = useBoardStore((s) => s.setBoardMembers);
+  const setBoardMeta = useBoardStore((s) => s.setBoardMeta);
+  const setLoading = useBoardStore((s) => s.setLoading);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 

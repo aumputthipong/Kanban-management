@@ -13,7 +13,7 @@ interface ExtendedCard extends Card {
  * Pure, inside a useMemo keyed on `columns` — never add I/O here.
  */
 export function useDashboardStats() {
-  const { columns } = useBoardStore();
+  const columns = useBoardStore((s) => s.columns);
 
   return useMemo(() => {
     const allCards: ExtendedCard[] = columns.flatMap((col) => col.cards);

@@ -68,6 +68,7 @@ CREATE TABLE time_logs (
 -- Index สำหรับเพิ่มความเร็วในการดึงข้อมูล
 CREATE INDEX idx_columns_board_id ON columns(board_id);
 CREATE INDEX idx_cards_column_id ON cards(column_id);
+CREATE INDEX idx_cards_assignee_open ON cards(assignee_id) WHERE is_done = FALSE;
 CREATE INDEX idx_time_logs_card_id ON time_logs(card_id);
 CREATE INDEX idx_time_logs_user_id ON time_logs(user_id);
 -- รันใน database

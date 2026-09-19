@@ -69,6 +69,9 @@ func (h *BoardHandler) UpdateCard(w http.ResponseWriter, r *http.Request) error 
 	if err := httputil.DecodeAndValidate(r, &req); err != nil {
 		return err
 	}
+	if req.Title != nil && *req.Title == "" { // defence in depth if the min=1 tag is ever dropped
+		return httputil.NewAPIError(http.StatusBadRequest, "Title cannot be empty", nil)
+	}
 
 	userIDStr, ok := r.Context().Value(middleware.UserIDKey).(string)
 	if !ok || userIDStr == "" {
@@ -96,49 +99,14 @@ func (h *BoardHandler) UpdateCard(w http.ResponseWriter, r *http.Request) error 
 		return httputil.NewAPIError(http.StatusForbidden, "You do not have permission to edit this card", nil)
 	}
 
-	// PATCH semantics: nil means "leave unchanged", but UpdateCard's SQL overwrites these
-	// columns directly (no COALESCE), so the handler must merge each omitted field from
-	// the existing row. This bit My Work snooze, which sends only { due_date }: every
-	// other column was wiped and the card left the inbox when assignee_id went NULL.
-	title := existing.Title
-	if req.Title != nil {
-		title = *req.Title
-	}
-	description := existing.Description
-	if req.Description != nil {
-		description = req.Description
-	}
-	dueDate := existing.DueDate
-	if req.DueDate != nil {
-		dueDate = util.PtrStringToTimePtr(req.DueDate)
-	}
-	// JSON null is indistinguishable from omitted, so clearing needs a sentinel:
-	// "" for assignee/priority/due_date (stored NULL, not "" — uuid/enum columns) and 0
-	// for estimated_hours. docs/adr/0009-card-patch-sends-changed-fields.md
-	assigneeID := existing.AssigneeID
-	if req.AssigneeID != nil {
-		assigneeID = emptyToNil(req.AssigneeID)
-	}
-	priority := existing.Priority
-	if req.Priority != nil {
-		priority = emptyToNil(req.Priority)
-	}
-	estimatedHours := util.PgNumericToFloat64Ptr(existing.EstimatedHours)
-	if req.EstimatedHours != nil {
-		estimatedHours = req.EstimatedHours
-		if *estimatedHours == 0 {
-			estimatedHours = nil
-		}
-	}
-
 	updated, err := h.boardService.UpdateCard(r.Context(), service.UpdateCardParams{
 		ID:                 cardIDStr,
-		Title:              title,
-		Description:        description,
-		DueDate:            dueDate,
-		AssigneeID:         assigneeID,
-		Priority:           priority,
-		EstimatedHours:     estimatedHours,
+		Title:              req.Title,
+		Description:        req.Description,
+		DueDate:            clearablePatch(req.DueDate, util.PtrStringToTimePtr),
+		AssigneeID:         clearablePatch(req.AssigneeID, emptyToNil),
+		Priority:           clearablePatch(req.Priority, emptyToNil),
+		EstimatedHours:     clearablePatch(req.EstimatedHours, zeroToNil),
 		TagIDs:             req.TagIDs,
 		AcceptanceCriteria: req.AcceptanceCriteria,
 		ImplementationNote: req.ImplementationNote,
@@ -216,4 +184,20 @@ func emptyToNil(s *string) *string {
 		return nil
 	}
 	return s
+}
+
+// clearablePatch maps a PATCH field onto service.FieldPatch. JSON null decodes like an
+// omitted key, so clearing uses a sentinel ("" or 0) that toValue turns into nil. docs/adr/0009
+func clearablePatch[In, Out any](field *In, toValue func(*In) *Out) service.FieldPatch[Out] {
+	if field == nil {
+		return service.FieldPatch[Out]{}
+	}
+	return service.FieldPatch[Out]{Set: true, Value: toValue(field)}
+}
+
+func zeroToNil(f *float64) *float64 {
+	if f == nil || *f == 0 {
+		return nil
+	}
+	return f
 }

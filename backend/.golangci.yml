@@ -1,0 +1,22 @@
+version: "2"
+
+run:
+  # Lint the integration tests too; they hold most of the service-layer test code.
+  build-tags:
+    - integration
+
+linters:
+  # standard = errcheck, govet, ineffassign, staticcheck, unused
+  default: standard
+  settings:
+    errcheck:
+      # Deferred cleanup whose error has nowhere useful to go. Rollback after a
+      # successful Commit returns ErrTxClosed by design.
+      exclude-functions:
+        - (github.com/jackc/pgx/v5.Tx).Rollback
+        - (*github.com/jackc/pgx/v5.Conn).Close
+        - (*github.com/golang-migrate/migrate/v4.Migrate).Close
+        - (io.Closer).Close
+        - (*github.com/gorilla/websocket.Conn).Close
+        - (*github.com/gorilla/websocket.Conn).SetReadDeadline
+        - (*github.com/gorilla/websocket.Conn).SetWriteDeadline

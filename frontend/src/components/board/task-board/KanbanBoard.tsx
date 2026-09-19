@@ -32,7 +32,10 @@ function DragPreview({ card }: { card: Card }) {
 }
 
 export function KanbanBoard({ boardId }: { boardId: string }) {
-  const { columns, filterAssigneeId, filterPriorities, filterTagIds } = useBoardStore();
+  const columns = useBoardStore((s) => s.columns);
+  const filterAssigneeId = useBoardStore((s) => s.filterAssigneeId);
+  const filterPriorities = useBoardStore((s) => s.filterPriorities);
+  const filterTagIds = useBoardStore((s) => s.filterTagIds);
   const {
     handleDragStart,
     handleDragEnd,

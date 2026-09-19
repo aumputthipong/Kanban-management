@@ -5,8 +5,10 @@ import { UserX } from "lucide-react";
 import { getAvatarColor } from "@/utils/avatar";
 
 export function MemberFilterBar() {
-  const { boardMembers, currentUserId, filterAssigneeId, setFilterAssigneeId } =
-    useBoardStore();
+  const boardMembers = useBoardStore((s) => s.boardMembers);
+  const currentUserId = useBoardStore((s) => s.currentUserId);
+  const filterAssigneeId = useBoardStore((s) => s.filterAssigneeId);
+  const setFilterAssigneeId = useBoardStore((s) => s.setFilterAssigneeId);
 
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);

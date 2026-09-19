@@ -2509,48 +2509,53 @@ func (q *Queries) UpdateBoardMemberRole(ctx context.Context, arg UpdateBoardMemb
 const updateCard = `-- name: UpdateCard :one
 UPDATE cards
 SET
-    title               = $2,
-    description         = $3,
-    due_date            = $4,
-    assignee_id         = $5,
-    priority            = $6,
-    estimated_hours     = $7,
-    acceptance_criteria = COALESCE($8::text, acceptance_criteria),
-    implementation_note = COALESCE($9::text, implementation_note),
+    title               = COALESCE($1::text, title),
+    description         = COALESCE($2::text, description),
+    due_date            = CASE WHEN $3::boolean        THEN $4::date           ELSE due_date END,
+    assignee_id         = CASE WHEN $5::boolean     THEN $6::uuid        ELSE assignee_id END,
+    priority            = CASE WHEN $7::boolean        THEN $8::text           ELSE priority END,
+    estimated_hours     = CASE WHEN $9::boolean THEN $10::numeric ELSE estimated_hours END,
+    acceptance_criteria = COALESCE($11::text, acceptance_criteria),
+    implementation_note = COALESCE($12::text, implementation_note),
     updated_at          = CURRENT_TIMESTAMP
-WHERE id = $1
+WHERE id = $13
 RETURNING id, column_id, assignee_id, title, description, estimated_hours, priority, due_date, position, completed_at, created_by, is_done, acceptance_criteria, implementation_note, created_at, updated_at
 `
 
 type UpdateCardParams struct {
-	ID                 string
-	Title              string
+	Title              *string
 	Description        *string
+	SetDueDate         bool
 	DueDate            *time.Time
+	SetAssigneeID      bool
 	AssigneeID         *string
+	SetPriority        bool
 	Priority           *string
+	SetEstimatedHours  bool
 	EstimatedHours     pgtype.Numeric
 	AcceptanceCriteria *string
 	ImplementationNote *string
+	ID                 string
 }
 
-// title/description/due_date/assignee_id/priority/estimated_hours are
-// overwritten (the handler reads the existing row first; this is PUT-like
-// in spirit even though the route is PATCH). acceptance_criteria and
-// implementation_note use COALESCE so a card update that doesn't touch
-// them keeps whatever PromoteItem copied in — without this guard, any
-// edit of title would silently wipe the AC the dev rely on.
+// Every field is merged here, not in Go: a read-then-overwrite lets two concurrent edits
+// of different fields clobber each other. Nullable columns take a set_* flag because
+// COALESCE cannot tell "leave alone" from "clear to NULL".
 func (q *Queries) UpdateCard(ctx context.Context, arg UpdateCardParams) (Card, error) {
 	row := q.db.QueryRow(ctx, updateCard,
-		arg.ID,
 		arg.Title,
 		arg.Description,
+		arg.SetDueDate,
 		arg.DueDate,
+		arg.SetAssigneeID,
 		arg.AssigneeID,
+		arg.SetPriority,
 		arg.Priority,
+		arg.SetEstimatedHours,
 		arg.EstimatedHours,
 		arg.AcceptanceCriteria,
 		arg.ImplementationNote,
+		arg.ID,
 	)
 	var i Card
 	err := row.Scan(

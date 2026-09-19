@@ -67,9 +67,10 @@ func TestCreateBoard_Success_CreatesFourDefaultColumnsAndOwnerMember(t *testing.
 	require.Len(t, cols, 4, "CreateBoard must seed exactly the 4 default columns")
 	todoCount, doneCount := 0, 0
 	for _, c := range cols {
-		if c.Category == "DONE" {
+		switch c.Category {
+		case "DONE":
 			doneCount++
-		} else if c.Category == "TODO" {
+		case "TODO":
 			todoCount++
 		}
 	}

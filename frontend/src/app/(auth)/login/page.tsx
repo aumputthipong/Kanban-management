@@ -7,6 +7,7 @@ import Link from "next/link";
 import { Loader2 } from "lucide-react";
 import { API_URL } from "@/lib/constants";
 import { apiClient } from "@/lib/apiClient";
+import { TryDemoButton } from "@/components/demo/TryDemoButton";
 
 const OAUTH_ERROR_MESSAGES: Record<string, string> = {
   oauth_failed: "Sign in with Google failed. Please try again.",
@@ -151,6 +152,13 @@ function LoginForm() {
           Sign up
         </Link>
       </p>
+
+      <div className="mt-6 pt-6 border-t border-slate-200">
+        <TryDemoButton variant="quiet" label="Try demo" />
+        <p className="text-center text-xs text-slate-400 mt-2">
+          เข้าดูบอร์ดตัวอย่างโดยไม่ต้องสมัคร
+        </p>
+      </div>
     </div>
   );
 }

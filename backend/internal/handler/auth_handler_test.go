@@ -9,6 +9,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/db"
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/httputil"
@@ -44,7 +45,11 @@ func findCookie(w *httptest.ResponseRecorder, name string) (value string, found 
 
 func newTestAuthHandler(svc *mock.MockAuthService) *AuthHandler {
 	// production=false → cookies are not Secure-only, so httptest captures them.
-	return NewAuthHandler(svc, false, false)
+	return NewAuthHandler(svc, &mock.MockDemoService{}, false, false)
+}
+
+func newTestDemoHandler(auth *mock.MockAuthService, demo *mock.MockDemoService) *AuthHandler {
+	return NewAuthHandler(auth, demo, false, false)
 }
 
 // ────────────────────────────────────────────────
@@ -545,4 +550,67 @@ func TestWSTicket_MissingUserID_Returns401(t *testing.T) {
 	httputil.MakeHandler(h.WSTicket)(w, req)
 
 	assert.Equal(t, http.StatusUnauthorized, w.Code)
+}
+
+// ────────────────────────────────────────────────
+// Demo
+// ────────────────────────────────────────────────
+
+func TestDemo_Success_SetsCookiesAndReturnsBoard(t *testing.T) {
+	expiry := time.Now().Add(24 * time.Hour)
+	demo := &mock.MockDemoService{
+		CreateSandboxFn: func(ctx context.Context, companionEmail string) (service.DemoSandbox, error) {
+			assert.Equal(t, service.SeedMemberEmail, companionEmail,
+				"the seeded member should join the sandbox so the board isn't a solo board")
+			return service.DemoSandbox{
+				UserID:   validUserID,
+				Email:    "demo-abc123@sandbox.turtask.invalid",
+				FullName: "Demo Visitor",
+				BoardID:  validBoardID,
+				ExpireAt: expiry,
+			}, nil
+		},
+	}
+	auth := &mock.MockAuthService{
+		IssueRefreshTokenFn: func(ctx context.Context, userID, ua, ip string) (string, error) {
+			return "raw-refresh-token", nil
+		},
+	}
+	h := newTestDemoHandler(auth, demo)
+
+	req := httptest.NewRequest(http.MethodPost, "/auth/demo", nil)
+	w := httptest.NewRecorder()
+
+	httputil.MakeHandler(h.Demo)(w, req)
+
+	require.Equal(t, http.StatusCreated, w.Code)
+
+	_, hasAuth := findCookie(w, "auth_token")
+	assert.True(t, hasAuth, "Demo must set the access-token cookie")
+	refresh, hasRefresh := findCookie(w, token.RefreshCookieName)
+	assert.True(t, hasRefresh, "Demo must set the refresh-token cookie")
+	assert.Equal(t, "raw-refresh-token", refresh)
+
+	var body map[string]string
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
+	assert.Equal(t, validBoardID, body["board_id"], "client needs the board to land the visitor on")
+	assert.Equal(t, expiry.Format(time.RFC3339), body["expires_at"])
+}
+
+func TestDemo_SandboxFails_Returns500(t *testing.T) {
+	demo := &mock.MockDemoService{
+		CreateSandboxFn: func(ctx context.Context, companionEmail string) (service.DemoSandbox, error) {
+			return service.DemoSandbox{}, errors.New("seed board: connection refused")
+		},
+	}
+	h := newTestDemoHandler(&mock.MockAuthService{}, demo)
+
+	req := httptest.NewRequest(http.MethodPost, "/auth/demo", nil)
+	w := httptest.NewRecorder()
+
+	httputil.MakeHandler(h.Demo)(w, req)
+
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
+	_, hasAuth := findCookie(w, "auth_token")
+	assert.False(t, hasAuth, "a failed sandbox must not leave the caller with a session")
 }

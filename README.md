@@ -52,6 +52,8 @@ A real-time team task & project management web app. Multi-board Kanban with role
 > rate limiter) will silently drop broadcasts to clients connected to a
 > different instance. Scale vertically until that layer is introduced.
 
+**Trying it without an account:** the landing page and the sign-in page both carry a **Try demo** button. It provisions a throwaway account plus its own copy of the sample board and drops you straight onto it — nothing to fill in, and nothing you do there affects anyone else's demo. Sandboxes are deleted 24 hours later. The shared `demo@turtask.app` / `demodemo123` login still works if you would rather sign in.
+
 Deeper docs:
 
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — layered design, permission matrix, optimistic UI pattern, what's intentionally not here

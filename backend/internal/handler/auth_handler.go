@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"time"
 
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/httputil"
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/middleware"
@@ -14,12 +15,18 @@ import (
 
 type AuthHandler struct {
 	authService service.AuthServicer
+	demoService service.DemoServicer
 	production  bool
 	crossSite   bool
 }
 
-func NewAuthHandler(authService service.AuthServicer, production, crossSite bool) *AuthHandler {
-	return &AuthHandler{authService: authService, production: production, crossSite: crossSite}
+func NewAuthHandler(authService service.AuthServicer, demoService service.DemoServicer, production, crossSite bool) *AuthHandler {
+	return &AuthHandler{
+		authService: authService,
+		demoService: demoService,
+		production:  production,
+		crossSite:   crossSite,
+	}
 }
 
 // issueSession signs the access JWT, provisions a refresh token, and sets both cookies.
@@ -176,6 +183,48 @@ func (h *AuthHandler) OAuthCallback(w http.ResponseWriter, r *http.Request) erro
 	return nil
 }
 
+// demoSessionResponse extends the auth body with where to send the visitor and
+// when their sandbox is reclaimed.
+type demoSessionResponse struct {
+	ID        string `json:"id"`
+	Email     string `json:"email"`
+	FullName  string `json:"full_name"`
+	BoardID   string `json:"board_id"`
+	ExpiresAt string `json:"expires_at"`
+}
+
+// Demo provisions a throwaway sandbox account and signs the caller into it, so a
+// visitor who will not register can still use the product. Each call mints its own
+// user and its own board clone; board_id is where the client should land them.
+//
+// Unauthenticated by design — the rate limiter, not a credential, is what bounds it.
+//
+// @Summary  Start a demo session
+// @Tags     auth
+// @Produce  json
+// @Success  201 {object} demoSessionResponse
+// @Failure  429 {object} httputil.ErrorResponse "too many demo sessions from this IP"
+// @Failure  500 {object} httputil.ErrorResponse
+// @Router   /api/auth/demo [post]
+func (h *AuthHandler) Demo(w http.ResponseWriter, r *http.Request) error {
+	sandbox, err := h.demoService.CreateSandbox(r.Context(), service.SeedMemberEmail)
+	if err != nil {
+		return httputil.NewAPIError(http.StatusInternalServerError, "Failed to start demo", err)
+	}
+
+	if err := h.issueSession(w, r, sandbox.UserID, sandbox.Email); err != nil {
+		return err
+	}
+	httputil.RespondJSON(w, http.StatusCreated, demoSessionResponse{
+		ID:        sandbox.UserID,
+		Email:     sandbox.Email,
+		FullName:  sandbox.FullName,
+		BoardID:   sandbox.BoardID,
+		ExpiresAt: sandbox.ExpireAt.Format(time.RFC3339),
+	})
+	return nil
+}
+
 // Logout clears the auth cookie and revokes the refresh token server-side so
 // it cannot be reused even if the cookie was captured. Always returns 204 —
 // missing or already-revoked tokens are not an error for the client.
@@ -257,10 +306,11 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return httputil.NewAPIError(http.StatusInternalServerError, "Failed to load user", err)
 	}
-	httputil.RespondJSON(w, http.StatusOK, map[string]string{
+	httputil.RespondJSON(w, http.StatusOK, map[string]any{
 		"user_id":   user.ID,
 		"email":     user.Email,
 		"full_name": user.FullName,
+		"is_demo":   user.IsDemo,
 	})
 	return nil
 }

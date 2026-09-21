@@ -2,11 +2,19 @@ import { CreateBoardButton } from "@/components/CreateBoardButton";
 import { BoardsClient } from "@/components/project-list/BoardsClient";
 import { apiFetch } from "@/lib/api";
 import { Board } from "@/types/board";
+import { redirect } from "next/navigation";
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 
 export default async function DashboardPage() {
-  const boards = await apiFetch<Board[]>("/boards", { cache: "no-store" });
+  // apiFetch throws on 401, which for a logged-out visitor arriving from the
+  // landing CTA rendered the error boundary instead of the login page.
+  let boards: Board[];
+  try {
+    boards = await apiFetch<Board[]>("/boards", { cache: "no-store" });
+  } catch {
+    redirect("/login?redirect=/dashboard");
+  }
   // Server component, runs once per request — Date.now() is fine here. The
   // react-hooks/purity rule is targeted at client component render bodies.
   // eslint-disable-next-line react-hooks/purity

@@ -52,7 +52,8 @@ export function TasksTabContent({
   onSelectCard,
 }: TasksTabContentProps) {
   const router = useRouter();
-  const { columns, currentUserId } = useBoardStore();
+  const columns = useBoardStore((s) => s.columns);
+  const currentUserId = useBoardStore((s) => s.currentUserId);
   const [mineOnly, setMineOnly] = useState(false);
 
   const columnTitleById = useMemo(() => {

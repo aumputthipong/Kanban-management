@@ -65,7 +65,10 @@ interface BoardDashboardProps {
 
 export function BoardDashboard({ boardId }: BoardDashboardProps) {
   const stats = useDashboardStats();
-  const { isLoading, currentUserId, boardMembers, columns } = useBoardStore();
+  const isLoading = useBoardStore((s) => s.isLoading);
+  const currentUserId = useBoardStore((s) => s.currentUserId);
+  const boardMembers = useBoardStore((s) => s.boardMembers);
+  const columns = useBoardStore((s) => s.columns);
   const { handleUpdateCard, handleDeleteCard, handleAddSubtask } =
     useBoardActions(boardId);
   const router = useRouter();

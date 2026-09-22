@@ -57,8 +57,9 @@ export function SignalBars({
 
 // ---- dropdown component ----
 export function PriorityFilterDropdown() {
-  const { filterPriorities, toggleFilterPriority, clearFilterPriorities } =
-    useBoardStore();
+  const filterPriorities = useBoardStore((s) => s.filterPriorities);
+  const toggleFilterPriority = useBoardStore((s) => s.toggleFilterPriority);
+  const clearFilterPriorities = useBoardStore((s) => s.clearFilterPriorities);
 
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);

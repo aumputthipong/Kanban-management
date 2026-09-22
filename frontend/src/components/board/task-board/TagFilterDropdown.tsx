@@ -12,7 +12,9 @@ interface TagFilterDropdownProps {
 }
 
 export function TagFilterDropdown({ boardId }: TagFilterDropdownProps) {
-  const { filterTagIds, toggleFilterTag, clearFilterTags } = useBoardStore();
+  const filterTagIds = useBoardStore((s) => s.filterTagIds);
+  const toggleFilterTag = useBoardStore((s) => s.toggleFilterTag);
+  const clearFilterTags = useBoardStore((s) => s.clearFilterTags);
   const [tags, setTags] = useState<Tag[]>([]);
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);

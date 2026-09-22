@@ -8,6 +8,8 @@ import (
 
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/db"
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/util"
+	"github.com/jackc/pgerrcode"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -54,6 +56,11 @@ func (s *AuthService) Register(ctx context.Context, arg RegisterParams) (db.User
 		ProviderID:   nil,
 	})
 	if err != nil {
+		// The read above is only a fast path; a concurrent signup can still win the insert.
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.UniqueViolation {
+			return db.User{}, ErrEmailTaken
+		}
 		return db.User{}, fmt.Errorf("create user: %w", err)
 	}
 

@@ -7,6 +7,7 @@ package service_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -82,6 +83,33 @@ func TestAddBoardMemberByEmail_AlreadyMember_ErrAlreadyMember(t *testing.T) {
 
 	err = f.svc.AddBoardMemberByEmail(ctx, f.boardID, owner.Email, "member")
 	assert.ErrorIs(t, err, service.ErrAlreadyMember)
+}
+
+// Managers adding the same email at once: one add wins, the rest must get
+// ErrAlreadyMember (409) rather than a unique-constraint 500. Rounds widen a narrow window.
+func TestAddBoardMemberByEmail_Concurrent_OneAddsRestAlreadyMember(t *testing.T) {
+	ctx := context.Background()
+	f := newMemberFixture(t)
+
+	for round := 0; round < 20; round++ {
+		email := fmt.Sprintf("racer%d@test.local", round)
+		_, err := f.queries.CreateUser(ctx, db.CreateUserParams{Email: email, FullName: "Racer", Provider: "credentials"})
+		require.NoError(t, err)
+
+		errs := raceN(8, func() error {
+			return f.svc.AddBoardMemberByEmail(ctx, f.boardID, email, "member")
+		})
+
+		successes := 0
+		for _, err := range errs {
+			if err == nil {
+				successes++
+				continue
+			}
+			require.ErrorIs(t, err, service.ErrAlreadyMember, "round %d", round)
+		}
+		require.Equal(t, 1, successes, "round %d", round)
+	}
 }
 
 func TestRemoveBoardMember_Owner_Rejected(t *testing.T) {

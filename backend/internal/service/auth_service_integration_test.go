@@ -7,7 +7,6 @@ package service_test
 
 import (
 	"context"
-	"sync"
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -69,42 +68,26 @@ func TestRegister_DuplicateEmail_ReturnsErrEmailTaken(t *testing.T) {
 	assert.ErrorIs(t, err, service.ErrEmailTaken)
 }
 
-// Register does GetUserByEmail then CreateUser as two statements, so ErrEmailTaken
-// cannot win this race. This documents what actually holds the line: the database's own
-// UNIQUE(email). Exactly one registration must succeed — that is the invariant.
-func TestRegister_ConcurrentSameEmail_ExactlyOneSucceeds(t *testing.T) {
+// Every racer passes the GetUserByEmail fast path before the first insert commits, so
+// UNIQUE(email) decides. The losers must see ErrEmailTaken (409), not a raw 500.
+func TestRegister_ConcurrentSameEmail_OneSucceedsRestEmailTaken(t *testing.T) {
 	ctx := context.Background()
 	f := newAuthFixture(t)
 
-	const goroutines = 8
-	var (
-		wg      sync.WaitGroup
-		mu      sync.Mutex
-		results = make([]error, 0, goroutines)
-	)
-	start := make(chan struct{})
-
-	for i := 0; i < goroutines; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			<-start
-			_, err := f.svc.Register(ctx, service.RegisterParams{
-				Email: "racer@test.local", FullName: "Racer", Password: "pw123456",
-			})
-			mu.Lock()
-			results = append(results, err)
-			mu.Unlock()
-		}()
-	}
-	close(start)
-	wg.Wait()
+	errs := raceN(8, func() error {
+		_, err := f.svc.Register(ctx, service.RegisterParams{
+			Email: "racer@test.local", FullName: "Racer", Password: "pw123456",
+		})
+		return err
+	})
 
 	successes := 0
-	for _, err := range results {
+	for _, err := range errs {
 		if err == nil {
 			successes++
+			continue
 		}
+		assert.ErrorIs(t, err, service.ErrEmailTaken)
 	}
 	assert.Equal(t, 1, successes, "exactly one concurrent registration of the same email may succeed")
 
@@ -112,7 +95,7 @@ func TestRegister_ConcurrentSameEmail_ExactlyOneSucceeds(t *testing.T) {
 	require.NoError(t, f.pool.QueryRow(ctx,
 		`SELECT COUNT(*) FROM users WHERE email = 'racer@test.local'`,
 	).Scan(&count))
-	assert.Equal(t, 1, count, "the DB's UNIQUE(email) constraint must leave exactly one row, not one per racer that read before the first insert")
+	assert.Equal(t, 1, count)
 }
 
 // ────────────────────────────────────────────────

@@ -40,21 +40,16 @@ func (s *BoardService) AddBoardMemberByEmail(ctx context.Context, boardID, email
 		return fmt.Errorf("lookup user by email: %w", err)
 	}
 
-	// Already a member? GetBoardMemberRole returns ErrNoRows when not.
-	if _, err := s.queries.GetBoardMemberRole(ctx, db.GetBoardMemberRoleParams{
-		BoardID: boardID,
-		UserID:  user.ID,
-	}); err == nil {
-		return ErrAlreadyMember
-	} else if !errors.Is(err, pgx.ErrNoRows) {
-		return fmt.Errorf("check existing membership: %w", err)
-	}
-
-	_, err = s.queries.AddBoardMember(ctx, db.AddBoardMemberParams{
+	// Decided by ON CONFLICT, not a prior membership read: two concurrent invites of the
+	// same user would both pass a read and the loser would hit the unique constraint (500).
+	_, err = s.queries.JoinBoardMember(ctx, db.JoinBoardMemberParams{
 		BoardID: boardID,
 		UserID:  user.ID,
 		Role:    role,
 	})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return ErrAlreadyMember
+	}
 	return err
 }
 

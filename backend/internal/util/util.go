@@ -55,7 +55,9 @@ func FloatToPgNumeric(f float64) pgtype.Numeric {
 		return pgtype.Numeric{Valid: false}
 	}
 	var n pgtype.Numeric
-	n.Scan(fmt.Sprintf("%f", f))
+	if err := n.Scan(fmt.Sprintf("%f", f)); err != nil {
+		return pgtype.Numeric{Valid: false}
+	}
 	return n
 }
 
@@ -65,7 +67,9 @@ func PtrFloatToPgNumeric(f *float64) pgtype.Numeric {
 		return pgtype.Numeric{Valid: false}
 	}
 	var n pgtype.Numeric
-	n.Scan(fmt.Sprintf("%f", *f))
+	if err := n.Scan(fmt.Sprintf("%f", *f)); err != nil {
+		return pgtype.Numeric{Valid: false}
+	}
 	return n
 }
 

@@ -30,10 +30,6 @@ type UpdateCardParams struct {
 	ImplementationNote *string
 }
 
-type CardService struct {
-	queries *db.Queries
-}
-
 func (s *BoardService) GetCard(ctx context.Context, cardID string) (db.Card, error) {
 	return s.queries.GetCard(ctx, cardID)
 }

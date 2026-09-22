@@ -299,7 +299,8 @@ The two thresholds differ because Go asks for a doc comment on every exported sy
 
 ## Lint / CI guardrails
 
-- **ก่อน push ทุกครั้ง** รัน `make verify` (`go vet` + `go test` + `tsc --noEmit` + `vitest`) ให้ผ่าน — เป็นชุดเดียวกับ CI
+- **ก่อน push ทุกครั้ง** รัน `make verify` (`go vet` + `golangci-lint` + `go test` + `tsc --noEmit` + `vitest`) ให้ผ่าน — เป็นชุดเดียวกับ CI
+- **Go lint:** `golangci-lint` (config `backend/.golangci.yml`, linter ชุด standard) เป็น required ใน CI. ห้ามเพิ่ม `//nolint` โดยไม่มี comment บรรทัดเดียวบอกว่า*ทำไม* — เหมือนกฎ ESLint ข้างล่าง
 - **ห้ามเพิ่ม ESLint warning ใหม่** — ขึ้น CI ก็ผ่านแต่จะสะสมไปเรื่อย ๆ ถ้าต้องเขียนโค้ดที่ trip rule:
   - แก้โค้ดให้ถูก rule ก่อน (default)
   - ถ้า rule ผิดบริบทจริง ๆ → `// eslint-disable-next-line <rule>` พร้อม comment **หนึ่งบรรทัด** อธิบายว่า*ทำไม* (ไม่ใช่ *ปิดอะไร*)

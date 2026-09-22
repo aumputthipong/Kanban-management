@@ -24,7 +24,9 @@ import (
 // least 32 bytes; startup rejects anything shorter.
 func TestMain(m *testing.M) {
 	if os.Getenv("JWT_SECRET") == "" {
-		os.Setenv("JWT_SECRET", "test-secret-do-not-use-in-prod-0123456789")
+		if err := os.Setenv("JWT_SECRET", "test-secret-do-not-use-in-prod-0123456789"); err != nil {
+			panic(err)
+		}
 	}
 	os.Exit(m.Run())
 }

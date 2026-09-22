@@ -45,11 +45,15 @@ seed: ## Seed demo data (demo account + sample board). Needs DB_URL (or backend/
 
 # ─── Verification (mirrors CI) ───────────────────────────────────────────────
 .PHONY: verify
-verify: vet test typecheck test-fe check-comments check-ws-events ## Run everything CI runs (vet + test + tsc + vitest + comment budget + WS contract)
+verify: vet lint-go test typecheck test-fe check-comments check-ws-events ## Run everything CI runs (vet + golangci-lint + test + tsc + vitest + comment budget + WS contract)
 
 .PHONY: vet
 vet: ## go vet ./...
 	cd backend && go vet ./...
+
+.PHONY: lint-go
+lint-go: ## golangci-lint (install: go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.13.2)
+	cd backend && golangci-lint run ./...
 
 .PHONY: test
 test: ## Run backend tests with -race (skips integration tests)

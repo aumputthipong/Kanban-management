@@ -1,14 +1,16 @@
 //go:build integration
 
-// Integration tests for BoardService's card methods. UpdateCard is transactional and its
-// SQL mixes strategies on purpose: most columns are overwritten, but acceptance_criteria
-// and implementation_note use COALESCE so an unrelated edit cannot wipe promoted content.
+// Integration tests for BoardService's card methods. UpdateCard is transactional and merges
+// every field in SQL, so an edit never overwrites a field it did not send — including under
+// concurrency, which only a real Postgres can show.
 package service_test
 
 import (
 	"context"
 	"fmt"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/assert"
@@ -72,7 +74,7 @@ func TestUpdateCard_Success_UpdatesGivenFields(t *testing.T) {
 
 	updated, err := f.svc.UpdateCard(ctx, service.UpdateCardParams{
 		ID:          f.cardID,
-		Title:       "New Title",
+		Title:       util.StringToPtr("New Title"),
 		Description: util.StringToPtr("New description"),
 	})
 	require.NoError(t, err)
@@ -81,29 +83,108 @@ func TestUpdateCard_Success_UpdatesGivenFields(t *testing.T) {
 	assert.Equal(t, "New description", *updated.Card.Description)
 }
 
-// These columns are plain SET, not COALESCE — the caller is expected to have merged in
-// existing values for anything it is not changing. Pins that a nil Description really
-// does null the column rather than leaving it alone.
-func TestUpdateCard_NilDescription_ClearsIt_NotCOALESCEd(t *testing.T) {
+// nil means "no change" for every field; a field the caller did not send keeps its value.
+func TestUpdateCard_NilFields_LeaveStoredValuesAlone(t *testing.T) {
 	ctx := context.Background()
 	f := newCardFixture(t)
+	assignee := testutil.NewSeed(t, f.pool).User(ctx)
+	due := time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC)
+	hours := 3.5
 
 	_, err := f.svc.UpdateCard(ctx, service.UpdateCardParams{
-		ID: f.cardID, Title: "Has a description", Description: util.StringToPtr("will be cleared"),
+		ID: f.cardID, Description: util.StringToPtr("keep me"),
+		DueDate:        service.FieldPatch[time.Time]{Set: true, Value: &due},
+		AssigneeID:     service.FieldPatch[string]{Set: true, Value: &assignee},
+		Priority:       service.FieldPatch[string]{Set: true, Value: util.StringToPtr("high")},
+		EstimatedHours: service.FieldPatch[float64]{Set: true, Value: &hours},
+	})
+	require.NoError(t, err)
+
+	updated, err := f.svc.UpdateCard(ctx, service.UpdateCardParams{ID: f.cardID, Title: util.StringToPtr("Renamed")})
+	require.NoError(t, err)
+
+	c := updated.Card
+	assert.Equal(t, "Renamed", c.Title)
+	require.NotNil(t, c.Description)
+	assert.Equal(t, "keep me", *c.Description)
+	require.NotNil(t, c.DueDate)
+	assert.True(t, due.Equal(*c.DueDate))
+	require.NotNil(t, c.AssigneeID)
+	assert.Equal(t, assignee, *c.AssigneeID)
+	require.NotNil(t, c.Priority)
+	assert.Equal(t, "high", *c.Priority)
+	require.NotNil(t, util.PgNumericToFloat64Ptr(c.EstimatedHours))
+}
+
+// Set with a nil Value is the only way to clear a nullable column.
+func TestUpdateCard_SetNil_ClearsNullableColumns(t *testing.T) {
+	ctx := context.Background()
+	f := newCardFixture(t)
+	assignee := testutil.NewSeed(t, f.pool).User(ctx)
+	due := time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC)
+	hours := 2.0
+	_, err := f.svc.UpdateCard(ctx, service.UpdateCardParams{
+		ID:             f.cardID,
+		DueDate:        service.FieldPatch[time.Time]{Set: true, Value: &due},
+		AssigneeID:     service.FieldPatch[string]{Set: true, Value: &assignee},
+		Priority:       service.FieldPatch[string]{Set: true, Value: util.StringToPtr("low")},
+		EstimatedHours: service.FieldPatch[float64]{Set: true, Value: &hours},
 	})
 	require.NoError(t, err)
 
 	updated, err := f.svc.UpdateCard(ctx, service.UpdateCardParams{
-		ID: f.cardID, Title: "Has a description", Description: nil,
+		ID:             f.cardID,
+		DueDate:        service.FieldPatch[time.Time]{Set: true},
+		AssigneeID:     service.FieldPatch[string]{Set: true},
+		Priority:       service.FieldPatch[string]{Set: true},
+		EstimatedHours: service.FieldPatch[float64]{Set: true},
 	})
 	require.NoError(t, err)
-	assert.Nil(t, updated.Card.Description, "unlike AcceptanceCriteria/ImplementationNote, Description has no COALESCE — nil overwrites, it doesn't preserve")
+
+	c := updated.Card
+	assert.Nil(t, c.DueDate)
+	assert.Nil(t, c.AssigneeID)
+	assert.Nil(t, c.Priority)
+	assert.Nil(t, util.PgNumericToFloat64Ptr(c.EstimatedHours))
+	assert.Equal(t, "Test Card", c.Title, "clearing other fields must not touch the title")
 }
 
-// The one pair of fields that IS COALESCE'd: an update that only touches
-// the title must not wipe acceptance_criteria/implementation_note that
-// PromoteItem copied in from a planning item. This is the exact bug the
-// SQL comment says COALESCE exists to prevent.
+// Regression for T2: the handler used to read the card, merge the request, and write every
+// column back, so two edits of different fields raced and the later write undid the other.
+func TestUpdateCard_ConcurrentDifferentFieldEdits_BothLand(t *testing.T) {
+	ctx := context.Background()
+	f := newCardFixture(t)
+
+	for round := 0; round < 20; round++ {
+		_, err := f.svc.UpdateCard(ctx, service.UpdateCardParams{
+			ID: f.cardID, Title: util.StringToPtr("original"),
+			Priority: service.FieldPatch[string]{Set: true},
+		})
+		require.NoError(t, err)
+
+		newTitle := fmt.Sprintf("renamed %d", round)
+		edits := []service.UpdateCardParams{
+			{ID: f.cardID, Title: &newTitle},
+			{ID: f.cardID, Priority: service.FieldPatch[string]{Set: true, Value: util.StringToPtr("high")}},
+		}
+		var next atomic.Int32
+		for _, err := range raceN(2, func() error {
+			_, err := f.svc.UpdateCard(ctx, edits[next.Add(1)-1])
+			return err
+		}) {
+			require.NoError(t, err)
+		}
+
+		final, err := f.queries.GetCard(ctx, f.cardID)
+		require.NoError(t, err)
+		require.Equal(t, newTitle, final.Title, "round %d: title edit lost", round)
+		require.NotNil(t, final.Priority, "round %d: priority edit lost", round)
+		require.Equal(t, "high", *final.Priority)
+	}
+}
+
+// An update that only touches the title must not wipe acceptance_criteria /
+// implementation_note that PromoteItem copied in from a planning item.
 func TestUpdateCard_AcceptanceCriteriaAndNote_PreservedWhenNotTouched(t *testing.T) {
 	ctx := context.Background()
 	f := newCardFixture(t)
@@ -111,14 +192,14 @@ func TestUpdateCard_AcceptanceCriteriaAndNote_PreservedWhenNotTouched(t *testing
 	ac := "Given/When/Then..."
 	note := "Watch for the race on X"
 	_, err := f.svc.UpdateCard(ctx, service.UpdateCardParams{
-		ID: f.cardID, Title: "Original", AcceptanceCriteria: &ac, ImplementationNote: &note,
+		ID: f.cardID, Title: util.StringToPtr("Original"), AcceptanceCriteria: &ac, ImplementationNote: &note,
 	})
 	require.NoError(t, err)
 
 	// A later edit that only changes the title, and passes nil for both —
 	// PATCH semantics: nil means "don't touch".
 	updated, err := f.svc.UpdateCard(ctx, service.UpdateCardParams{
-		ID: f.cardID, Title: "Renamed", AcceptanceCriteria: nil, ImplementationNote: nil,
+		ID: f.cardID, Title: util.StringToPtr("Renamed"), AcceptanceCriteria: nil, ImplementationNote: nil,
 	})
 	require.NoError(t, err)
 
@@ -141,7 +222,7 @@ func TestUpdateCard_NilTagIDs_LeavesExistingTagsUntouched(t *testing.T) {
 	require.NoError(t, f.queries.InsertCardTag(ctx, db.InsertCardTagParams{CardID: f.cardID, TagID: tag}))
 
 	res, err := f.svc.UpdateCard(ctx, service.UpdateCardParams{
-		ID: f.cardID, Title: "Renamed only", TagIDs: nil,
+		ID: f.cardID, Title: util.StringToPtr("Renamed only"), TagIDs: nil,
 	})
 	require.NoError(t, err)
 
@@ -160,7 +241,7 @@ func TestUpdateCard_EmptyTagIDs_ClearsAllTags(t *testing.T) {
 
 	empty := []string{}
 	res, err := f.svc.UpdateCard(ctx, service.UpdateCardParams{
-		ID: f.cardID, Title: "Clearing tags", TagIDs: &empty,
+		ID: f.cardID, Title: util.StringToPtr("Clearing tags"), TagIDs: &empty,
 	})
 	require.NoError(t, err)
 
@@ -179,7 +260,7 @@ func TestUpdateCard_ReplaceTagIDs_SwapsToExactlyTheNewSet(t *testing.T) {
 
 	newSet := []string{newTag}
 	res, err := f.svc.UpdateCard(ctx, service.UpdateCardParams{
-		ID: f.cardID, Title: "Swapping tags", TagIDs: &newSet,
+		ID: f.cardID, Title: util.StringToPtr("Swapping tags"), TagIDs: &newSet,
 	})
 	require.NoError(t, err)
 
@@ -203,7 +284,7 @@ func TestUpdateCard_MoreThanFiveTags_ErrorsAndRollsBackEntireUpdate(t *testing.T
 	}
 
 	_, err := f.svc.UpdateCard(ctx, service.UpdateCardParams{
-		ID: f.cardID, Title: "Should not stick", TagIDs: &tooMany,
+		ID: f.cardID, Title: util.StringToPtr("Should not stick"), TagIDs: &tooMany,
 	})
 	assert.Error(t, err)
 

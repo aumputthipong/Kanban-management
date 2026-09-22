@@ -285,24 +285,21 @@ SELECT * FROM boards
 WHERE id = $1 LIMIT 1;
 
 -- name: UpdateCard :one
--- title/description/due_date/assignee_id/priority/estimated_hours are
--- overwritten (the handler reads the existing row first; this is PUT-like
--- in spirit even though the route is PATCH). acceptance_criteria and
--- implementation_note use COALESCE so a card update that doesn't touch
--- them keeps whatever PromoteItem copied in — without this guard, any
--- edit of title would silently wipe the AC the dev rely on.
+-- Every field is merged here, not in Go: a read-then-overwrite lets two concurrent edits
+-- of different fields clobber each other. Nullable columns take a set_* flag because
+-- COALESCE cannot tell "leave alone" from "clear to NULL".
 UPDATE cards
 SET
-    title               = $2,
-    description         = $3,
-    due_date            = $4,
-    assignee_id         = $5,
-    priority            = $6,
-    estimated_hours     = $7,
+    title               = COALESCE(sqlc.narg(title)::text, title),
+    description         = COALESCE(sqlc.narg(description)::text, description),
+    due_date            = CASE WHEN sqlc.arg(set_due_date)::boolean        THEN sqlc.narg(due_date)::date           ELSE due_date END,
+    assignee_id         = CASE WHEN sqlc.arg(set_assignee_id)::boolean     THEN sqlc.narg(assignee_id)::uuid        ELSE assignee_id END,
+    priority            = CASE WHEN sqlc.arg(set_priority)::boolean        THEN sqlc.narg(priority)::text           ELSE priority END,
+    estimated_hours     = CASE WHEN sqlc.arg(set_estimated_hours)::boolean THEN sqlc.narg(estimated_hours)::numeric ELSE estimated_hours END,
     acceptance_criteria = COALESCE(sqlc.narg(acceptance_criteria)::text, acceptance_criteria),
     implementation_note = COALESCE(sqlc.narg(implementation_note)::text, implementation_note),
     updated_at          = CURRENT_TIMESTAMP
-WHERE id = $1
+WHERE id = sqlc.arg(id)
 RETURNING *;
 
 

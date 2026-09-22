@@ -40,3 +40,7 @@ the existing convention and fixes the one DTO that needed clearing.
 - Any new caller of `PATCH /api/cards/{id}` must send only what it changes, and
   must use the sentinels to clear. Sending `null` is a no-op.
 - `estimated_hours: 0` can never be stored; it always means "no estimate".
+- The server merges in SQL too: `UpdateCard` uses `COALESCE` for non-null
+  columns and a `set_*` flag for clearable ones, and the handler only maps the
+  sentinels. Until 2026-09 the handler read the card and wrote every column back,
+  so two edits of different fields landing at the same instant could still lose one.

@@ -164,32 +164,6 @@ func (s *BoardCommandService) DeleteCard(ctx context.Context, cardID string) (st
 	return title, nil
 }
 
-// UpdateCardBasicParams is the field set the WS layer updates (tags excluded).
-type UpdateCardBasicParams struct {
-	ID             string
-	Title          string
-	Description    string
-	DueDate        string
-	AssigneeID     string
-	Priority       string
-	EstimatedHours float64
-}
-
-func (s *BoardCommandService) UpdateCardBasic(ctx context.Context, p UpdateCardBasicParams) error {
-	if _, err := s.queries.UpdateCard(ctx, db.UpdateCardParams{
-		ID:             p.ID,
-		Title:          p.Title,
-		Description:    util.StringToPtr(p.Description),
-		DueDate:        util.StringToTimePtr(p.DueDate),
-		AssigneeID:     util.StringToPtr(p.AssigneeID),
-		Priority:       util.StringToPtr(p.Priority),
-		EstimatedHours: util.FloatToPgNumeric(p.EstimatedHours),
-	}); err != nil {
-		return fmt.Errorf("update card: %w", err)
-	}
-	return nil
-}
-
 type ToggleCardDoneResult struct {
 	TargetColumnID string
 	CardTitle      string

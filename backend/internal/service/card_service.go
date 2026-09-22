@@ -9,21 +9,23 @@ import (
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/util"
 )
 
-// UpdateCardParams is the card-update input passed from the handler: string
-// IDs, *string for nullable fields.
+// FieldPatch is a PATCH input for a nullable column: Set=false leaves it alone,
+// Set=true writes Value, and a nil Value clears the column to NULL.
+type FieldPatch[T any] struct {
+	Set   bool
+	Value *T
+}
+
+// UpdateCardParams carries PATCH semantics: a nil pointer or unset FieldPatch means no change.
 type UpdateCardParams struct {
-	ID             string
-	Title          string
-	Description    *string
-	DueDate        *time.Time
-	AssigneeID     *string
-	Priority       *string
-	EstimatedHours *float64
-	TagIDs         *[]string // nil = don't touch, &[]string{} = clear all
-	// AcceptanceCriteria and ImplementationNote follow PATCH semantics
-	// (nil = no change, &"" = clear). Unlike the fields above, the SQL
-	// uses COALESCE for these two so a "title only" edit doesn't wipe
-	// out values that PromoteItem copied over from the planning row.
+	ID                 string
+	Title              *string
+	Description        *string
+	DueDate            FieldPatch[time.Time]
+	AssigneeID         FieldPatch[string]
+	Priority           FieldPatch[string]
+	EstimatedHours     FieldPatch[float64]
+	TagIDs             *[]string // nil = don't touch, &[]string{} = clear all
 	AcceptanceCriteria *string
 	ImplementationNote *string
 }
@@ -90,10 +92,14 @@ func (s *BoardService) UpdateCard(ctx context.Context, arg UpdateCardParams) (Up
 		ID:                 arg.ID,
 		Title:              arg.Title,
 		Description:        arg.Description,
-		Priority:           arg.Priority,
-		DueDate:            arg.DueDate,
-		AssigneeID:         arg.AssigneeID,
-		EstimatedHours:     util.PtrFloatToPgNumeric(arg.EstimatedHours),
+		SetDueDate:         arg.DueDate.Set,
+		DueDate:            arg.DueDate.Value,
+		SetAssigneeID:      arg.AssigneeID.Set,
+		AssigneeID:         arg.AssigneeID.Value,
+		SetPriority:        arg.Priority.Set,
+		Priority:           arg.Priority.Value,
+		SetEstimatedHours:  arg.EstimatedHours.Set,
+		EstimatedHours:     util.PtrFloatToPgNumeric(arg.EstimatedHours.Value),
 		AcceptanceCriteria: arg.AcceptanceCriteria,
 		ImplementationNote: arg.ImplementationNote,
 	})

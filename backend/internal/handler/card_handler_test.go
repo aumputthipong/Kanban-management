@@ -56,6 +56,14 @@ func cardOwnedBy(creatorID, assigneeID *string) db.Card {
 
 func ptr(s string) *string { return &s }
 
+// titleOr stands in for the SQL COALESCE when a mock plays the database.
+func titleOr(title *string, stored string) string {
+	if title == nil {
+		return stored
+	}
+	return *title
+}
+
 func TestUpdateCard_ManagerEditsAnyCard_Success(t *testing.T) {
 	other := ptr(otherUserID)
 	svc := &mock.MockBoardService{
@@ -69,7 +77,7 @@ func TestUpdateCard_ManagerEditsAnyCard_Success(t *testing.T) {
 			return "manager", nil
 		},
 		UpdateCardFn: func(ctx context.Context, arg service.UpdateCardParams) (service.UpdateCardResult, error) {
-			return service.UpdateCardResult{Card: db.Card{ID: arg.ID, Title: arg.Title}}, nil
+			return service.UpdateCardResult{Card: db.Card{ID: arg.ID, Title: titleOr(arg.Title, "Existing")}}, nil
 		},
 	}
 	h := NewBoardHandler(svc, nil, nil, nil)
@@ -98,7 +106,7 @@ func TestUpdateCard_MemberEditsOwnCard_Success(t *testing.T) {
 			return "member", nil
 		},
 		UpdateCardFn: func(ctx context.Context, arg service.UpdateCardParams) (service.UpdateCardResult, error) {
-			return service.UpdateCardResult{Card: db.Card{ID: arg.ID, Title: arg.Title}}, nil
+			return service.UpdateCardResult{Card: db.Card{ID: arg.ID, Title: titleOr(arg.Title, "Existing")}}, nil
 		},
 	}
 	h := NewBoardHandler(svc, nil, nil, nil)
@@ -234,9 +242,8 @@ func TestUpdateCard_NonMember_Returns404(t *testing.T) {
 	assert.Equal(t, http.StatusNotFound, w.Code)
 }
 
-// Pins the silent-clobber case AGENTS.md flags: omitting `title` from a PATCH must
-// leave it intact. UpdateCard's SQL overwrites the column directly, so the handler merge
-// is what preserves it — this asserts that merge at the handler boundary.
+// Pins the silent-clobber case AGENTS.md flags: omitting `title` from a PATCH must reach
+// the service as nil (no change), never as "" or a value read from an earlier snapshot.
 func TestUpdateCard_PATCHSemantics_OmittedTitle(t *testing.T) {
 	creator := ptr(validUserID)
 	var received service.UpdateCardParams
@@ -266,14 +273,14 @@ func TestUpdateCard_PATCHSemantics_OmittedTitle(t *testing.T) {
 	httputil.MakeHandler(h.UpdateCard)(w, req)
 
 	assert.Equal(t, http.StatusOK, w.Code)
-	assert.Equal(t, "Existing", received.Title, "omitted title must be preserved from the existing row, not clobbered to empty")
+	assert.Nil(t, received.Title, "omitted title must be passed as no-change, not clobbered")
 	require.NotNil(t, received.Description)
 	assert.Equal(t, "hello", *received.Description)
 }
 
 // The My Work snooze regression: a PATCH touching only due_date must not wipe assignee,
-// priority, description or estimated_hours. Before the handler merge, the overwrite-style
-// SQL nulled every omitted column and the card left its owner's inbox.
+// priority, description or estimated_hours — once, every omitted column was nulled and
+// the card left its owner's inbox. Only due_date may be marked as set.
 func TestUpdateCard_PartialPatch_PreservesUntouchedFields(t *testing.T) {
 	assignee := ptr(validUserID)
 	var received service.UpdateCardParams
@@ -312,14 +319,13 @@ func TestUpdateCard_PartialPatch_PreservesUntouchedFields(t *testing.T) {
 	httputil.MakeHandler(h.UpdateCard)(w, req)
 
 	assert.Equal(t, http.StatusOK, w.Code)
-	assert.Equal(t, "Keep me", received.Title, "title must survive a due_date-only patch")
-	require.NotNil(t, received.AssigneeID, "assignee must not be nulled — card would vanish from My Work")
-	assert.Equal(t, validUserID, *received.AssigneeID)
-	require.NotNil(t, received.Description)
-	assert.Equal(t, "keep this desc", *received.Description)
-	require.NotNil(t, received.Priority)
-	assert.Equal(t, "high", *received.Priority)
-	require.NotNil(t, received.DueDate, "due_date must be applied")
+	assert.Nil(t, received.Title, "title must survive a due_date-only patch")
+	assert.False(t, received.AssigneeID.Set, "assignee must not be touched — card would vanish from My Work")
+	assert.Nil(t, received.Description)
+	assert.False(t, received.Priority.Set)
+	assert.False(t, received.EstimatedHours.Set)
+	require.True(t, received.DueDate.Set, "due_date must be applied")
+	require.NotNil(t, received.DueDate.Value)
 }
 
 // TestUpdateCard_PATCHSemantics_EmptyTitleRejected verifies the validator
@@ -445,7 +451,7 @@ func TestUpdateCard_RespondsWithSnakeCase(t *testing.T) {
 			return "member", nil
 		},
 		UpdateCardFn: func(ctx context.Context, arg service.UpdateCardParams) (service.UpdateCardResult, error) {
-			return service.UpdateCardResult{Card: db.Card{ID: arg.ID, ColumnID: validColumnID, Title: arg.Title}}, nil
+			return service.UpdateCardResult{Card: db.Card{ID: arg.ID, ColumnID: validColumnID, Title: titleOr(arg.Title, "Existing")}}, nil
 		},
 	}
 	h := NewBoardHandler(svc, nil, nil, nil)
@@ -485,13 +491,13 @@ func TestUpdateCard_OmittedDueDate_BroadcastsStoredValue(t *testing.T) {
 			return "member", nil
 		},
 		UpdateCardFn: func(ctx context.Context, arg service.UpdateCardParams) (service.UpdateCardResult, error) {
-			return service.UpdateCardResult{Card: db.Card{ID: arg.ID, ColumnID: validColumnID, Title: arg.Title, DueDate: arg.DueDate}}, nil
+			return service.UpdateCardResult{Card: db.Card{ID: arg.ID, ColumnID: validColumnID, Title: titleOr(arg.Title, "Existing"), DueDate: &due}}, nil // due_date omitted → DB keeps it
 		},
 	}
 	bc := &mock.MockBroadcaster{}
 	h := NewBoardHandler(svc, nil, nil, bc)
 
-	// Body carries no due_date, so the handler must merge the stored one.
+	// Body carries no due_date; the broadcast must still carry the stored one.
 	req := withUserID(httptest.NewRequest(http.MethodPatch, "/cards/"+validCardID,
 		jsonBody(t, map[string]any{"title": "renamed"})), validUserID)
 	req = chiCtx(req, "cardID", validCardID)
@@ -530,7 +536,7 @@ func TestUpdateCard_BroadcastsStoredTagsAndNotes(t *testing.T) {
 		},
 		UpdateCardFn: func(ctx context.Context, arg service.UpdateCardParams) (service.UpdateCardResult, error) {
 			return service.UpdateCardResult{
-				Card: db.Card{ID: arg.ID, ColumnID: validColumnID, Title: arg.Title, AcceptanceCriteria: &ac},
+				Card: db.Card{ID: arg.ID, ColumnID: validColumnID, Title: titleOr(arg.Title, "Existing"), AcceptanceCriteria: &ac},
 				Tags: []service.TagData{{ID: "tag-1", BoardID: validBoardID, Name: "feat", Color: "blue"}},
 			}, nil
 		},
@@ -596,10 +602,14 @@ func TestUpdateCard_ClearSentinels_StoreNull(t *testing.T) {
 	httputil.MakeHandler(h.UpdateCard)(w, req)
 
 	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
-	assert.Nil(t, received.AssigneeID, `assignee_id "" must store NULL, not an invalid uuid`)
-	assert.Nil(t, received.Priority)
-	assert.Nil(t, received.DueDate)
-	assert.Nil(t, received.EstimatedHours, "estimated_hours 0 means no estimate")
+	assert.True(t, received.AssigneeID.Set)
+	assert.Nil(t, received.AssigneeID.Value, `assignee_id "" must store NULL, not an invalid uuid`)
+	assert.True(t, received.Priority.Set)
+	assert.Nil(t, received.Priority.Value)
+	assert.True(t, received.DueDate.Set)
+	assert.Nil(t, received.DueDate.Value)
+	assert.True(t, received.EstimatedHours.Set)
+	assert.Nil(t, received.EstimatedHours.Value, "estimated_hours 0 means no estimate")
 }
 
 func TestUpdateCard_NullValue_LeavesFieldUnchanged(t *testing.T) {
@@ -629,8 +639,7 @@ func TestUpdateCard_NullValue_LeavesFieldUnchanged(t *testing.T) {
 	httputil.MakeHandler(h.UpdateCard)(w, req)
 
 	require.Equal(t, http.StatusOK, w.Code)
-	require.NotNil(t, received.AssigneeID)
-	assert.Equal(t, otherUserID, *received.AssigneeID)
+	assert.False(t, received.AssigneeID.Set, "null must leave the assignee alone, not clear it")
 }
 
 func TestUpdateCard_InvalidClearableValues_Return400(t *testing.T) {

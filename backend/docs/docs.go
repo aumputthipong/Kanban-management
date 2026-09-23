@@ -17,6 +17,37 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/api/auth/demo": {
+            "post": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Start a demo session",
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/internal_handler.demoSessionResponse"
+                        }
+                    },
+                    "429": {
+                        "description": "too many demo sessions from this IP",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_aumputthipong_mini-erp-kanban_backend_internal_httputil.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_aumputthipong_mini-erp-kanban_backend_internal_httputil.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/auth/login": {
             "post": {
                 "consumes": [
@@ -1404,7 +1435,17 @@ const docTemplate = `{
                     ]
                 },
                 "color": {
-                    "type": "string"
+                    "type": "string",
+                    "enum": [
+                        "slate",
+                        "blue",
+                        "purple",
+                        "green",
+                        "amber",
+                        "rose",
+                        "pink",
+                        "cyan"
+                    ]
                 },
                 "title": {
                     "type": "string",
@@ -1635,12 +1676,7 @@ const docTemplate = `{
                     "maxLength": 10000
                 },
                 "priority": {
-                    "type": "string",
-                    "enum": [
-                        "low",
-                        "medium",
-                        "high"
-                    ]
+                    "type": "string"
                 },
                 "tag_ids": {
                     "type": "array",
@@ -1670,7 +1706,17 @@ const docTemplate = `{
                     ]
                 },
                 "color": {
-                    "type": "string"
+                    "type": "string",
+                    "enum": [
+                        "slate",
+                        "blue",
+                        "purple",
+                        "green",
+                        "amber",
+                        "rose",
+                        "pink",
+                        "cyan"
+                    ]
                 },
                 "title": {
                     "type": "string",
@@ -1726,6 +1772,26 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "email": {
+                    "type": "string"
+                },
+                "full_name": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_handler.demoSessionResponse": {
+            "type": "object",
+            "properties": {
+                "board_id": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "expires_at": {
                     "type": "string"
                 },
                 "full_name": {

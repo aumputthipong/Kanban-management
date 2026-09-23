@@ -51,6 +51,9 @@ const (
 	dbPoolMaxConns  = 25
 	dbPoolMinConns  = 5
 	dbPoolMaxIdle   = 5 * time.Minute
+	// How often expired demo sandboxes are swept. Sandboxes live 24h, so the
+	// exact cadence only decides how long dead rows linger.
+	demoPurgeInterval = time.Hour
 )
 
 type config struct {
@@ -169,6 +172,7 @@ func run(ctx context.Context, cfg config) error {
 	planningService := service.NewPlanningService(pool, queries)
 	settingsService := service.NewUserSettingsService(queries)
 	inviteService := service.NewInviteService(pool, queries)
+	demoService := service.NewDemoService(pool, queries)
 
 	subtaskHandler := handler.NewSubtaskHandler(subtaskService, boardService, activityService, hub)
 	boardHandler := handler.NewBoardHandler(boardService, settingsService, activityService, hub)
@@ -176,7 +180,7 @@ func run(ctx context.Context, cfg config) error {
 	tagHandler := handler.NewTagHandler(tagService, hub)
 	activityHandler := handler.NewActivityHandler(activityService)
 	planningHandler := handler.NewPlanningHandler(planningService, boardService, activityService)
-	authHandler := handler.NewAuthHandler(authService, cfg.Production, cfg.CrossSite)
+	authHandler := handler.NewAuthHandler(authService, demoService, cfg.Production, cfg.CrossSite)
 	settingsHandler := handler.NewUserSettingsHandler(settingsService)
 	inviteHandler := handler.NewInviteHandler(inviteService, boardService, activityService, hub)
 	oauthHandler := handler.NewOAuthHandler(
@@ -217,6 +221,10 @@ func run(ctx context.Context, cfg config) error {
 
 	ctx, stop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
 	defer stop()
+
+	// Reclaim expired demo sandboxes. Runs in-process rather than as a cron job
+	// because a sweep is a handful of deletes; ctx cancellation stops it.
+	go demoService.StartPurgeLoop(ctx, demoPurgeInterval)
 
 	go func() {
 		slog.Info("server listening", "port", cfg.Port, "version", version)

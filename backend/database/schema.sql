@@ -8,8 +8,14 @@ CREATE TABLE users (
     password_hash VARCHAR(255),
     provider VARCHAR(50) NOT NULL DEFAULT 'credentials',
     provider_id VARCHAR(255),
+    -- Throwaway sandbox account from the "Try demo" button (migration 000021).
+    -- demo_expires_at is the purge pivot, not a session length.
+    is_demo BOOLEAN NOT NULL DEFAULT FALSE,
+    demo_expires_at TIMESTAMPTZ DEFAULT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE INDEX idx_users_demo_expiry ON users(demo_expires_at) WHERE is_demo;
 -- 2. ตาราง Boards (โปรเจกต์)
 CREATE TABLE boards (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),

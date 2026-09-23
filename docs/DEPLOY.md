@@ -74,6 +74,8 @@ Set env vars on each platform — copy from `backend/.env.example` and `frontend
 
 **Seed demo data** (once, after the first successful deploy): with the production `DB_URL` set, run `make seed` (or `cd backend && go run ./cmd/seed`). It creates a `demo@turtask.app` login and a sample board with cards + a planning session so the app opens onto real content. Idempotent — re-running does nothing if the demo user already exists.
 
+**Seed demo data is still required for the "Try demo" button.** Each demo session clones the same sample board, and it adds the seeded `member@turtask.app` account to the clone as a second member. Without `make seed` the button still works, but every sandbox board is single-member. Expired sandboxes are purged in-process hourly (`DemoValidity`, 24h) — no cron job to configure. See [ADR 0010](adr/0010-per-visitor-demo-sandboxes.md).
+
 ### C. Cloud Run / ECS
 
 Use the existing Dockerfiles. Key extras:

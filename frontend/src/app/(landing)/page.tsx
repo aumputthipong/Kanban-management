@@ -6,6 +6,7 @@ import { ArrowRight, Calendar, Clock } from "lucide-react";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { apiClient } from "@/lib/apiClient";
+import { TryDemoButton } from "@/components/demo/TryDemoButton";
 import { LANDING_PATH, type UserSettings } from "@/types/userSettings";
 
 export const metadata: Metadata = {
@@ -210,13 +211,20 @@ export default async function LandingPage() {
               meeting — and the meeting is finally short.
             </p>
 
-            <Link
-              href="/dashboard"
-              className="mt-10 inline-flex items-center gap-2 bg-primary text-white px-7 py-3.5 font-semibold text-sm hover:bg-primary-hover active:scale-95 shadow-sm rounded-full transition-colors"
-            >
-              Open Workspace
-              <ArrowRight size={16} />
-            </Link>
+            <div className="mt-10 flex flex-wrap items-center gap-3">
+              <Link
+                href="/dashboard"
+                className="inline-flex items-center gap-2 bg-primary text-white px-7 py-3.5 font-semibold text-sm hover:bg-primary-hover active:scale-95 shadow-sm rounded-full transition-colors"
+              >
+                Open Workspace
+                <ArrowRight size={16} />
+              </Link>
+              <TryDemoButton />
+            </div>
+
+            <p className="mt-4 text-xs text-slate-400">
+              โหมดทดลองเปิดบอร์ดตัวอย่างให้ทันที ไม่ต้องสมัครหรือกรอกอีเมล
+            </p>
           </div>
 
           {/* Right — two task cards stacked & overlapping */}

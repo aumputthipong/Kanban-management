@@ -162,14 +162,16 @@ type TimeLog struct {
 }
 
 type User struct {
-	ID           string
-	Email        string
-	FullName     string
-	HourlyRate   pgtype.Numeric
-	PasswordHash *string
-	Provider     string
-	ProviderID   *string
-	CreatedAt    pgtype.Timestamptz
+	ID            string
+	Email         string
+	FullName      string
+	HourlyRate    pgtype.Numeric
+	PasswordHash  *string
+	Provider      string
+	ProviderID    *string
+	IsDemo        bool
+	DemoExpiresAt *time.Time
+	CreatedAt     pgtype.Timestamptz
 }
 
 type UserSetting struct {

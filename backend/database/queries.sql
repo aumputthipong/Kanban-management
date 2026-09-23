@@ -316,7 +316,7 @@ RETURNING *;
 SELECT * FROM users WHERE email = $1 LIMIT 1;
 
 -- name: GetUserByID :one
-SELECT id, email, full_name FROM users WHERE id = $1 LIMIT 1;
+SELECT id, email, full_name, is_demo FROM users WHERE id = $1 LIMIT 1;
 
 -- name: GetUserByProviderID :one
 SELECT * FROM users 
@@ -827,3 +827,41 @@ LIMIT 1;
 SELECT board_id, expires_at, revoked_at
 FROM board_invites
 WHERE token = $1;
+
+
+-- name: CreateDemoUser :one
+-- Throwaway sandbox identity for the "Try demo" button. No password hash: the
+-- account is unreachable through the login form, only through POST /api/auth/demo.
+INSERT INTO users (email, full_name, provider, is_demo, demo_expires_at)
+VALUES ($1, $2, 'demo', TRUE, $3)
+RETURNING *;
+
+-- name: ListExpiredDemoUserIDs :many
+SELECT id FROM users
+WHERE is_demo AND demo_expires_at IS NOT NULL AND demo_expires_at < now()
+LIMIT $1;
+
+-- name: DeleteBoardsOwnedBy :exec
+-- Cascades through columns, cards, members, tags, planning and each board's
+-- activities — the bulk of a sandbox goes in this one statement.
+DELETE FROM boards
+WHERE id IN (
+    SELECT board_id FROM board_members
+    WHERE user_id = ANY(@user_ids::uuid[]) AND role = 'owner'
+);
+
+-- name: DeleteActivitiesByActors :exec
+-- activities.actor_id has no ON DELETE clause, so a leftover row on a board the
+-- demo user did not own would block the user delete below.
+DELETE FROM activities WHERE actor_id = ANY(@user_ids::uuid[]);
+
+-- name: DeletePlanningCommentsByAuthors :exec
+-- Same reason as DeleteActivitiesByActors: author_id is a bare reference.
+DELETE FROM planning_item_comments WHERE author_id = ANY(@user_ids::uuid[]);
+
+-- name: DeleteTimeLogsByUsers :exec
+-- time_logs.user_id is ON DELETE RESTRICT.
+DELETE FROM time_logs WHERE user_id = ANY(@user_ids::uuid[]);
+
+-- name: DeleteUsersByIDs :execrows
+DELETE FROM users WHERE id = ANY(@user_ids::uuid[]);

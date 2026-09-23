@@ -320,6 +320,38 @@ func (q *Queries) CreateColumn(ctx context.Context, arg CreateColumnParams) (Cre
 	return i, err
 }
 
+const createDemoUser = `-- name: CreateDemoUser :one
+INSERT INTO users (email, full_name, provider, is_demo, demo_expires_at)
+VALUES ($1, $2, 'demo', TRUE, $3)
+RETURNING id, email, full_name, hourly_rate, password_hash, provider, provider_id, is_demo, demo_expires_at, created_at
+`
+
+type CreateDemoUserParams struct {
+	Email         string
+	FullName      string
+	DemoExpiresAt *time.Time
+}
+
+// Throwaway sandbox identity for the "Try demo" button. No password hash: the
+// account is unreachable through the login form, only through POST /api/auth/demo.
+func (q *Queries) CreateDemoUser(ctx context.Context, arg CreateDemoUserParams) (User, error) {
+	row := q.db.QueryRow(ctx, createDemoUser, arg.Email, arg.FullName, arg.DemoExpiresAt)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.FullName,
+		&i.HourlyRate,
+		&i.PasswordHash,
+		&i.Provider,
+		&i.ProviderID,
+		&i.IsDemo,
+		&i.DemoExpiresAt,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const createPlanningItem = `-- name: CreatePlanningItem :one
 INSERT INTO planning_items (session_id, type, title, description, position)
 VALUES ($1, $2, $3, $4, $5)
@@ -477,7 +509,7 @@ func (q *Queries) CreateTag(ctx context.Context, arg CreateTagParams) (Tag, erro
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (email, full_name, password_hash, provider, provider_id)
 VALUES ($1, $2, $3, $4, $5)
-RETURNING id, email, full_name, hourly_rate, password_hash, provider, provider_id, created_at
+RETURNING id, email, full_name, hourly_rate, password_hash, provider, provider_id, is_demo, demo_expires_at, created_at
 `
 
 type CreateUserParams struct {
@@ -505,9 +537,37 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.PasswordHash,
 		&i.Provider,
 		&i.ProviderID,
+		&i.IsDemo,
+		&i.DemoExpiresAt,
 		&i.CreatedAt,
 	)
 	return i, err
+}
+
+const deleteActivitiesByActors = `-- name: DeleteActivitiesByActors :exec
+DELETE FROM activities WHERE actor_id = ANY($1::uuid[])
+`
+
+// activities.actor_id has no ON DELETE clause, so a leftover row on a board the
+// demo user did not own would block the user delete below.
+func (q *Queries) DeleteActivitiesByActors(ctx context.Context, userIds []string) error {
+	_, err := q.db.Exec(ctx, deleteActivitiesByActors, userIds)
+	return err
+}
+
+const deleteBoardsOwnedBy = `-- name: DeleteBoardsOwnedBy :exec
+DELETE FROM boards
+WHERE id IN (
+    SELECT board_id FROM board_members
+    WHERE user_id = ANY($1::uuid[]) AND role = 'owner'
+)
+`
+
+// Cascades through columns, cards, members, tags, planning and each board's
+// activities — the bulk of a sandbox goes in this one statement.
+func (q *Queries) DeleteBoardsOwnedBy(ctx context.Context, userIds []string) error {
+	_, err := q.db.Exec(ctx, deleteBoardsOwnedBy, userIds)
+	return err
 }
 
 const deleteCard = `-- name: DeleteCard :exec
@@ -525,6 +585,16 @@ DELETE FROM columns WHERE id = $1
 
 func (q *Queries) DeleteColumn(ctx context.Context, id string) error {
 	_, err := q.db.Exec(ctx, deleteColumn, id)
+	return err
+}
+
+const deletePlanningCommentsByAuthors = `-- name: DeletePlanningCommentsByAuthors :exec
+DELETE FROM planning_item_comments WHERE author_id = ANY($1::uuid[])
+`
+
+// Same reason as DeleteActivitiesByActors: author_id is a bare reference.
+func (q *Queries) DeletePlanningCommentsByAuthors(ctx context.Context, userIds []string) error {
+	_, err := q.db.Exec(ctx, deletePlanningCommentsByAuthors, userIds)
 	return err
 }
 
@@ -568,6 +638,28 @@ type DeleteTagParams struct {
 func (q *Queries) DeleteTag(ctx context.Context, arg DeleteTagParams) error {
 	_, err := q.db.Exec(ctx, deleteTag, arg.ID, arg.BoardID)
 	return err
+}
+
+const deleteTimeLogsByUsers = `-- name: DeleteTimeLogsByUsers :exec
+DELETE FROM time_logs WHERE user_id = ANY($1::uuid[])
+`
+
+// time_logs.user_id is ON DELETE RESTRICT.
+func (q *Queries) DeleteTimeLogsByUsers(ctx context.Context, userIds []string) error {
+	_, err := q.db.Exec(ctx, deleteTimeLogsByUsers, userIds)
+	return err
+}
+
+const deleteUsersByIDs = `-- name: DeleteUsersByIDs :execrows
+DELETE FROM users WHERE id = ANY($1::uuid[])
+`
+
+func (q *Queries) DeleteUsersByIDs(ctx context.Context, userIds []string) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteUsersByIDs, userIds)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const getActiveBoardInvite = `-- name: GetActiveBoardInvite :one
@@ -1724,7 +1816,7 @@ func (q *Queries) GetTagsByCardIDs(ctx context.Context, dollar_1 []string) ([]Ge
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, email, full_name, hourly_rate, password_hash, provider, provider_id, created_at FROM users WHERE email = $1 LIMIT 1
+SELECT id, email, full_name, hourly_rate, password_hash, provider, provider_id, is_demo, demo_expires_at, created_at FROM users WHERE email = $1 LIMIT 1
 `
 
 func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error) {
@@ -1738,30 +1830,38 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 		&i.PasswordHash,
 		&i.Provider,
 		&i.ProviderID,
+		&i.IsDemo,
+		&i.DemoExpiresAt,
 		&i.CreatedAt,
 	)
 	return i, err
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, email, full_name FROM users WHERE id = $1 LIMIT 1
+SELECT id, email, full_name, is_demo FROM users WHERE id = $1 LIMIT 1
 `
 
 type GetUserByIDRow struct {
 	ID       string
 	Email    string
 	FullName string
+	IsDemo   bool
 }
 
 func (q *Queries) GetUserByID(ctx context.Context, id string) (GetUserByIDRow, error) {
 	row := q.db.QueryRow(ctx, getUserByID, id)
 	var i GetUserByIDRow
-	err := row.Scan(&i.ID, &i.Email, &i.FullName)
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.FullName,
+		&i.IsDemo,
+	)
 	return i, err
 }
 
 const getUserByProviderID = `-- name: GetUserByProviderID :one
-SELECT id, email, full_name, hourly_rate, password_hash, provider, provider_id, created_at FROM users 
+SELECT id, email, full_name, hourly_rate, password_hash, provider, provider_id, is_demo, demo_expires_at, created_at FROM users 
 WHERE provider = $1 AND provider_id = $2 
 LIMIT 1
 `
@@ -1782,6 +1882,8 @@ func (q *Queries) GetUserByProviderID(ctx context.Context, arg GetUserByProvider
 		&i.PasswordHash,
 		&i.Provider,
 		&i.ProviderID,
+		&i.IsDemo,
+		&i.DemoExpiresAt,
 		&i.CreatedAt,
 	)
 	return i, err
@@ -2014,6 +2116,32 @@ func (q *Queries) ListActivitiesByBoardBefore(ctx context.Context, arg ListActiv
 			return nil, err
 		}
 		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listExpiredDemoUserIDs = `-- name: ListExpiredDemoUserIDs :many
+SELECT id FROM users
+WHERE is_demo AND demo_expires_at IS NOT NULL AND demo_expires_at < now()
+LIMIT $1
+`
+
+func (q *Queries) ListExpiredDemoUserIDs(ctx context.Context, limit int32) ([]string, error) {
+	rows, err := q.db.Query(ctx, listExpiredDemoUserIDs, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -2862,7 +2990,7 @@ ON CONFLICT (email)
 DO UPDATE SET 
     full_name = EXCLUDED.full_name,
     provider_id = EXCLUDED.provider_id
-RETURNING id, email, full_name, hourly_rate, password_hash, provider, provider_id, created_at
+RETURNING id, email, full_name, hourly_rate, password_hash, provider, provider_id, is_demo, demo_expires_at, created_at
 `
 
 type UpsertOAuthUserParams struct {
@@ -2888,6 +3016,8 @@ func (q *Queries) UpsertOAuthUser(ctx context.Context, arg UpsertOAuthUserParams
 		&i.PasswordHash,
 		&i.Provider,
 		&i.ProviderID,
+		&i.IsDemo,
+		&i.DemoExpiresAt,
 		&i.CreatedAt,
 	)
 	return i, err

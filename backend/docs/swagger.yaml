@@ -169,6 +169,15 @@ definitions:
         - DONE
         type: string
       color:
+        enum:
+        - slate
+        - blue
+        - purple
+        - green
+        - amber
+        - rose
+        - pink
+        - cyan
         type: string
       title:
         maxLength: 100
@@ -335,10 +344,6 @@ definitions:
         maxLength: 10000
         type: string
       priority:
-        enum:
-        - low
-        - medium
-        - high
         type: string
       tag_ids:
         items:
@@ -357,6 +362,15 @@ definitions:
         - DONE
         type: string
       color:
+        enum:
+        - slate
+        - blue
+        - purple
+        - green
+        - amber
+        - rose
+        - pink
+        - cyan
         type: string
       title:
         maxLength: 100
@@ -398,6 +412,19 @@ definitions:
   internal_handler.authUserResponse:
     properties:
       email:
+        type: string
+      full_name:
+        type: string
+      id:
+        type: string
+    type: object
+  internal_handler.demoSessionResponse:
+    properties:
+      board_id:
+        type: string
+      email:
+        type: string
+      expires_at:
         type: string
       full_name:
         type: string
@@ -469,6 +496,26 @@ info:
   title: Turtask API
   version: "1.0"
 paths:
+  /api/auth/demo:
+    post:
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/internal_handler.demoSessionResponse'
+        "429":
+          description: too many demo sessions from this IP
+          schema:
+            $ref: '#/definitions/github_com_aumputthipong_mini-erp-kanban_backend_internal_httputil.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/github_com_aumputthipong_mini-erp-kanban_backend_internal_httputil.ErrorResponse'
+      summary: Start a demo session
+      tags:
+      - auth
   /api/auth/login:
     post:
       consumes:

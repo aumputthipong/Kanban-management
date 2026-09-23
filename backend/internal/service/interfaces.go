@@ -128,6 +128,14 @@ type AuthServicer interface {
 	RevokeRefreshToken(ctx context.Context, rawToken string) error
 }
 
+// DemoServicer is the seam the demo-login path depends on. Separate from
+// AuthServicer: minting a throwaway sandbox is provisioning, not authentication,
+// and every other auth caller would have to stub it.
+type DemoServicer interface {
+	CreateSandbox(ctx context.Context, companionEmail string) (DemoSandbox, error)
+	PurgeExpired(ctx context.Context) (int64, error)
+}
+
 // InviteServicer is the seam the InviteHandler depends on (board invite links).
 type InviteServicer interface {
 	CreateInvite(ctx context.Context, boardID, creatorID string) (InviteLink, error)

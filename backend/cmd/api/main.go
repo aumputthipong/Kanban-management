@@ -72,9 +72,8 @@ type config struct {
 }
 
 // trustedProxyCount reads TRUSTED_PROXY_COUNT: how many proxies sit in front of this
-// server. Defaults to 1, matching both deploy shapes in docs/DEPLOY.md (Render, nginx);
-// set 0 when the binary is exposed directly, or the X-Forwarded-For it trusts is the
-// client's own and rate-limit keys become forgeable.
+// server. Defaults to 1 (Render, nginx — both shapes in docs/DEPLOY.md); set 0 when the
+// binary is exposed directly, or a client's own X-Forwarded-For becomes its limiter key.
 func trustedProxyCount() int {
 	raw := os.Getenv("TRUSTED_PROXY_COUNT")
 	if raw == "" {

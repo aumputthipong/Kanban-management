@@ -11,8 +11,7 @@ import (
 
 // ClientIPResolver decides which address identifies the caller, for every limiter below.
 // trustedProxies is how many proxies sit in front of this server (Render or nginx = 1,
-// 0 = directly exposed). Set it too low and a client can forge its own key, so
-// docs/DEPLOY.md documents verifying the resolved IP once after a deploy.
+// 0 = directly exposed). Too low and a client can forge its key — verify per docs/DEPLOY.md.
 func ClientIPResolver(trustedProxies int) func(http.Handler) http.Handler {
 	if trustedProxies < 1 {
 		return func(next http.Handler) http.Handler { return chiMiddleware.ClientIPFromRemoteAddr(next) }
@@ -43,9 +42,8 @@ func AuthRateLimit() func(http.Handler) http.Handler {
 }
 
 // DemoRateLimit caps POST /api/auth/demo. Each call writes a user and a whole seeded
-// board that lives 24h, so an unlimited loop would fill the database. 30 per hour is
-// out of reach for someone clicking, and leaves room for an office NAT where a whole
-// team shares one address.
+// board that lives 24h, so an unlimited loop would fill the database. 30/hour is out of
+// reach for someone clicking, and leaves room for an office NAT sharing one address.
 func DemoRateLimit() func(http.Handler) http.Handler {
 	return httprate.LimitBy(30, time.Hour, keyByClientIP)
 }

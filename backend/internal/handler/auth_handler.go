@@ -307,10 +307,11 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) error {
 		return httputil.NewAPIError(http.StatusInternalServerError, "Failed to load user", err)
 	}
 	httputil.RespondJSON(w, http.StatusOK, map[string]any{
-		"user_id":   user.ID,
-		"email":     user.Email,
-		"full_name": user.FullName,
-		"is_demo":   user.IsDemo,
+		"user_id":         user.ID,
+		"email":           user.Email,
+		"full_name":       user.FullName,
+		"is_demo":         user.IsDemo,
+		"demo_expires_at": user.DemoExpiresAt,
 	})
 	return nil
 }

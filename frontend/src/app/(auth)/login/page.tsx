@@ -156,7 +156,7 @@ function LoginForm() {
       <div className="mt-6 pt-6 border-t border-slate-200">
         <TryDemoButton variant="quiet" label="Try demo" />
         <p className="text-center text-xs text-slate-400 mt-2">
-          เข้าดูบอร์ดตัวอย่างโดยไม่ต้องสมัคร
+          เข้าดูบอร์ดตัวอย่างโดยไม่ต้องสมัคร บอร์ดจะถูกลบใน 24 ชั่วโมง
         </p>
       </div>
     </div>

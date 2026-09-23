@@ -316,7 +316,7 @@ RETURNING *;
 SELECT * FROM users WHERE email = $1 LIMIT 1;
 
 -- name: GetUserByID :one
-SELECT id, email, full_name, is_demo FROM users WHERE id = $1 LIMIT 1;
+SELECT id, email, full_name, is_demo, demo_expires_at FROM users WHERE id = $1 LIMIT 1;
 
 -- name: GetUserByProviderID :one
 SELECT * FROM users 

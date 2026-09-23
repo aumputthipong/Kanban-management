@@ -224,6 +224,7 @@ export default async function LandingPage() {
 
             <p className="mt-4 text-xs text-slate-400">
               โหมดทดลองเปิดบอร์ดตัวอย่างให้ทันที ไม่ต้องสมัครหรือกรอกอีเมล
+              บอร์ดเป็นของคุณคนเดียวและจะถูกลบอัตโนมัติใน 24 ชั่วโมง
             </p>
           </div>
 

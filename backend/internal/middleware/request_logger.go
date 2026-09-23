@@ -41,6 +41,7 @@ func RequestLogger(next http.Handler) http.Handler {
 				"bytes", ww.BytesWritten(),
 				"duration_ms", time.Since(start).Milliseconds(),
 				"remote_addr", r.RemoteAddr,
+				"client_ip", chiMiddleware.GetClientIP(r.Context()),
 				"request_id", chiMiddleware.GetReqID(r.Context()),
 			)
 		}()

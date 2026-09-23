@@ -158,8 +158,22 @@ Before running `down`, take a fresh `pg_dump` — `down` migrations may drop col
 - Likely Cloudflare / proxy idle timeout. Either bump the proxy's `proxy_read_timeout` past your idle window or wait for the heartbeat work in P1.
 
 ### Rate limit too aggressive
-- Defaults: 20/min/IP for `/api/auth`, 300/min/IP for protected. If a legitimate caller hits the limit, edit `internal/middleware/ratelimit.go` and redeploy.
-- For a single trusted IP that needs more, bypass `httprate.LimitByIP` with a custom `KeyFunc` that returns a constant for that IP.
+- Defaults: 20/min/IP for `/api/auth`, 30/hour/IP for `POST /api/auth/demo`, 300/min/IP for protected. If a legitimate caller hits the limit, edit `internal/middleware/ratelimit.go` and redeploy.
+- For a single trusted IP that needs more, wrap it with a custom `KeyFunc` that returns a constant for that IP.
+
+### Rate limit counts everyone as one caller (verify after every new deploy target)
+Limits key off the client IP, which behind a proxy has to come from `X-Forwarded-For`. `TRUSTED_PROXY_COUNT` says how many proxies to skip: **1** for Render / nginx / a single load balancer (the default), **2** with Cloudflare in front of one, **0** when the binary is exposed directly.
+
+Verify once, from a machine whose public IP you know:
+
+```bash
+curl -s $PROD/healthz > /dev/null   # then read the backend log line for this request
+# "http request" ... remote_addr=<proxy> client_ip=<should be YOUR public IP>
+```
+
+- `client_ip` equals your public IP → correct.
+- `client_ip` equals a proxy address → the count is too **low**. Clients can forge `X-Forwarded-For` and dodge the limit; raise it and redeploy.
+- `client_ip` empty → the count is too **high**. No leak, but every caller falls back to the socket address, so a shared proxy means a shared bucket.
 
 ### "Unauthorized" loop after deploy
 - **Split-domain deploy (frontend ≠ backend site):** the auth cookie is `SameSite=Lax/Strict` by default, so the browser won't send it cross-site — login succeeds, the next request is 401. Fix: set **`COOKIE_CROSS_SITE=true`** on the backend (→ `SameSite=None; Secure`). Both ends must be HTTPS.

@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -67,6 +68,23 @@ type config struct {
 	SkipMigrations     bool
 	Production         bool
 	CrossSite          bool
+	TrustedProxies     int
+}
+
+// trustedProxyCount reads TRUSTED_PROXY_COUNT: how many proxies sit in front of this
+// server. Defaults to 1 (Render, nginx — both shapes in docs/DEPLOY.md); set 0 when the
+// binary is exposed directly, or a client's own X-Forwarded-For becomes its limiter key.
+func trustedProxyCount() int {
+	raw := os.Getenv("TRUSTED_PROXY_COUNT")
+	if raw == "" {
+		return 1
+	}
+	n, err := strconv.Atoi(raw)
+	if err != nil || n < 0 {
+		slog.Error("TRUSTED_PROXY_COUNT must be a non-negative integer", "value", raw)
+		os.Exit(1)
+	}
+	return n
 }
 
 func loadConfig() config {
@@ -81,6 +99,7 @@ func loadConfig() config {
 		GoogleRedirect:     os.Getenv("GOOGLE_REDIRECT_URL"),
 		MigrationsPath:     os.Getenv("MIGRATIONS_PATH"),
 		SkipMigrations:     os.Getenv("SKIP_MIGRATIONS") == "true",
+		TrustedProxies:     trustedProxyCount(),
 	}
 	if cfg.DBUrl == "" {
 		slog.Error("DB_URL is required but not set")
@@ -210,6 +229,7 @@ func run(ctx context.Context, cfg config) error {
 		pool:            pool,
 		version:         version,
 		production:      cfg.Production,
+		trustedProxies:  cfg.TrustedProxies,
 		startedAt:       startedAt,
 	})
 
@@ -227,7 +247,7 @@ func run(ctx context.Context, cfg config) error {
 	go demoService.StartPurgeLoop(ctx, demoPurgeInterval)
 
 	go func() {
-		slog.Info("server listening", "port", cfg.Port, "version", version)
+		slog.Info("server listening", "port", cfg.Port, "version", version, "trusted_proxies", cfg.TrustedProxies)
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			slog.Error("listen failed", "err", err)
 			os.Exit(1)

@@ -37,6 +37,7 @@ type routerDeps struct {
 	pool            *pgxpool.Pool
 	version         string
 	production      bool
+	trustedProxies  int
 	startedAt       time.Time
 }
 
@@ -47,6 +48,9 @@ func setupRoutes(d routerDeps) http.Handler {
 	// becomes a 500. RequestLogger replaces chi's Logger to redact sensitive query
 	// strings (OAuth code/state, the WS ticket) before they reach any sink.
 	r.Use(chiMiddleware.RequestID)
+	// Before RequestLogger so the log line carries the resolved caller, and before
+	// every rate limiter, which key off it.
+	r.Use(middleware.ClientIPResolver(d.trustedProxies))
 	r.Use(middleware.RequestLogger)
 	r.Use(observability.SentryRecoverer())
 	r.Use(chiMiddleware.Recoverer)

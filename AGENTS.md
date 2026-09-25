@@ -14,6 +14,7 @@ Working agreement สำหรับ AI coding agents ที่เข้าม�
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — layered design, permission matrix, WS hub, ที่จงใจไม่ทำ
 - [`docs/DATABASE.md`](docs/DATABASE.md) — ERD, table notes, migration rules
 - [`docs/DEPLOY.md`](docs/DEPLOY.md) — runbook
+- [`docs/CODE-NOTES.md`](docs/CODE-NOTES.md) — *why* the code looks the way it does (rationale that used to live in comments)
 - [`frontend/design.md`](frontend/design.md) — **design system tokens** (อ่านก่อนแตะ UI ทุกครั้ง)
 
 ---
@@ -224,6 +225,8 @@ The **Team** tab (`overview/TeamTabContent` → `TeamOwnershipList`) answers **"
 | **One-line API doc** | `/** Scrolls the page to the features section. */` | Only when the name + types don't already say it. Never on every export |
 | **Trap** | `// 404 not 403: anti-enumeration (docs/adr/0004)` | One line at the spot where the mistake would be made, pointing to docs for the why |
 | **Tool directive** | `//go:build`, `// eslint-disable-next-line x -- why`, `//nolint`, Swagger `// @Router` | Exempt |
+
+**Swagger annotations are not comments.** The `// @Summary` … `// @Router` block above each handler is input for `swag` (`make swag` → `backend/docs`, served as Swagger UI). Deleting one silently drops that endpoint from the API docs. Keep them, and don't add a godoc line above them that repeats `@Summary`.
 
 Everything else — design rationale, history ("the old X did Y"), step-by-step narration, restating the next line — does **not** go in code:
 

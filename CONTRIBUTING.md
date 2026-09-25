@@ -73,7 +73,7 @@ make swag
 - [ ] Branch follows the prefix table above
 - [ ] CI is green on the PR
 - [ ] Tests added or updated for the change
-- [ ] Docs updated if behaviour changed (`docs/`, `README`, godoc / JSDoc on exported symbols)
+- [ ] Docs updated if behaviour changed (`docs/`, `docs/CODE-NOTES.md`, `README`)
 - [ ] Migration files included if the schema changed (additive forward, see `docs/DATABASE.md`)
 - [ ] OpenAPI spec regenerated if handler annotations changed
 - [ ] No secrets committed (`.env`, credentials)
@@ -88,8 +88,9 @@ Deploying: [`docs/DEPLOY.md`](docs/DEPLOY.md) covers the pre-flight checklist, t
 
 ## Code style
 
-- **Go** — `gofmt` clean, lint-clean, godoc on exported symbols. Prefer concrete types over `interface{}`. Service-layer methods take `context.Context` first.
-- **TypeScript** — strict mode is on; don't add `any` to silence the compiler. JSDoc on hooks and stores any contributor will read first.
+- **Go** — `gofmt` clean, lint-clean. Keep Swagger `// @...` annotations on handlers. Prefer concrete types over `interface{}`. Service-layer methods take `context.Context` first.
+- **TypeScript** — strict mode is on; don't add `any` to silence the compiler.
+- **Comments** — default to none; explanations go in `docs/CODE-NOTES.md` or an ADR. See AGENTS.md "Comment & doc conventions" ([ADR 0011](docs/adr/0011-minimal-comments.md)).
 - **CSS / Tailwind v4** — utility classes in JSX; arbitrary values only when the design literally requires it. No emoji in code unless explicitly requested.
 - Keep changes minimal and on-topic. A bug fix is not a license to refactor surrounding code.
 

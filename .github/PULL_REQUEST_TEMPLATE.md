@@ -14,7 +14,7 @@
 
 - [ ] Branch name follows the prefix in [`CONTRIBUTING.md`](../CONTRIBUTING.md#branch-naming) (`feat/`, `fix/`, `refactor/`, etc.)
 - [ ] CI is green
-- [ ] Docs updated if behaviour changed (`docs/`, `README`, godoc / JSDoc on exported symbols)
+- [ ] Docs updated if behaviour changed (`docs/`, `docs/CODE-NOTES.md`, `README`)
 - [ ] Migration files included if the schema changed — additive forward (see [`docs/DATABASE.md`](../docs/DATABASE.md))
 - [ ] OpenAPI spec regenerated (`make swag`) if handler annotations changed
 - [ ] sqlc regenerated (`make sqlc`) and committed together with query changes

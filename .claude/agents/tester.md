@@ -51,7 +51,7 @@ layer and running it — not to pad coverage with brittle tests.
 
 ## Constraints
 
-- Code comments are concise English explaining *why*, not restating the line.
+- Code comments follow AGENTS.md "Comment & doc conventions": default to none, one line max for a trap.
 - No `any` / `@ts-ignore` without a one-line reason comment.
 - Frontend: respect React 19 rules (no synchronous `setState` in `useEffect`
   body; add cancel guards in fetch effects).

@@ -22,6 +22,9 @@ export const COLUMN_COLOR_PALETTE: {
   { key: "cyan", hex: "#22d3ee", label: "Cyan" },
 ];
 
+// Slate is dropped for columns: Default already renders the same grey.
+const COLUMN_SWATCHES = COLUMN_COLOR_PALETTE.filter((c) => c.key !== "slate");
+
 export function getColumnColorHex(key?: string | null): string | null {
   return COLUMN_COLOR_PALETTE.find((c) => c.key === (key ?? null))?.hex ?? null;
 }
@@ -32,17 +35,9 @@ export function columnAccentColor(hex: string | null, isDone: boolean): string {
   return hex ?? (isDone ? "#10b981" : "#94a3b8");
 }
 
-/** Darkened toward ink so white cap text stays legible on pastels. */
-export function columnCapColor(accent: string): string {
+/** Darkened toward ink so a 3px bar still reads on pastels. */
+export function columnBarColor(accent: string): string {
   return `color-mix(in oklab, ${accent} 68%, #0f172a)`;
-}
-
-export function columnBodyBg(accent: string, hot = false): string {
-  return `color-mix(in oklab, ${accent} ${hot ? 12 : 6}%, white)`;
-}
-
-export function columnBodyBorder(accent: string, hot = false): string {
-  return `color-mix(in oklab, ${accent} ${hot ? 42 : 20}%, white)`;
 }
 
 // Props
@@ -78,7 +73,9 @@ export function ColumnOptionsModal({
   // Column.tsx remounts this per open via `key`, so state starts fresh.
   const [title, setTitle] = useState(initialTitle);
   const [category, setCategory] = useState<"TODO" | "DONE">(initialCategory);
-  const [color, setColor] = useState<string | null>(initialColor);
+  const [color, setColor] = useState<string | null>(
+    initialColor === "slate" ? null : initialColor,
+  );
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
   useEffect(() => {
@@ -101,8 +98,7 @@ export function ColumnOptionsModal({
 
   const selectedHex = getColumnColorHex(color);
   const accent = columnAccentColor(selectedHex, category === "DONE");
-  const capColor = columnCapColor(accent);
-  const bodyBg = columnBodyBg(accent);
+  const barColor = columnBarColor(accent);
 
   return createPortal(
     <>
@@ -176,47 +172,52 @@ export function ColumnOptionsModal({
               </label>
 
               {/* Preview */}
-              <div className="rounded-lg border border-slate-100 overflow-hidden">
-                <div
-                  className="flex items-center gap-2 px-3 h-9"
-                  style={{ backgroundColor: capColor }}
-                >
-                  {category === "DONE" && (
-                    <CircleCheck size={14} className="text-white shrink-0" />
+              <div className="relative overflow-hidden rounded-lg border border-slate-200 bg-slate-100">
+                <span
+                  aria-hidden
+                  className="absolute inset-x-0 top-0 h-0.75"
+                  style={{ backgroundColor: barColor }}
+                />
+                <div className="flex items-center gap-2 px-3 h-9 border-b border-slate-200">
+                  {category === "DONE" ? (
+                    <CircleCheck size={14} className="shrink-0" style={{ color: barColor }} />
+                  ) : (
+                    <span
+                      className="h-1.25 w-1.25 shrink-0 rounded-full"
+                      style={{ backgroundColor: barColor }}
+                    />
                   )}
-                  <span className="flex-1 min-w-0 truncate text-sm font-bold text-white">
+                  <span className="flex-1 min-w-0 truncate text-sm font-semibold text-slate-900">
                     {title.trim() || "ชื่อคอลัมน์"}
                   </span>
-                  <span className="min-w-5 rounded-full bg-white/25 px-2 py-0.5 text-center text-xs font-bold text-white">
+                  <span className="min-w-5 rounded-full border border-slate-200 bg-white px-2 py-0.5 text-center text-xs font-semibold text-slate-600">
                     {cardCount}
                   </span>
                 </div>
-                <div className="px-3 py-2.5" style={{ backgroundColor: bodyBg }}>
-                  <div className="h-2 w-2/3 rounded bg-white/80" />
+                <div className="px-3 py-2.5">
+                  <div className="h-2 w-2/3 rounded bg-white" />
                 </div>
               </div>
 
               {/* Swatches */}
               <div className="flex flex-wrap gap-2">
-                {COLUMN_COLOR_PALETTE.map(({ key, hex, label }) => {
+                {COLUMN_SWATCHES.map(({ key, hex, label }) => {
                   const isSel = color === key;
                   return (
                     <button
                       key={String(key)}
                       onClick={() => setColor(key)}
-                      title={label}
+                      title={key ? label : "Default — สีตามประเภทคอลัมน์"}
                       aria-label={label}
                       className={`w-7 h-7 rounded-full flex items-center justify-center ring-2 ring-offset-2 ring-offset-white transition ${
                         isSel ? "ring-slate-700" : "ring-transparent hover:ring-slate-300"
                       }`}
-                      style={{ backgroundColor: hex ?? "#e2e8f0" }}
+                      style={{
+                        backgroundColor: columnAccentColor(hex, category === "DONE"),
+                      }}
                     >
                       {isSel && (
-                        <Check
-                          size={13}
-                          strokeWidth={3}
-                          className={key ? "text-white" : "text-slate-600"}
-                        />
+                        <Check size={13} strokeWidth={3} className="text-white" />
                       )}
                     </button>
                   );

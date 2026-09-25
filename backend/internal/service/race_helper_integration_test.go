@@ -4,8 +4,6 @@ package service_test
 
 import "sync"
 
-// raceN releases n goroutines at once and returns each call's error, so a test can
-// assert on how the losers of a read-then-write race are reported.
 func raceN(n int, fn func() error) []error {
 	var wg sync.WaitGroup
 	errs := make([]error, n)

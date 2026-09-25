@@ -1,10 +1,7 @@
-// Package core holds domain types that don't depend on any other internal
-// package — primary keys, enums, and value objects. Anything here can be
-// imported by every other package without creating a cycle.
+// Package core holds dependency-free domain types, importable from anywhere.
 package core
 
-// BoardRole is the per-board permission level a user holds. Values map 1:1
-// to the `role` column on the board_members table.
+// BoardRole maps 1:1 to board_members.role.
 type BoardRole string
 
 const (
@@ -13,8 +10,6 @@ const (
 	RoleMember  BoardRole = "member"
 )
 
-// IsValid reports whether r is one of the known role values. Use this to
-// reject unknown role strings coming in from API payloads before persisting.
 func (r BoardRole) IsValid() bool {
 	switch r {
 	case RoleOwner, RoleManager, RoleMember:

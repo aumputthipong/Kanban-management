@@ -1,8 +1,5 @@
 //go:build integration
 
-// Integration tests for BoardService's card methods. UpdateCard is transactional and merges
-// every field in SQL, so an edit never overwrites a field it did not send — including under
-// concurrency, which only a real Postgres can show.
 package service_test
 
 import (
@@ -64,9 +61,7 @@ func (f *cardFixture) cardTags(ctx context.Context, t *testing.T) []string {
 	return ids
 }
 
-// ────────────────────────────────────────────────
 // UpdateCard — basic fields
-// ────────────────────────────────────────────────
 
 func TestUpdateCard_Success_UpdatesGivenFields(t *testing.T) {
 	ctx := context.Background()
@@ -83,7 +78,6 @@ func TestUpdateCard_Success_UpdatesGivenFields(t *testing.T) {
 	assert.Equal(t, "New description", *updated.Card.Description)
 }
 
-// nil means "no change" for every field; a field the caller did not send keeps its value.
 func TestUpdateCard_NilFields_LeaveStoredValuesAlone(t *testing.T) {
 	ctx := context.Background()
 	f := newCardFixture(t)
@@ -116,7 +110,6 @@ func TestUpdateCard_NilFields_LeaveStoredValuesAlone(t *testing.T) {
 	require.NotNil(t, util.PgNumericToFloat64Ptr(c.EstimatedHours))
 }
 
-// Set with a nil Value is the only way to clear a nullable column.
 func TestUpdateCard_SetNil_ClearsNullableColumns(t *testing.T) {
 	ctx := context.Background()
 	f := newCardFixture(t)
@@ -149,8 +142,7 @@ func TestUpdateCard_SetNil_ClearsNullableColumns(t *testing.T) {
 	assert.Equal(t, "Test Card", c.Title, "clearing other fields must not touch the title")
 }
 
-// Regression for T2: the handler used to read the card, merge the request, and write every
-// column back, so two edits of different fields raced and the later write undid the other.
+// Regression (T2): concurrent edits of different fields must both land.
 func TestUpdateCard_ConcurrentDifferentFieldEdits_BothLand(t *testing.T) {
 	ctx := context.Background()
 	f := newCardFixture(t)
@@ -183,8 +175,7 @@ func TestUpdateCard_ConcurrentDifferentFieldEdits_BothLand(t *testing.T) {
 	}
 }
 
-// An update that only touches the title must not wipe acceptance_criteria /
-// implementation_note that PromoteItem copied in from a planning item.
+// Promoted dev fields must survive a title-only edit.
 func TestUpdateCard_AcceptanceCriteriaAndNote_PreservedWhenNotTouched(t *testing.T) {
 	ctx := context.Background()
 	f := newCardFixture(t)
@@ -196,8 +187,6 @@ func TestUpdateCard_AcceptanceCriteriaAndNote_PreservedWhenNotTouched(t *testing
 	})
 	require.NoError(t, err)
 
-	// A later edit that only changes the title, and passes nil for both —
-	// PATCH semantics: nil means "don't touch".
 	updated, err := f.svc.UpdateCard(ctx, service.UpdateCardParams{
 		ID: f.cardID, Title: util.StringToPtr("Renamed"), AcceptanceCriteria: nil, ImplementationNote: nil,
 	})
@@ -210,9 +199,7 @@ func TestUpdateCard_AcceptanceCriteriaAndNote_PreservedWhenNotTouched(t *testing
 	assert.Equal(t, note, *updated.Card.ImplementationNote, "dev note must survive an edit that never touched it")
 }
 
-// ────────────────────────────────────────────────
 // UpdateCard — tags
-// ────────────────────────────────────────────────
 
 func TestUpdateCard_NilTagIDs_LeavesExistingTagsUntouched(t *testing.T) {
 	ctx := context.Background()
@@ -227,7 +214,7 @@ func TestUpdateCard_NilTagIDs_LeavesExistingTagsUntouched(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, []string{tag}, f.cardTags(ctx, t), "nil TagIDs must mean \"don't touch tags\", not \"clear them\"")
-	// The handler broadcasts res.Tags; returning empty here would wipe tags on every client.
+	// The handler broadcasts res.Tags; empty would wipe them everywhere.
 	require.Len(t, res.Tags, 1)
 	assert.Equal(t, tag, res.Tags[0].ID)
 }
@@ -270,9 +257,7 @@ func TestUpdateCard_ReplaceTagIDs_SwapsToExactlyTheNewSet(t *testing.T) {
 	assert.Equal(t, "new", res.Tags[0].Name)
 }
 
-// The >5 tag check runs AFTER qtx.UpdateCard applied the field change, in the same
-// transaction — the whole reason UpdateCard needs one. Confirms both halves: the error
-// surfaces and the earlier title change rolls back with it.
+// The >5 tag check runs after the field update, so the title change must roll back.
 func TestUpdateCard_MoreThanFiveTags_ErrorsAndRollsBackEntireUpdate(t *testing.T) {
 	ctx := context.Background()
 	f := newCardFixture(t)
@@ -294,9 +279,7 @@ func TestUpdateCard_MoreThanFiveTags_ErrorsAndRollsBackEntireUpdate(t *testing.T
 	assert.Empty(t, f.cardTags(ctx, t), "no tags should have been attached either")
 }
 
-// ────────────────────────────────────────────────
 // GetCardDetail
-// ────────────────────────────────────────────────
 
 func TestGetCardDetail_AggregatesSubtasksAndTags(t *testing.T) {
 	ctx := context.Background()

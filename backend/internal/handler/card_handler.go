@@ -20,8 +20,7 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// boardMembership checks that userID is a member of boardID and returns the role,
-// mirroring the RequireBoardMember middleware: non-members get 404, never 403.
+// Mirrors RequireBoardMember: non-members get 404, never 403.
 func boardMembership(ctx context.Context, svc service.BoardServicer, boardID, userID string) (core.BoardRole, *httputil.APIError) {
 	role, err := svc.GetBoardMemberRole(ctx, boardID, userID)
 	if err != nil {
@@ -33,8 +32,7 @@ func boardMembership(ctx context.Context, svc service.BoardServicer, boardID, us
 	return core.BoardRole(role), nil
 }
 
-// canEditCard is the card edit rule, and the subtask rule with it: creator or assignee,
-// otherwise manager or above. frontend/src/hooks/useCanEdit.ts mirrors it.
+// Creator or assignee, else manager+. Mirrored by frontend useCanEdit.
 func canEditCard(card db.Card, userID string, role core.BoardRole) bool {
 	isOwnCard := (card.CreatedBy != nil && *card.CreatedBy == userID) ||
 		(card.AssigneeID != nil && *card.AssigneeID == userID)
@@ -45,9 +43,6 @@ func (h *BoardHandler) requireBoardMembership(r *http.Request, boardID, userID s
 	return boardMembership(r.Context(), h.boardService, boardID, userID)
 }
 
-// UpdateCard partially updates a card. Used for inline edits + drag-and-drop
-// (column_id and position changes broadcast CARD_MOVED).
-//
 // @Summary  Update card
 // @Tags     cards
 // @Accept   json
@@ -69,7 +64,7 @@ func (h *BoardHandler) UpdateCard(w http.ResponseWriter, r *http.Request) error 
 	if err := httputil.DecodeAndValidate(r, &req); err != nil {
 		return err
 	}
-	if req.Title != nil && *req.Title == "" { // defence in depth if the min=1 tag is ever dropped
+	if req.Title != nil && *req.Title == "" {
 		return httputil.NewAPIError(http.StatusBadRequest, "Title cannot be empty", nil)
 	}
 
@@ -115,7 +110,6 @@ func (h *BoardHandler) UpdateCard(w http.ResponseWriter, r *http.Request) error 
 		return httputil.NewAPIError(http.StatusInternalServerError, "Failed to update card", err)
 	}
 
-	// NewBoardHandler documents a nil activity as "mutation works, audit skipped".
 	if h.activity != nil {
 		act, aerr := h.activity.Record(r.Context(), service.RecordParams{
 			BoardID: boardID, ActorID: userIDStr,
@@ -129,9 +123,7 @@ func (h *BoardHandler) UpdateCard(w http.ResponseWriter, r *http.Request) error 
 		}
 	}
 
-	// Response and broadcast both read from resp. Sourcing a broadcast field from req
-	// instead would send null for anything the caller omitted, and the receiving store
-	// spreads the payload over its copy — the field would vanish on every other client.
+	// Broadcast from resp, never req — an omitted field would be null and wipe other clients.
 	resp := mapper.ToCardResponseFromUpdate(updated)
 
 	emitTo(h.broadcaster, boardID, core.WSCardUpdated, map[string]any{
@@ -151,8 +143,6 @@ func (h *BoardHandler) UpdateCard(w http.ResponseWriter, r *http.Request) error 
 	return nil
 }
 
-// GetCard returns a single card with its subtasks + tags hydrated.
-//
 // @Summary  Get card detail
 // @Tags     cards
 // @Produce  json
@@ -186,8 +176,7 @@ func emptyToNil(s *string) *string {
 	return s
 }
 
-// clearablePatch maps a PATCH field onto service.FieldPatch. JSON null decodes like an
-// omitted key, so clearing uses a sentinel ("" or 0) that toValue turns into nil. docs/adr/0009
+// JSON null decodes like omitted, so "" / 0 are the clear sentinels (docs/adr/0009).
 func clearablePatch[In, Out any](field *In, toValue func(*In) *Out) service.FieldPatch[Out] {
 	if field == nil {
 		return service.FieldPatch[Out]{}

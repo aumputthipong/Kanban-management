@@ -1,6 +1,4 @@
-// Package token issues and verifies the session-auth JWT and sets the auth_token
-// HttpOnly cookie. The signing secret is read once from JWT_SECRET; the process aborts
-// on startup if it is empty.
+// Package token issues and verifies the session JWT. Startup aborts on an empty JWT_SECRET.
 package token
 
 import (
@@ -13,9 +11,7 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-// defaultAccessTTL is the exposure window for a leaked access JWT (they cannot be
-// revoked) and also how long an idle tab survives a reload before bouncing to /login.
-// 8h keeps a work session alive; tighten via ACCESS_TOKEN_TTL and lean on refresh.
+// Access JWTs can't be revoked — this is the leak window. Tighten via ACCESS_TOKEN_TTL.
 const defaultAccessTTL = 8 * time.Hour
 
 var (
@@ -23,9 +19,6 @@ var (
 	accessTTL     time.Duration
 )
 
-// AccessTokenDuration returns the access-token lifetime, read once from
-// ACCESS_TOKEN_TTL (a Go duration string such as "15m", "8h"). The cookie
-// MaxAge mirrors this value.
 func AccessTokenDuration() time.Duration {
 	accessTTLOnce.Do(func() {
 		accessTTL = parseDurationEnv("ACCESS_TOKEN_TTL", defaultAccessTTL)
@@ -33,8 +26,6 @@ func AccessTokenDuration() time.Duration {
 	return accessTTL
 }
 
-// parseDurationEnv reads a Go-duration env var, falling back to def when unset,
-// unparseable, or non-positive. Shared by the access + refresh TTL loaders.
 func parseDurationEnv(key string, def time.Duration) time.Duration {
 	v := os.Getenv(key)
 	if v == "" {
@@ -48,15 +39,10 @@ func parseDurationEnv(key string, def time.Duration) time.Duration {
 	return d
 }
 
-// MinSecretBytes is the floor enforced on JWT_SECRET. HS256 keys shorter than
-// the hash size (32 bytes) are brute-forceable offline once any token is
-// captured — RFC 7518 §3.2 says the key SHOULD be the same size as the
-// output of the HMAC function (SHA-256 → 32 bytes).
+// HS256 keys shorter than 32 bytes are brute-forceable offline (RFC 7518 §3.2).
 const MinSecretBytes = 32
 
-// Claims is the JWT body for an authenticated user. UserID is the canonical
-// reference; Email is included for ergonomics in logs and is not authoritative
-// (a user can change their email; the UserID does not).
+// Email is informational — UserID is the canonical reference.
 type Claims struct {
 	UserID string `json:"user_id"`
 	Email  string `json:"email"`
@@ -68,9 +54,7 @@ var (
 	jwtSecret     []byte
 )
 
-// secret returns the JWT signing key, initialising it on first use. It aborts the
-// process when JWT_SECRET is missing or too short — running with an empty secret would
-// silently accept forged tokens.
+// Aborts on a missing or short secret — an empty one would accept forged tokens.
 func secret() []byte {
 	jwtSecretOnce.Do(func() {
 		s := os.Getenv("JWT_SECRET")
@@ -88,8 +72,6 @@ func secret() []byte {
 	return jwtSecret
 }
 
-// Generate signs a new JWT for the given user. The returned string is what
-// gets placed in the `auth_token` cookie via SetAuthCookie.
 func Generate(userID, email string) (string, error) {
 	claims := Claims{
 		UserID: userID,
@@ -103,9 +85,7 @@ func Generate(userID, email string) (string, error) {
 	return t.SignedString(secret())
 }
 
-// parseSigned verifies the signature and standard claims without inspecting
-// the audience. Callers pick the audience rule: Parse rejects WS tickets,
-// ParseWSTicket requires one.
+// No audience check here — Parse rejects WS tickets, ParseWSTicket requires them.
 func parseSigned(tokenStr string) (*Claims, error) {
 	t, err := jwt.ParseWithClaims(tokenStr, &Claims{}, func(t *jwt.Token) (interface{}, error) {
 		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
@@ -124,9 +104,7 @@ func parseSigned(tokenStr string) (*Claims, error) {
 	return claims, nil
 }
 
-// Parse validates a session access token, rejecting non-HMAC signing and WS tickets — a
-// ticket leaked from a URL must not open the REST API. Any non-nil error means
-// "unauthenticated"; it never says which check failed.
+// Rejects WS tickets: one leaked from a URL must not open the REST API.
 func Parse(tokenStr string) (*Claims, error) {
 	claims, err := parseSigned(tokenStr)
 	if err != nil {
@@ -138,9 +116,7 @@ func Parse(tokenStr string) (*Claims, error) {
 	return claims, nil
 }
 
-// AuthCookieSameSite returns the SameSite mode and Secure flag for an auth cookie. A
-// cross-site deploy needs SameSite=None, which browsers only accept with Secure; the
-// stricter default is kept otherwise. dflt is the cookie's own default.
+// SameSite=None needs Secure; the stricter default is kept otherwise.
 func AuthCookieSameSite(dflt http.SameSite, production, crossSite bool) (http.SameSite, bool) {
 	if crossSite {
 		return http.SameSiteNoneMode, true
@@ -148,9 +124,7 @@ func AuthCookieSameSite(dflt http.SameSite, production, crossSite bool) (http.Sa
 	return dflt, production
 }
 
-// SetAuthCookie writes the signed JWT into the `auth_token` HttpOnly cookie.
-// The Secure flag is set only in production (passed in from main) so local
-// HTTP development is not blocked by the browser refusing to send the cookie.
+// Secure only in production, so local HTTP still works.
 func SetAuthCookie(w http.ResponseWriter, tokenStr string, production, crossSite bool) {
 	sameSite, secure := AuthCookieSameSite(http.SameSiteLaxMode, production, crossSite)
 	http.SetCookie(w, &http.Cookie{
@@ -164,13 +138,9 @@ func SetAuthCookie(w http.ResponseWriter, tokenStr string, production, crossSite
 	})
 }
 
-// wsTicketAudience is the `aud` claim that marks a token as usable only for
-// the WebSocket handshake. Parse rejects it; ParseWSTicket requires it.
 const wsTicketAudience = "ws"
 
-// defaultWSTicketTTL is the lifetime of a WS ticket. It travels in the URL and so lands
-// in upstream access logs we do not control — keep the replay window short; it only has
-// to survive one handshake.
+// Short: the ticket travels in the URL and lands in access logs.
 const defaultWSTicketTTL = 30 * time.Second
 
 var (
@@ -178,8 +148,6 @@ var (
 	wsTicketTTL     time.Duration
 )
 
-// WSTicketDuration returns the WS-ticket lifetime, read once from
-// WS_TICKET_TTL (a Go duration string such as "30s").
 func WSTicketDuration() time.Duration {
 	wsTicketTTLOnce.Do(func() {
 		wsTicketTTL = parseDurationEnv("WS_TICKET_TTL", defaultWSTicketTTL)
@@ -187,9 +155,7 @@ func WSTicketDuration() time.Duration {
 	return wsTicketTTL
 }
 
-// GenerateWSTicket signs a short-lived token that authenticates one WebSocket
-// handshake. See docs/adr/0005-websocket-ticket-auth.md for why the handshake
-// cannot use the auth cookie.
+// docs/adr/0005 explains why the handshake can't use the cookie.
 func GenerateWSTicket(userID string) (string, error) {
 	claims := Claims{
 		UserID: userID,
@@ -203,9 +169,7 @@ func GenerateWSTicket(userID string) (string, error) {
 	return t.SignedString(secret())
 }
 
-// ParseWSTicket validates a WS ticket and returns its claims. A session access
-// token is rejected: the ticket path is deliberately not a second way to
-// present a long-lived credential.
+// Rejects session tokens — this path must not accept a long-lived credential.
 func ParseWSTicket(tokenStr string) (*Claims, error) {
 	claims, err := parseSigned(tokenStr)
 	if err != nil {

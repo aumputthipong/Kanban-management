@@ -1,6 +1,4 @@
-// Planning sessions own a flat list of items (REQ/DEC/Q). Rows are never destroyed:
-// drop is reversible and promote keeps a link to the resulting card. Promotion is the
-// one cross-table write — see PromoteItem for why it needs a transaction.
+// Items are never destroyed: drop is reversible, promote keeps a link to the card.
 package service
 
 import (
@@ -15,8 +13,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// planningPositionGap mirrors the FE POSITION_GAP — wide enough that appends never
-// collide and reorders can use midpoints without renumbering.
+// Mirrors the frontend POSITION_GAP — appends never collide, reorders use midpoints.
 const planningPositionGap = 65536.0
 
 type PlanningService struct {
@@ -29,17 +26,13 @@ func NewPlanningService(pool *pgxpool.Pool, queries *db.Queries) *PlanningServic
 }
 
 var (
-	// ErrPlanningItemAlreadyPromoted makes a second promote a 409, not a duplicate card.
 	ErrPlanningItemAlreadyPromoted = errors.New("planning item already promoted")
-	// ErrPlanningItemDropped is returned when promoting an item the user dropped; it
-	// contradicts that decision, so they must un-drop first.
+	// Promoting a dropped item contradicts that decision — un-drop first.
 	ErrPlanningItemDropped = errors.New("planning item is dropped")
-	// ErrPlanningNoTodoColumn is user-actionable (add a TODO column) — handlers map it to 422.
+	// User-actionable (add a TODO column) — 422.
 	ErrPlanningNoTodoColumn = errors.New("board has no TODO column")
-	// ErrPlanningNotFound is returned when a session or item lookup hits zero rows.
-	ErrPlanningNotFound = errors.New("planning resource not found")
-	// ErrPlanningCommentDeleted targets an already soft-deleted comment; 409 so the
-	// optimistic UI can revert.
+	ErrPlanningNotFound     = errors.New("planning resource not found")
+	// 409 so the optimistic UI can revert.
 	ErrPlanningCommentDeleted = errors.New("planning comment already deleted")
 )
 
@@ -59,8 +52,6 @@ func (s *PlanningService) GetItemBoardID(ctx context.Context, itemID string) (st
 	return s.queries.GetBoardIDByPlanningItem(ctx, itemID)
 }
 
-// GetItem returns a single planning item. Used by handlers that need the
-// row's content for activity log payloads before deleting it.
 func (s *PlanningService) GetItem(ctx context.Context, itemID string) (db.PlanningItem, error) {
 	return s.queries.GetPlanningItem(ctx, itemID)
 }
@@ -131,8 +122,6 @@ func (s *PlanningService) DeleteItem(ctx context.Context, itemID string) error {
 	return s.queries.DeletePlanningItem(ctx, itemID)
 }
 
-// CardSource backs the card modal's "source" section: the session and item that
-// produced this card, plus a few still-open questions from the same meeting.
 type CardSource struct {
 	SessionID        string
 	SessionTitle     string
@@ -151,9 +140,7 @@ type CardSourcePendingQuestion struct {
 	Title string
 }
 
-// GetCardSource returns the planning origin of a card, or nil when it was never
-// promoted or the source item is gone (promoted_to_card_id is ON DELETE SET NULL, so a
-// deleted card orphans the link). pendingLimit caps the open questions surfaced.
+// nil when never promoted, or the card was deleted (ON DELETE SET NULL).
 func (s *PlanningService) GetCardSource(ctx context.Context, cardID string, pendingLimit int32) (*CardSource, error) {
 	row, err := s.queries.GetPlanningSourceByCard(ctx, &cardID)
 	if err != nil {
@@ -194,11 +181,8 @@ func (s *PlanningService) GetCardSource(ctx context.Context, cardID string, pend
 	}, nil
 }
 
-// ─── Item comments ────────────────────────────────────────────────────────
+// Item comments
 
-// ListItemComments returns the full thread including soft-deleted comments.
-// The UI renders deleted rows as a "deleted" placeholder so the thread's position
-// doesn't shift on delete.
 func (s *PlanningService) ListItemComments(ctx context.Context, itemID string) ([]db.ListPlanningItemCommentsRow, error) {
 	return s.queries.ListPlanningItemComments(ctx, itemID)
 }
@@ -207,9 +191,6 @@ func (s *PlanningService) GetComment(ctx context.Context, commentID string) (db.
 	return s.queries.GetPlanningItemComment(ctx, commentID)
 }
 
-// GetCommentBoardID resolves comment → item → session → board in one round-
-// trip so the handler can re-check membership without hydrating the full
-// comment first.
 func (s *PlanningService) GetCommentBoardID(ctx context.Context, commentID string) (string, error) {
 	return s.queries.GetBoardIDByPlanningComment(ctx, commentID)
 }
@@ -222,9 +203,7 @@ func (s *PlanningService) CreateComment(ctx context.Context, itemID, authorID, b
 	})
 }
 
-// EditComment refuses to touch already-soft-deleted rows (the UPDATE WHERE
-// deleted_at IS NULL returns zero rows in that case). Pre-deletion edits
-// fall through to a clean 200.
+// Soft-deleted rows update zero rows → ErrPlanningCommentDeleted.
 func (s *PlanningService) EditComment(ctx context.Context, commentID, body string) (db.PlanningItemComment, error) {
 	row, err := s.queries.UpdatePlanningItemComment(ctx, db.UpdatePlanningItemCommentParams{
 		ID:   commentID,
@@ -243,10 +222,7 @@ func (s *PlanningService) DeleteComment(ctx context.Context, commentID string) e
 	return s.queries.SoftDeletePlanningItemComment(ctx, commentID)
 }
 
-// PromoteItem turns a planning item into a Kanban card in the same board's
-// first TODO column. Wrapped in a tx so the cards.insert and the item's
-// status flip succeed together — partial promotion would leave the item
-// looking unpromoted while a stray card sat on the board.
+// One transaction: a partial promote would leave a stray card and an unpromoted item.
 func (s *PlanningService) PromoteItem(ctx context.Context, itemID, userID string) (db.PlanningItem, db.CreateCardRow, error) {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
@@ -255,9 +231,7 @@ func (s *PlanningService) PromoteItem(ctx context.Context, itemID, userID string
 	defer tx.Rollback(ctx)
 	qtx := s.queries.WithTx(tx)
 
-	// FOR UPDATE for the rest of the tx. Without it two concurrent promoters both read
-	// status='live' at READ COMMITTED, both pass the check below, and both create a card —
-	// duplicate Kanban cards from one planning item.
+	// FOR UPDATE: without it two concurrent promoters both see 'live' and both create a card.
 	item, err := qtx.LockPlanningItemForUpdate(ctx, itemID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -268,9 +242,6 @@ func (s *PlanningService) PromoteItem(ctx context.Context, itemID, userID string
 	if item.Status == "promoted" {
 		return db.PlanningItem{}, db.CreateCardRow{}, ErrPlanningItemAlreadyPromoted
 	}
-	// Block dropped items. A dropped status is the user's explicit "not
-	// doing this" decision; promoting it would silently flip a no-op into
-	// real work. They must un-drop (status → live) first.
 	if item.Status == "dropped" {
 		return db.PlanningItem{}, db.CreateCardRow{}, ErrPlanningItemDropped
 	}
@@ -285,17 +256,13 @@ func (s *PlanningService) PromoteItem(ctx context.Context, itemID, userID string
 		Category: "TODO",
 	})
 	if err != nil {
-		// No column with category='TODO'. Typed error so the handler returns an actionable
-		// 422 rather than a generic 500.
 		if errors.Is(err, pgx.ErrNoRows) {
 			return db.PlanningItem{}, db.CreateCardRow{}, ErrPlanningNoTodoColumn
 		}
 		return db.PlanningItem{}, db.CreateCardRow{}, fmt.Errorf("find TODO column: %w", err)
 	}
 
-	// Position 0 puts the card at the column's top so promoted ideas are triaged without
-	// scrolling. AC and Note carry forward (nil passthrough) so the dev opening the card
-	// sees the context captured during planning.
+	// Top of the column so promoted ideas get triaged; AC and note carry forward.
 	card, err := qtx.CreateCard(ctx, db.CreateCardParams{
 		ColumnID:           col.ID,
 		Title:              item.Title,

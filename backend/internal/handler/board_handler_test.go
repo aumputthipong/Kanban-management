@@ -21,7 +21,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// chiCtx injects URL params into the request context for the chi router.
 func chiCtx(r *http.Request, pairs ...string) *http.Request {
 	rctx := chi.NewRouteContext()
 	for i := 0; i+1 < len(pairs); i += 2 {
@@ -30,7 +29,6 @@ func chiCtx(r *http.Request, pairs ...string) *http.Request {
 	return r.WithContext(context.WithValue(r.Context(), chi.RouteCtxKey, rctx))
 }
 
-// withUserID injects userID into the context the way the middleware does.
 func withUserID(r *http.Request, userID string) *http.Request {
 	return r.WithContext(context.WithValue(r.Context(), middleware.UserIDKey, userID))
 }
@@ -40,9 +38,7 @@ const validUserID = "550e8400-e29b-41d4-a716-446655440000"
 const validColumnID = "7f3b9a2e-1c4d-4e8f-a6b0-2d5e8f1a3c7b"
 const validCardID = "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
 
-// ────────────────────────────────────────────────
 // GetAllBoards
-// ────────────────────────────────────────────────
 
 func TestGetAllBoards_Success(t *testing.T) {
 	svc := &mock.MockBoardService{
@@ -82,9 +78,7 @@ func TestGetAllBoards_DBError(t *testing.T) {
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
 }
 
-// ────────────────────────────────────────────────
 // GetBoardData
-// ────────────────────────────────────────────────
 
 func TestGetBoardData_Success(t *testing.T) {
 	svc := &mock.MockBoardService{
@@ -192,7 +186,6 @@ func TestGetBoardData_NoUserContext_SkipsTouch(t *testing.T) {
 
 	httputil.MakeHandler(h.GetBoardData)(w, req)
 	assert.Equal(t, http.StatusOK, w.Code)
-	// Give any erroneous goroutine a chance to fire before the test ends.
 	time.Sleep(50 * time.Millisecond)
 }
 
@@ -212,9 +205,7 @@ func TestGetBoardData_ServiceError(t *testing.T) {
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
 }
 
-// ────────────────────────────────────────────────
 // CreateBoard
-// ────────────────────────────────────────────────
 
 func TestCreateBoard_Success(t *testing.T) {
 	svc := &mock.MockBoardService{
@@ -244,7 +235,6 @@ func TestCreateBoard_Unauthorized(t *testing.T) {
 	h := NewBoardHandler(svc, nil, nil, nil)
 	body := strings.NewReader(`{"title":"My Board"}`)
 	req := httptest.NewRequest(http.MethodPost, "/boards", body)
-	// No userID in context → unauthorized.
 	w := httptest.NewRecorder()
 
 	httputil.MakeHandler(h.CreateBoard)(w, req)
@@ -265,9 +255,7 @@ func TestCreateBoard_InvalidJSON(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 }
 
-// ────────────────────────────────────────────────
 // StashBoard
-// ────────────────────────────────────────────────
 
 func TestStashBoard_Success(t *testing.T) {
 	called := false
@@ -305,9 +293,7 @@ func TestStashBoard_ServiceError(t *testing.T) {
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
 }
 
-// ────────────────────────────────────────────────
 // HardDelete
-// ────────────────────────────────────────────────
 
 func TestHardDelete_Success(t *testing.T) {
 	svc := &mock.MockBoardService{
@@ -325,9 +311,7 @@ func TestHardDelete_Success(t *testing.T) {
 	assert.Equal(t, http.StatusNoContent, w.Code)
 }
 
-// ────────────────────────────────────────────────
 // GetBoardMembers
-// ────────────────────────────────────────────────
 
 func TestGetBoardMembers_Success(t *testing.T) {
 	svc := &mock.MockBoardService{
@@ -368,9 +352,7 @@ func TestGetBoardMembers_DBError(t *testing.T) {
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
 }
 
-// ────────────────────────────────────────────────
 // UpdateBoard
-// ────────────────────────────────────────────────
 
 func TestUpdateBoard_Success(t *testing.T) {
 	svc := &mock.MockBoardService{
@@ -436,9 +418,7 @@ func TestUpdateBoard_ServiceError(t *testing.T) {
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
 }
 
-// ────────────────────────────────────────────────
 // GetStashedBoards
-// ────────────────────────────────────────────────
 
 func TestGetStashedBoards_Success(t *testing.T) {
 	svc := &mock.MockBoardService{
@@ -476,13 +456,9 @@ func TestGetStashedBoards_ServiceError(t *testing.T) {
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
 }
 
-// ────────────────────────────────────────────────
 // CreateCard
-// ────────────────────────────────────────────────
 
-// ────────────────────────────────────────────────
 // UpdateCard
-// ────────────────────────────────────────────────
 
 func TestUpdateCard_Success(t *testing.T) {
 	userID := validUserID
@@ -570,9 +546,7 @@ func TestUpdateCard_ServiceError(t *testing.T) {
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
 }
 
-// ────────────────────────────────────────────────
 // GetCard
-// ────────────────────────────────────────────────
 
 func TestGetCard_Success(t *testing.T) {
 	svc := &mock.MockBoardService{

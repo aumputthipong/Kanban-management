@@ -1,4 +1,3 @@
-// cmd/api/routes.go
 package main
 
 import (
@@ -7,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	_ "github.com/aumputthipong/mini-erp-kanban/backend/docs" // swagger generated
+	_ "github.com/aumputthipong/mini-erp-kanban/backend/docs"
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/core"
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/handler"
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/httputil"
@@ -44,32 +43,24 @@ type routerDeps struct {
 func setupRoutes(d routerDeps) http.Handler {
 	r := chi.NewRouter()
 
-	// SentryRecoverer runs before chi's Recoverer so a panic is captured before it
-	// becomes a 500. RequestLogger replaces chi's Logger to redact sensitive query
-	// strings (OAuth code/state, the WS ticket) before they reach any sink.
+	// SentryRecoverer before Recoverer; RequestLogger redacts OAuth code/state and the WS ticket.
 	r.Use(chiMiddleware.RequestID)
-	// Before RequestLogger so the log line carries the resolved caller, and before
-	// every rate limiter, which key off it.
+	// Before RequestLogger and every rate limiter — they key off the client IP.
 	r.Use(middleware.ClientIPResolver(d.trustedProxies))
 	r.Use(middleware.RequestLogger)
 	r.Use(observability.SentryRecoverer())
 	r.Use(chiMiddleware.Recoverer)
 	r.Use(middleware.SecurityHeaders(d.production))
 	r.Use(observability.HTTPMetrics)
-	// gzip JSON/text responses. Board payloads (columns + cards + tags) compress
-	// 4–8×; skipped for already-compressed types (images, fonts).
 	r.Use(chiMiddleware.Compress(5, "application/json", "text/html", "text/css", "text/plain"))
 
-	// Health endpoints — used by load balancers / uptime monitors / k8s probes
 	r.Get("/health", healthHandler(d.pool, d.version, d.startedAt))
 	r.Get("/healthz", healthHandler(d.pool, d.version, d.startedAt))
 
-	// Prometheus scrape target. Not gated by auth — assume the network layer
-	// (firewall / k8s NetworkPolicy) is what restricts access.
+	// Unauthenticated — access is restricted at the network layer.
 	r.Handle("/metrics", observability.MetricsHandler())
 
-	// Swagger UI, regenerated via `swag init` (see Makefile). Disabled in production: a
-	// public API map hands attackers a roadmap of endpoints, parameters and auth flows.
+	// Disabled in production: a public API map is a roadmap for attackers.
 	if !d.production {
 		r.Get("/docs/*", httpSwagger.Handler(httpSwagger.URL("/docs/doc.json")))
 	}
@@ -80,12 +71,10 @@ func setupRoutes(d routerDeps) http.Handler {
 		r.Post("/register", httputil.MakeHandler(d.authHandler.Register))
 		r.Post("/login", httputil.MakeHandler(d.authHandler.Login))
 		r.Post("/oauth", httputil.MakeHandler(d.authHandler.OAuthCallback))
-		// Unauthenticated: minting a sandbox IS the entry point. Its own limiter
-		// overrides the group's, because each call seeds a whole board.
+		// Own limiter: each call seeds a whole board.
 		r.With(middleware.DemoRateLimit()).Post("/demo", httputil.MakeHandler(d.authHandler.Demo))
 		r.Post("/logout", httputil.MakeHandler(d.authHandler.Logout))
-		// Refresh is unauthenticated: the refresh cookie IS the credential.
-		// Rate-limited via the surrounding /api/auth group's AuthRateLimit.
+		// The refresh cookie is the credential.
 		r.Post("/refresh", httputil.MakeHandler(d.authHandler.Refresh))
 
 		r.Get("/google", httputil.MakeHandler(d.oauthHandler.RedirectToGoogle))
@@ -94,10 +83,7 @@ func setupRoutes(d routerDeps) http.Handler {
 
 	requireBoardMember := middleware.RequireBoardMember(d.boardService)
 
-	// /ws/{boardID} authenticates from a `ticket` query param, not the cookie — a browser
-	// cannot header a WebSocket and on a split-domain deploy the cookie never reaches this
-	// host (docs/adr/0005). Membership is still gated: otherwise any authenticated user
-	// could join an arbitrary board's room and send mutating WS messages.
+	// Ticket auth, not cookie (docs/adr/0005). Membership is still gated.
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.GeneralRateLimit())
 		r.Use(middleware.RequireWSTicket)
@@ -108,20 +94,16 @@ func setupRoutes(d routerDeps) http.Handler {
 		})
 	})
 
-	// Protected routes
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.GeneralRateLimit())
 		r.Use(middleware.RequireAuth)
 
 		r.Get("/api/auth/me", httputil.MakeHandler(d.authHandler.Me))
 
-		// Mints the ticket the browser then puts in the WS URL. It lives on the
-		// cookie-authed path because that is the only place the auth cookie is
-		// actually available to us.
+		// Cookie-authed: the only place the auth cookie is available.
 		r.Get("/api/ws-ticket", httputil.MakeHandler(d.authHandler.WSTicket))
 
-		// Accept an invite link — authenticated but NOT board-gated (the caller
-		// is joining, not yet a member). A valid token is the authorization.
+		// Not board-gated: the caller is joining. The token is the authorization.
 		r.Post("/api/invites/{token}/accept", httputil.MakeHandler(d.inviteHandler.AcceptInvite))
 
 		r.Route("/api/my-tasks", func(r chi.Router) {
@@ -163,8 +145,6 @@ func setupRoutes(d routerDeps) http.Handler {
 					})
 				})
 
-				// Shareable invite link — manager+ only (managing who can join is
-				// a privileged action, like adding members directly).
 				r.With(middleware.RequireBoardRole(core.RoleManager)).
 					Route("/invites", func(r chi.Router) {
 						r.Get("/", httputil.MakeHandler(d.inviteHandler.GetActiveInvite))
@@ -182,9 +162,7 @@ func setupRoutes(d routerDeps) http.Handler {
 					})
 				})
 
-				// Sessions live under their board; item-level endpoints sit at the top
-				// level because the URL carries only the item ID and the handler
-				// re-resolves the board for the membership check.
+				// Item endpoints sit at the top level and re-resolve the board for the membership check.
 				r.Route("/planning/sessions", func(r chi.Router) {
 					r.Get("/", httputil.MakeHandler(d.planningHandler.ListSessions))
 					r.Post("/", httputil.MakeHandler(d.planningHandler.CreateSession))
@@ -212,8 +190,7 @@ func setupRoutes(d routerDeps) http.Handler {
 			r.Delete("/", httputil.MakeHandler(d.planningHandler.DeleteComment))
 		})
 
-		// Board writes go through REST and broadcast from the handler; the WS path
-		// keeps its handlers for older clients. See issue #197.
+		// WS write handlers remain for older clients (#197).
 		r.Route("/api/columns/{columnID}", func(r chi.Router) {
 			r.Patch("/", httputil.MakeHandler(d.boardCmdHandler.UpdateColumn))
 			r.Delete("/", httputil.MakeHandler(d.boardCmdHandler.DeleteColumn))
@@ -240,7 +217,6 @@ func setupRoutes(d routerDeps) http.Handler {
 			r.Get("/", httputil.MakeHandler(d.boardHandler.GetStashedBoards))
 
 			r.Route("/{boardID}", func(r chi.Router) {
-				// Stashed-only gate: these operate on boards that ARE stashed.
 				r.Use(middleware.RequireStashedBoardMember(d.boardService))
 				r.Use(middleware.RequireBoardRole(core.RoleOwner))
 				r.Delete("/", httputil.MakeHandler(d.boardHandler.HardDelete))
@@ -252,8 +228,6 @@ func setupRoutes(d routerDeps) http.Handler {
 	return r
 }
 
-// HealthResponse is the body returned by /health and /healthz.
-//
 // swagger:model HealthResponse
 type HealthResponse struct {
 	Status      string `json:"status"          example:"ok"`
@@ -262,9 +236,6 @@ type HealthResponse struct {
 	DBConnected bool   `json:"db_connected"    example:"true"`
 }
 
-// healthHandler returns a JSON probe with build version, uptime, and DB connectivity.
-// 503 if the DB ping fails so load balancers can drop the instance.
-//
 // @Summary  Health probe
 // @Tags     ops
 // @Produce  json
@@ -274,9 +245,7 @@ type HealthResponse struct {
 func healthHandler(pool *pgxpool.Pool, version string, startedAt time.Time) http.HandlerFunc {
 	type response = HealthResponse
 
-	// Memoize the DB ping for 1 second so an uptime monitor hitting /healthz
-	// every 100ms doesn't hammer the pool. Single goroutine writes; mutex
-	// keeps readers consistent.
+	// Memoize the DB ping for 1s so a fast uptime monitor doesn't hammer the pool.
 	var (
 		mu       sync.Mutex
 		cachedOK bool

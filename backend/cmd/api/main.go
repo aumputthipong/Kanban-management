@@ -25,12 +25,10 @@ import (
 	"github.com/joho/godotenv"
 )
 
-// Regenerate the OpenAPI spec into backend/docs after editing handler annotations:
-// `make swag`, or `go generate ./cmd/api` from backend/. Paths are relative to this
-// file's directory, which is where go generate runs the command.
+// Regenerate the OpenAPI spec with `make swag`.
 //go:generate swag init -d ../../ -g cmd/api/main.go -o ../../docs --parseDependency --parseInternal
 
-// version is set at build time via -ldflags "-X main.version=..."; defaults to "dev" locally.
+// Set at build time via -ldflags "-X main.version=...".
 var version = "dev"
 
 // @title           Turtask API
@@ -48,12 +46,10 @@ var version = "dev"
 // @name                        auth_token
 
 const (
-	shutdownTimeout = 30 * time.Second
-	dbPoolMaxConns  = 25
-	dbPoolMinConns  = 5
-	dbPoolMaxIdle   = 5 * time.Minute
-	// How often expired demo sandboxes are swept. Sandboxes live 24h, so the
-	// exact cadence only decides how long dead rows linger.
+	shutdownTimeout   = 30 * time.Second
+	dbPoolMaxConns    = 25
+	dbPoolMinConns    = 5
+	dbPoolMaxIdle     = 5 * time.Minute
 	demoPurgeInterval = time.Hour
 )
 
@@ -71,9 +67,7 @@ type config struct {
 	TrustedProxies     int
 }
 
-// trustedProxyCount reads TRUSTED_PROXY_COUNT: how many proxies sit in front of this
-// server. Defaults to 1 (Render, nginx — both shapes in docs/DEPLOY.md); set 0 when the
-// binary is exposed directly, or a client's own X-Forwarded-For becomes its limiter key.
+// TRUSTED_PROXY_COUNT, default 1 — see docs/DEPLOY.md. 0 only when exposed directly.
 func trustedProxyCount() int {
 	raw := os.Getenv("TRUSTED_PROXY_COUNT")
 	if raw == "" {
@@ -151,8 +145,7 @@ func initDB(ctx context.Context, dbURL string) (*pgxpool.Pool, error) {
 
 func run(ctx context.Context, cfg config) error {
 	if !cfg.SkipMigrations {
-		// schema.sql (the sqlc source of truth) bootstraps a fresh DB; migrations
-		// evolve an existing one. See migrate.Bootstrap.
+		// schema.sql bootstraps a fresh DB; migrations evolve an existing one.
 		schemaPath := filepath.Join(filepath.Dir(cfg.MigrationsPath), "schema.sql")
 		slog.Info("bootstrapping database", "schema", schemaPath, "migrations", cfg.MigrationsPath)
 		if err := migrate.Bootstrap(ctx, cfg.DBUrl, schemaPath, cfg.MigrationsPath); err != nil {
@@ -180,7 +173,7 @@ func run(ctx context.Context, cfg config) error {
 	boardCmdService := service.NewBoardCommandService(pool, queries)
 
 	hub := websocket.NewHub(cfg.FrontendURL)
-	// Handlers type-assert eviction off the Broadcaster; fail the build, not silently, if it drifts.
+	// Compile-time check: handlers type-assert eviction off the Broadcaster.
 	var _ handler.RoomEvictor = hub
 	go hub.Run()
 
@@ -242,8 +235,6 @@ func run(ctx context.Context, cfg config) error {
 	ctx, stop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	// Reclaim expired demo sandboxes. Runs in-process rather than as a cron job
-	// because a sweep is a handful of deletes; ctx cancellation stops it.
 	go demoService.StartPurgeLoop(ctx, demoPurgeInterval)
 
 	go func() {
@@ -263,10 +254,9 @@ func run(ctx context.Context, cfg config) error {
 	if err := server.Shutdown(shutdownCtx); err != nil {
 		return fmt.Errorf("graceful shutdown failed: %w", err)
 	}
-	// HTTP listener is drained; now close any active WS connections so their
-	// pumps can exit cleanly before we return and the pool is closed.
+	// Close WS connections before the pool closes.
 	hub.Shutdown()
-	// Drain any queued audit writes before pool.Close() pulls the rug out.
+	// Drain queued audit writes before pool.Close().
 	activityService.Stop()
 	slog.Info("server stopped cleanly")
 	return nil

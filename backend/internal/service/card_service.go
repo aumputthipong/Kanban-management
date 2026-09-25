@@ -9,14 +9,12 @@ import (
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/util"
 )
 
-// FieldPatch is a PATCH input for a nullable column: Set=false leaves it alone,
-// Set=true writes Value, and a nil Value clears the column to NULL.
+// Set=false: no change. Set=true with nil Value: clear to NULL.
 type FieldPatch[T any] struct {
 	Set   bool
 	Value *T
 }
 
-// UpdateCardParams carries PATCH semantics: a nil pointer or unset FieldPatch means no change.
 type UpdateCardParams struct {
 	ID                 string
 	Title              *string
@@ -25,7 +23,7 @@ type UpdateCardParams struct {
 	AssigneeID         FieldPatch[string]
 	Priority           FieldPatch[string]
 	EstimatedHours     FieldPatch[float64]
-	TagIDs             *[]string // nil = don't touch, &[]string{} = clear all
+	TagIDs             *[]string
 	AcceptanceCriteria *string
 	ImplementationNote *string
 }
@@ -34,9 +32,6 @@ func (s *BoardService) GetCard(ctx context.Context, cardID string) (db.Card, err
 	return s.queries.GetCard(ctx, cardID)
 }
 
-// CardDetailData is a fully enriched card for the detail view. GetCard alone returns the
-// raw row; this also resolves the assignee name and loads subtasks and tags so the
-// response carries everything the modal shows.
 type CardDetailData struct {
 	Card         db.Card
 	AssigneeName *string
@@ -59,7 +54,6 @@ func (s *BoardService) GetCardDetail(ctx context.Context, cardID string) (CardDe
 	}
 	var assigneeName *string
 	if card.AssigneeID != nil {
-		// Best-effort: a missing user just leaves the name nil.
 		if u, uerr := s.queries.GetUserByID(ctx, *card.AssigneeID); uerr == nil {
 			name := u.FullName
 			assigneeName = &name
@@ -68,8 +62,7 @@ func (s *BoardService) GetCardDetail(ctx context.Context, cardID string) (CardDe
 	return CardDetailData{Card: card, AssigneeName: assigneeName, Subtasks: subs, Tags: tags}, nil
 }
 
-// UpdateCardResult is the stored card plus its tags after the write. Tags are always
-// loaded (never nil), so the caller can broadcast them without clobbering other clients.
+// Tags are always loaded, so a broadcast never clobbers them.
 type UpdateCardResult struct {
 	Card db.Card
 	Tags []TagData

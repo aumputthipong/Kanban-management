@@ -6,8 +6,6 @@ import (
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/service"
 )
 
-// MockInviteService is the function-field mock for service.InviteServicer,
-// matching the convention used by the other handler-seam mocks.
 type MockInviteService struct {
 	CreateInviteFn    func(ctx context.Context, boardID, creatorID string) (service.InviteLink, error)
 	GetActiveInviteFn func(ctx context.Context, boardID string) (service.InviteLink, bool, error)

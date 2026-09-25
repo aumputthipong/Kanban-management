@@ -1,4 +1,3 @@
-// internal/mapper/board.go
 package mapper
 
 import (
@@ -34,8 +33,6 @@ func ToStashedBoardDTOs(boards []db.GetStashedBoardsForOwnerRow) []dto.StashedBo
 }
 
 func ToSubtaskResponse(s db.CardSubtask) dto.SubtaskResponse {
-	// CreatedAt and UpdatedAt are *time.Time (nullable TIMESTAMPTZ); deref to
-	// the zero value when nil.
 	var createdAt, updatedAt time.Time
 	if s.CreatedAt != nil {
 		createdAt = *s.CreatedAt
@@ -62,10 +59,7 @@ func ToSubtaskResponses(subtasks []db.CardSubtask) []dto.SubtaskResponse {
 	return result
 }
 
-// timePtrToString serializes *time.Time as "YYYY-MM-DD".
-// DB schema stores due_date as DATE (no time component), so date-only format is correct.
-// Input that includes time-of-day (RFC3339) is accepted by util.PtrStringToTimePtr
-// but the time portion is discarded when saved to DB — this matches that behavior.
+// due_date is a DATE column; any time-of-day is dropped on save.
 func timePtrToString(t *time.Time) *string {
 	if t == nil {
 		return nil
@@ -112,7 +106,6 @@ func derefTime(t *time.Time) time.Time {
 	return *t
 }
 
-// ToCardDetailResponse builds the enriched single-card payload (GET /cards/:id).
 func ToCardDetailResponse(d service.CardDetailData) dto.CardDetailResponse {
 	c := d.Card
 	subs := make([]dto.SubtaskResponse, len(d.Subtasks))
@@ -186,8 +179,7 @@ func toTagResponses(tags []service.TagData) []dto.TagResponse {
 	return out
 }
 
-// ToCardResponseFromUpdate maps an UpdateCard result into the snake_case wire shape,
-// tags included. Subtask counts and assignee name are not part of the write result.
+// Subtask counts and assignee name are not part of the write result.
 func ToCardResponseFromUpdate(res service.UpdateCardResult) dto.CardResponse {
 	card := res.Card
 	return dto.CardResponse{

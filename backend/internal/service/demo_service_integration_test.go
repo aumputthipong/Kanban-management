@@ -1,9 +1,5 @@
 //go:build integration
 
-// Integration tests for DemoService. CreateSandbox writes across users, boards,
-// columns, cards and planning; PurgeExpired must then delete all of it in an
-// order Postgres accepts — activities.actor_id and planning_item_comments.author_id
-// are bare references that block a user delete. Neither is observable through a mock.
 package service_test
 
 import (
@@ -33,8 +29,7 @@ func newDemoFixture(t *testing.T) *demoFixture {
 	return &demoFixture{pool: pool, queries: queries, svc: service.NewDemoService(pool, queries)}
 }
 
-// expireAll ages every sandbox past its deadline. Reaching past the service is
-// the point — the alternative is sleeping out DemoValidity.
+// Reaches past the service — the alternative is sleeping out DemoValidity.
 func (f *demoFixture) expireAll(ctx context.Context, t *testing.T) {
 	t.Helper()
 	_, err := f.pool.Exec(ctx, "UPDATE users SET demo_expires_at = now() - interval '1 hour' WHERE is_demo")
@@ -63,7 +58,6 @@ func TestCreateSandbox_SeedsOwnBoardWithCards(t *testing.T) {
 	assert.Len(t, cards, 8, "the sample fixture seeds eight cards")
 }
 
-// Two visitors landing at the same moment must not collide on users.email.
 func TestCreateSandbox_Twice_IsolatedBoards(t *testing.T) {
 	ctx := context.Background()
 	f := newDemoFixture(t)
@@ -98,8 +92,7 @@ func TestPurgeExpired_RemovesUserAndBoard(t *testing.T) {
 	assert.Error(t, err, "the sandbox board should have gone with its owner")
 }
 
-// The purge has to survive a sandbox that recorded audit rows: activities.actor_id
-// has no ON DELETE clause, so a stale row would abort the user delete.
+// activities.actor_id has no ON DELETE clause.
 func TestPurgeExpired_WithActivities_StillDeletesUser(t *testing.T) {
 	ctx := context.Background()
 	f := newDemoFixture(t)
@@ -138,7 +131,6 @@ func TestPurgeExpired_UnexpiredSandbox_IsKept(t *testing.T) {
 	assert.NoError(t, err, "a live sandbox must survive the sweep")
 }
 
-// Real users have is_demo = false and must never be swept, whatever else happens.
 func TestPurgeExpired_RealUser_Untouched(t *testing.T) {
 	ctx := context.Background()
 	f := newDemoFixture(t)

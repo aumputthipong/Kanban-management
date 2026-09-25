@@ -36,8 +36,7 @@ type subtaskCard struct {
 	canEdit bool
 }
 
-// cardAccess resolves the card's board and gates membership on it: an unknown card and
-// a board the caller is not on both 404 (docs/adr/0004). canEdit follows canEditCard.
+// Unknown card and non-member both 404 (docs/adr/0004).
 func (h *SubtaskHandler) cardAccess(r *http.Request) (subtaskCard, *httputil.APIError) {
 	cardID := chi.URLParam(r, "cardID")
 	if _, err := uuid.Parse(cardID); err != nil {
@@ -68,8 +67,7 @@ func (h *SubtaskHandler) cardAccess(r *http.Request) (subtaskCard, *httputil.API
 	}, nil
 }
 
-// cardForEdit is cardAccess plus the edit rule. A member without edit rights gets 403,
-// not 404: they can already see the card, so there is nothing left to hide.
+// 403, not 404: the caller can already see the card.
 func (h *SubtaskHandler) cardForEdit(r *http.Request) (subtaskCard, *httputil.APIError) {
 	card, apiErr := h.cardAccess(r)
 	if apiErr != nil {
@@ -81,8 +79,7 @@ func (h *SubtaskHandler) cardForEdit(r *http.Request) (subtaskCard, *httputil.AP
 	return card, nil
 }
 
-// subtaskOnCard 404s a subtask that belongs to a different card, so access to one card
-// cannot be used to reach a subtask on a board the caller is not a member of.
+// Stops a visible card from reaching a subtask on another board.
 func (h *SubtaskHandler) subtaskOnCard(r *http.Request, cardID string) (db.CardSubtask, *httputil.APIError) {
 	subtaskID := chi.URLParam(r, "subtaskID")
 	if _, err := uuid.Parse(subtaskID); err != nil {
@@ -101,8 +98,7 @@ func (h *SubtaskHandler) subtaskOnCard(r *http.Request, cardID string) (db.CardS
 	return subtask, nil
 }
 
-// broadcastSubtasks sends the card's full subtask list, so a receiver that applies it
-// twice, or out of order with its own optimistic edit, still ends up correct.
+// Full list, so re-applying or reordering with an optimistic edit is safe.
 func (h *SubtaskHandler) broadcastSubtasks(r *http.Request, boardID, cardID string) []db.CardSubtask {
 	subtasks, err := h.subtaskService.GetSubtasksByCardID(r.Context(), cardID)
 	if err != nil {

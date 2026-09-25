@@ -1,9 +1,6 @@
 //go:build integration
 
-// Package testutil spins up a real Postgres for integration tests: one container per
-// test binary, one template database with migrations applied once, and a near-instant
-// TEMPLATE clone per NewTestDB. Guarded by the `integration` build tag, so `make test`
-// skips this package and `make test-integration` runs it.
+// One Postgres container per test binary; each NewTestDB clones a migrated template. Build tag: integration.
 package testutil
 
 import (
@@ -29,13 +26,10 @@ const templateDB = "turtask_template"
 var (
 	once        sync.Once
 	container   *tcpg.PostgresContainer
-	adminDSN    string // connection string to "postgres" admin DB
+	adminDSN    string
 	templateErr error
 )
 
-// NewTestDB returns a pool on a fresh database cloned from the migrated template,
-// dropped on cleanup. It is a real Postgres, so race tests and concurrent commits
-// behave as they do in production.
 func NewTestDB(t *testing.T) *pgxpool.Pool {
 	t.Helper()
 	ctx := context.Background()
@@ -53,8 +47,7 @@ func NewTestDB(t *testing.T) *pgxpool.Pool {
 	}
 	defer admin.Close()
 
-	// CREATE DATABASE doesn't accept parameters; safe here because dbName
-	// is uuid-derived and sanitize() keeps only [a-z0-9_].
+	// CREATE DATABASE takes no parameters; dbName is sanitized to [a-z0-9_].
 	if _, err := admin.Exec(ctx, fmt.Sprintf(
 		"CREATE DATABASE %s TEMPLATE %s", dbName, templateDB,
 	)); err != nil {
@@ -68,8 +61,7 @@ func NewTestDB(t *testing.T) *pgxpool.Pool {
 
 	t.Cleanup(func() {
 		pool.Close()
-		// Reconnect to admin to drop the test DB. Best-effort — a leaked
-		// DB just costs memory in the (ephemeral) container.
+		// Best-effort: a leaked DB only costs memory in the container.
 		dropAdmin, derr := pgxpool.New(context.Background(), adminDSN)
 		if derr != nil {
 			t.Logf("testutil drop admin: %v", derr)
@@ -86,8 +78,6 @@ func NewTestDB(t *testing.T) *pgxpool.Pool {
 	return pool
 }
 
-// bootstrap starts the shared Postgres container and prepares the template
-// database. Runs exactly once per test binary.
 func bootstrap(ctx context.Context) error {
 	c, err := tcpg.Run(ctx,
 		"postgres:15-alpine",
@@ -109,8 +99,6 @@ func bootstrap(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("connection string: %w", err)
 	}
-	// base ends in "/postgres?..."; we use it as admin and derive per-db
-	// DSNs by swapping the path segment.
 	adminDSN = base
 
 	adminPool, err := pgxpool.New(ctx, adminDSN)
@@ -123,15 +111,12 @@ func bootstrap(ctx context.Context) error {
 		return fmt.Errorf("create template: %w", err)
 	}
 
-	// Mirror production bootstrap exactly. Do NOT also call migrate.Run: schema.sql
-	// already reflects every migration's end state, so replaying them fails on the first
-	// CREATE TABLE both contain (tags, in schema.sql and again in migration 000004).
+	// Mirror production bootstrap — don't also call migrate.Run, replaying fails on existing tables.
 	if err := migrate.Bootstrap(ctx, dsnForDB(templateDB), schemaFilePath(), migrationsDir()); err != nil {
 		return fmt.Errorf("template bootstrap: %w", err)
 	}
 
-	// Marking it a template allows CREATE DATABASE ... TEMPLATE without superuser, and
-	// datallowconn=false prevents writes afterwards.
+	// Template: CREATE DATABASE ... TEMPLATE without superuser; datallowconn=false blocks writes.
 	if _, err := adminPool.Exec(ctx, fmt.Sprintf(
 		"UPDATE pg_database SET datistemplate=true, datallowconn=false WHERE datname='%s'",
 		templateDB,
@@ -142,34 +127,23 @@ func bootstrap(ctx context.Context) error {
 	return nil
 }
 
-// migrationsDir resolves backend/database/migrations from this file's own source path,
-// so it works regardless of where the test was invoked from.
 func migrationsDir() string {
 	return filepath.Join(backendDir(), "database", "migrations")
 }
 
-// schemaFilePath returns backend/database/schema.sql, the pre-migration baseline.
 func schemaFilePath() string {
 	return filepath.Join(backendDir(), "database", "schema.sql")
 }
 
-// backendDir returns the absolute path to the backend module root. Uses
-// runtime.Caller so it's robust to the test's working directory.
 func backendDir() string {
 	_, file, _, ok := runtime.Caller(0)
 	if !ok {
 		panic("testutil: cannot locate own source file")
 	}
-	// file = .../backend/internal/testutil/db.go → backend is two dirs up
 	return filepath.Join(filepath.Dir(file), "..", "..")
 }
 
-// dsnForDB rewrites the admin DSN to point at a specific database. The
-// testcontainers connection string format is
-// "postgres://user:pass@host:port/<dbname>?<params>".
 func dsnForDB(name string) string {
-	// Find "/postgres?" or "/postgres" at the end-ish of adminDSN and swap.
-	// Simpler: testcontainers gives us a known shape; reconstruct manually.
 	host, err := container.Host(context.Background())
 	if err != nil {
 		panic(fmt.Sprintf("testutil dsn host: %v", err))
@@ -182,8 +156,6 @@ func dsnForDB(name string) string {
 		host, port.Port(), name)
 }
 
-// sanitize strips characters not allowed in unquoted Postgres identifiers.
-// We only need lowercase ascii + digits + underscore; uuid hyphens go.
 func sanitize(s string) string {
 	out := make([]byte, 0, len(s))
 	for i := 0; i < len(s); i++ {

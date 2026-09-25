@@ -83,3 +83,71 @@ the behaviour.
   by `updated_at` on the client would let other members' edits reshuffle it.
 - The landing page probes `/me/settings` server-side and redirects signed-in
   visitors to their default landing; any failure renders the marketing page.
+
+## Backend
+
+### Routing & middleware
+
+- Order in `routes.go` matters: `RequestID` → `ClientIPResolver` (before the
+  logger and every rate limiter, which key off it) → `SentryRecoverer` (before
+  chi's `Recoverer`, so the panic is captured before it becomes a 500) →
+  `RequestLogger` (redacts OAuth `code`/`state` and the WS ticket).
+- `/metrics` is unauthenticated on purpose — restrict it at the network layer.
+  Swagger UI is disabled in production: a public API map is a roadmap for attackers.
+- `/health` memoizes the DB ping for 1 s so a fast uptime monitor can't hammer the pool.
+- Rate limits: auth 20/min per IP; demo 30/hour (each call seeds a whole board,
+  leaves room for an office NAT). An empty limiter key would put every caller in
+  one bucket, so the RemoteAddr fallback is required.
+
+### Auth
+
+- A refresh-token issuance failure at login is logged, not fatal: the user keeps
+  the access token until it expires.
+- Refresh returns an undifferentiated 401 for invalid *and* expired tokens, so
+  valid-but-expired tokens can't be probed. Login does the same for
+  "wrong password" vs "OAuth-only account" (anti-enumeration).
+- Logout always returns 204, even if revoking fails — a transient DB error must
+  not trap the user in a logged-in state.
+- The WS ticket carries `aud=ws`: `Parse` rejects it (a ticket leaked from a URL
+  must not open the REST API) and `ParseWSTicket` rejects session tokens.
+
+### Activity & broadcasts
+
+- `Record` (sync) is used when a broadcast needs the new row's id/`created_at`;
+  `RecordAsync` is fire-and-forget on a background context and drops the job
+  when the queue is full — the audit log is best-effort after the mutation commits.
+- Broadcast payloads are built from the stored row, never the request: a field
+  the client omitted would be `null`, and receiving stores spread the payload
+  over their copy.
+
+### Members, invites, subtasks
+
+- A board has at most one live invite link (revoke + create in one transaction).
+  Accepting is idempotent via `ON CONFLICT`, so a double-clicked link can't 500.
+- Subtask edits by a member without edit rights get 403, not 404 — they can
+  already see the card, so there is nothing left to hide.
+- Removing a member evicts their sockets: membership is only checked at the
+  WS handshake.
+
+### Planning
+
+- `PromoteItem` is the one cross-table transactional write. It locks the item
+  (`FOR UPDATE`) so two concurrent promoters can't both see `live`. Dropped
+  items must be un-dropped first. The card lands at the top of the first TODO
+  column. Only `planning.item_promoted` is logged — no `card.created`, which
+  would double-count.
+- Promoted items can't be retyped: the card already carries the original meaning.
+
+### Demo sandbox
+
+- Sandboxes live 24 h and are purged hourly by an in-process loop (a sweep is a
+  handful of deletes, not worth a cron job). Purge order: boards first (the
+  cascade takes columns, cards, members, tags, planning), then tables whose user
+  FK has no `ON DELETE`. Sandbox creation is not one transaction; the purge
+  collects half-seeded sandboxes.
+
+### Known issues
+
+- **T6** — `CreateColumn` reads positions and writes a midpoint in Go without a
+  lock, so concurrent creates can share a position. The fix belongs in SQL;
+  `TestCreateColumn_ConcurrentCreates_CanCollideOnPosition_T6` documents it.

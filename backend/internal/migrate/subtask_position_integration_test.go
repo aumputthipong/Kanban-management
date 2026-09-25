@@ -13,8 +13,6 @@ import (
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/testutil"
 )
 
-// Migration 000019 must renumber the duplicate positions real boards already have, in the
-// order users currently see them, before the unique constraint can be added.
 func TestMigration000019_RenumbersDuplicatePositionsInDisplayOrder(t *testing.T) {
 	ctx := context.Background()
 	pool := testutil.NewTestDB(t)
@@ -24,10 +22,10 @@ func TestMigration000019_RenumbersDuplicatePositionsInDisplayOrder(t *testing.T)
 	m, err := migrate.New(toFileURL(migrationsDir()), toPgx5(pool.Config().ConnString()))
 	require.NoError(t, err)
 	t.Cleanup(func() { _, _ = m.Close() })
-	// Absolute versions, not Steps(±1): later migrations must not shift what this targets.
+	// Absolute versions, not Steps(±1): later migrations must not shift the target.
 	require.NoError(t, m.Migrate(18), "step back to before 000019")
 
-	// The real shape from production data: a gap at 2, then two rows sharing 3.
+	// Real production shape: a gap at 2, then two rows sharing 3.
 	_, err = pool.Exec(ctx, `
 		INSERT INTO card_subtasks (card_id, title, position, created_at) VALUES
 		($1, 'Member Filter', 1, '2026-04-08 10:47:23+00'),

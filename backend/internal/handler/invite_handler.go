@@ -22,8 +22,6 @@ func NewInviteHandler(invites service.InviteServicer, boards service.BoardServic
 	return &InviteHandler{invites: invites, boards: boards, activity: activity, broadcaster: broadcaster}
 }
 
-// CreateInvite (re)generates the board's shareable invite link. Manager+ only
-// (gated by the route).
 func (h *InviteHandler) CreateInvite(w http.ResponseWriter, r *http.Request) error {
 	boardID, err := httputil.GetUUIDParam(r, "boardID")
 	if err != nil {
@@ -44,7 +42,7 @@ func (h *InviteHandler) CreateInvite(w http.ResponseWriter, r *http.Request) err
 	return nil
 }
 
-// GetActiveInvite returns the board's current link, or 204 when there isn't one.
+// 204 when there is no active link.
 func (h *InviteHandler) GetActiveInvite(w http.ResponseWriter, r *http.Request) error {
 	boardID, err := httputil.GetUUIDParam(r, "boardID")
 	if err != nil {
@@ -65,7 +63,6 @@ func (h *InviteHandler) GetActiveInvite(w http.ResponseWriter, r *http.Request) 
 	return nil
 }
 
-// RevokeInvite turns off the board's active link. Manager+ only.
 func (h *InviteHandler) RevokeInvite(w http.ResponseWriter, r *http.Request) error {
 	boardID, err := httputil.GetUUIDParam(r, "boardID")
 	if err != nil {
@@ -78,9 +75,7 @@ func (h *InviteHandler) RevokeInvite(w http.ResponseWriter, r *http.Request) err
 	return nil
 }
 
-// AcceptInvite joins the authenticated caller to the board the token points at.
-// Deliberately NOT board-gated — the caller isn't a member yet; auth plus a
-// valid, unexpired, unrevoked token is the gate.
+// Not board-gated: auth plus a valid token is the gate.
 func (h *InviteHandler) AcceptInvite(w http.ResponseWriter, r *http.Request) error {
 	token := chi.URLParam(r, "token")
 	if token == "" {

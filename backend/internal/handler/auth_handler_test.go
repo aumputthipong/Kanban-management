@@ -20,9 +20,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestMain seeds JWT_SECRET before any test signs a token — token.Generate fatals on an
-// empty secret, which would kill the whole binary rather than fail one case. Must be at
-// least 32 bytes; startup rejects anything shorter.
+// token.Generate fatals on an empty secret; it must be at least 32 bytes.
 func TestMain(m *testing.M) {
 	if os.Getenv("JWT_SECRET") == "" {
 		if err := os.Setenv("JWT_SECRET", "test-secret-do-not-use-in-prod-0123456789"); err != nil {
@@ -32,8 +30,6 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-// findCookie returns the value of the named Set-Cookie header from a
-// recorded response, or "" if the cookie was not set.
 func findCookie(w *httptest.ResponseRecorder, name string) (value string, found bool) {
 	for _, c := range w.Result().Cookies() {
 		if c.Name == name {
@@ -44,7 +40,7 @@ func findCookie(w *httptest.ResponseRecorder, name string) (value string, found 
 }
 
 func newTestAuthHandler(svc *mock.MockAuthService) *AuthHandler {
-	// production=false → cookies are not Secure-only, so httptest captures them.
+	// production=false so httptest can capture the cookies.
 	return NewAuthHandler(svc, &mock.MockDemoService{}, false, false)
 }
 
@@ -52,9 +48,7 @@ func newTestDemoHandler(auth *mock.MockAuthService, demo *mock.MockDemoService) 
 	return NewAuthHandler(auth, demo, false, false)
 }
 
-// ────────────────────────────────────────────────
 // Register
-// ────────────────────────────────────────────────
 
 func TestRegister_Success_SetsAuthCookies(t *testing.T) {
 	svc := &mock.MockAuthService{
@@ -115,8 +109,7 @@ func TestRegister_ShortPassword_Returns400(t *testing.T) {
 	}
 	h := newTestAuthHandler(svc)
 
-	// password "short" is 5 chars — fails min=8 validator. The validator must
-	// run before the service so we never persist a weak password.
+	// The validator must run before the service.
 	body := strings.NewReader(`{"email":"x@y.com","full_name":"X","password":"short"}`)
 	req := httptest.NewRequest(http.MethodPost, "/auth/register", body)
 	w := httptest.NewRecorder()
@@ -156,9 +149,7 @@ func TestRegister_ServiceError_Returns500(t *testing.T) {
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
 }
 
-// ────────────────────────────────────────────────
 // Login
-// ────────────────────────────────────────────────
 
 func TestLogin_Success_SetsCookies(t *testing.T) {
 	svc := &mock.MockAuthService{
@@ -184,10 +175,7 @@ func TestLogin_Success_SetsCookies(t *testing.T) {
 	assert.True(t, hasRefresh)
 }
 
-// TestLogin_InvalidCreds_Returns401_NoDetail — the handler collapses
-// ErrInvalidCreds and ErrOAuthOnly into the same "Invalid credentials"
-// response. This is intentional: distinguishing them would let an attacker
-// learn "this email exists but is OAuth-only" → user enumeration.
+// ErrInvalidCreds and ErrOAuthOnly share one message — anti-enumeration.
 func TestLogin_InvalidCreds_Returns401_NoDetail(t *testing.T) {
 	svc := &mock.MockAuthService{
 		LoginFn: func(ctx context.Context, email, password string) (db.User, error) {
@@ -210,9 +198,7 @@ func TestLogin_InvalidCreds_Returns401_NoDetail(t *testing.T) {
 	assert.Contains(t, w.Body.String(), "Invalid credentials")
 }
 
-// TestLogin_OAuthOnly_Returns401_SameMessage — guards the anti-enumeration
-// behavior described above. If someone "improves" the UX by surfacing
-// "this account uses Google OAuth", this test must fail loudly.
+// Must fail if "this account uses Google" is ever surfaced.
 func TestLogin_OAuthOnly_Returns401_SameMessage(t *testing.T) {
 	svc := &mock.MockAuthService{
 		LoginFn: func(ctx context.Context, email, password string) (db.User, error) {
@@ -263,9 +249,7 @@ func TestLogin_ServiceError_Returns500(t *testing.T) {
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
 }
 
-// ────────────────────────────────────────────────
 // OAuthCallback
-// ────────────────────────────────────────────────
 
 func TestOAuthCallback_Success(t *testing.T) {
 	svc := &mock.MockAuthService{
@@ -299,7 +283,6 @@ func TestOAuthCallback_UnknownProvider_Returns400(t *testing.T) {
 	}
 	h := newTestAuthHandler(svc)
 
-	// validator: provider must be oneof=google github.
 	body := strings.NewReader(`{"email":"x@y.com","full_name":"X","provider":"facebook","provider_id":"abc"}`)
 	req := httptest.NewRequest(http.MethodPost, "/auth/oauth", body)
 	w := httptest.NewRecorder()
@@ -309,9 +292,7 @@ func TestOAuthCallback_UnknownProvider_Returns400(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 }
 
-// ────────────────────────────────────────────────
 // Logout
-// ────────────────────────────────────────────────
 
 func TestLogout_WithRefreshCookie_RevokesAndClearsBoth(t *testing.T) {
 	revokedTokens := []string{}
@@ -332,14 +313,11 @@ func TestLogout_WithRefreshCookie_RevokesAndClearsBoth(t *testing.T) {
 	assert.Equal(t, http.StatusNoContent, w.Code)
 	assert.Equal(t, []string{"raw-token-to-revoke"}, revokedTokens, "server-side revoke must run so token can't be reused")
 
-	// Both cookies should be expired (MaxAge<0 or empty value).
 	authCookie, _ := findCookie(w, "auth_token")
 	assert.Equal(t, "", authCookie, "auth cookie should be cleared on logout")
 }
 
-// TestLogout_NoCookie_StillReturns204 — logout is idempotent. A client with
-// no cookies (already logged out / never logged in) must not receive an
-// error, otherwise the UI would loop on a 4xx during double-logout.
+// Idempotent: a double logout must not 4xx.
 func TestLogout_NoCookie_StillReturns204(t *testing.T) {
 	svc := &mock.MockAuthService{
 		RevokeRefreshTokenFn: func(ctx context.Context, rawToken string) error {
@@ -357,9 +335,7 @@ func TestLogout_NoCookie_StillReturns204(t *testing.T) {
 	assert.Equal(t, http.StatusNoContent, w.Code)
 }
 
-// TestLogout_RevokeFails_StillReturns204 — by design Logout swallows the
-// revoke error (logged via slog) so a transient DB blip doesn't trap the
-// user in a logged-in state on the client.
+// A revoke failure is logged, not surfaced.
 func TestLogout_RevokeFails_StillReturns204(t *testing.T) {
 	svc := &mock.MockAuthService{
 		RevokeRefreshTokenFn: func(ctx context.Context, rawToken string) error {
@@ -377,9 +353,7 @@ func TestLogout_RevokeFails_StillReturns204(t *testing.T) {
 	assert.Equal(t, http.StatusNoContent, w.Code)
 }
 
-// ────────────────────────────────────────────────
 // Refresh
-// ────────────────────────────────────────────────
 
 func TestRefresh_Success_RotatesBothCookies(t *testing.T) {
 	svc := &mock.MockAuthService{
@@ -426,9 +400,7 @@ func TestRefresh_NoCookie_Returns401(t *testing.T) {
 	assert.Equal(t, http.StatusUnauthorized, w.Code)
 }
 
-// TestRefresh_InvalidToken_Returns401AndClearsCookie — any rotation failure
-// returns 401 (intentionally undifferentiated to prevent probing for valid-
-// but-expired tokens) and clears the cookie so the browser stops sending it.
+// Undifferentiated 401 — no probing for valid-but-expired tokens.
 func TestRefresh_InvalidToken_Returns401AndClearsCookie(t *testing.T) {
 	svc := &mock.MockAuthService{
 		RotateRefreshTokenFn: func(ctx context.Context, raw, ua, ip string) (service.RefreshRotationResult, error) {
@@ -445,8 +417,6 @@ func TestRefresh_InvalidToken_Returns401AndClearsCookie(t *testing.T) {
 
 	assert.Equal(t, http.StatusUnauthorized, w.Code)
 
-	// ClearRefreshCookie sets MaxAge<0 (or expires in the past) — captured
-	// here as a present-but-empty cookie value.
 	for _, c := range w.Result().Cookies() {
 		if c.Name == token.RefreshCookieName {
 			assert.True(t, c.MaxAge < 0 || c.Value == "", "refresh cookie must be cleared on failure")
@@ -456,9 +426,7 @@ func TestRefresh_InvalidToken_Returns401AndClearsCookie(t *testing.T) {
 	t.Fatal("expected refresh cookie clear directive in response")
 }
 
-// ────────────────────────────────────────────────
 // Me
-// ────────────────────────────────────────────────
 
 func TestMe_Success(t *testing.T) {
 	svc := &mock.MockAuthService{
@@ -511,9 +479,7 @@ func TestMe_ServiceError_Returns500(t *testing.T) {
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
 }
 
-// ────────────────────────────────────────────────
 // WSTicket
-// ────────────────────────────────────────────────
 
 func TestWSTicket_Success_ReturnsWSOnlyTicket(t *testing.T) {
 	h := newTestAuthHandler(&mock.MockAuthService{})
@@ -536,7 +502,6 @@ func TestWSTicket_Success_ReturnsWSOnlyTicket(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, validUserID, claims.UserID)
 
-	// The issued ticket must not double as a session credential.
 	_, err = token.Parse(body.Ticket)
 	assert.Error(t, err)
 }
@@ -552,9 +517,7 @@ func TestWSTicket_MissingUserID_Returns401(t *testing.T) {
 	assert.Equal(t, http.StatusUnauthorized, w.Code)
 }
 
-// ────────────────────────────────────────────────
 // Demo
-// ────────────────────────────────────────────────
 
 func TestDemo_Success_SetsCookiesAndReturnsBoard(t *testing.T) {
 	expiry := time.Now().Add(24 * time.Hour)

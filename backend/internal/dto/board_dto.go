@@ -1,4 +1,3 @@
-// internal/dto/board_dto.go
 package dto
 
 import "time"
@@ -14,9 +13,7 @@ type ColumnResponse struct {
 
 type CreateBoardRequest struct {
 	Title string `json:"title" validate:"required,min=1,max=120"`
-	// Appearance is optional at create time. Omit/null = column default
-	// (description '', color '#1E40AF', icon 'board'). Same validation as the
-	// PATCH path so a board can be born with its chosen identity in one request.
+	// Optional; omitted = column default.
 	Description *string `json:"description" validate:"omitempty,max=160"`
 	Color       *string `json:"color"       validate:"omitempty,hexcolor"`
 	Icon        *string `json:"icon"        validate:"omitempty,oneof=board rocket target bolt bug"`
@@ -40,8 +37,6 @@ type BoardSummaryResponse struct {
 	Members        []MemberSummary `json:"members"`
 }
 
-// BoardResponse is the clean shape returned after a board mutation (PATCH).
-// It avoids leaking pgtype fields from db.Board onto the wire.
 type BoardResponse struct {
 	ID          string   `json:"id"`
 	Title       string   `json:"title"`
@@ -60,10 +55,7 @@ type UserResponse struct {
 type UpdateBoardRequest struct {
 	Title  *string  `json:"title"  validate:"omitempty,min=1,max=120"`
 	Budget *float64 `json:"budget" validate:"omitempty,gte=0"`
-	// Appearance. Description "" is a valid clear (column is NOT NULL DEFAULT '');
-	// color must be a hex string; icon is one of the known glyph keys mirrored
-	// on the client (lib/boardAppearance). omit/null = no change (COALESCE-style
-	// read-modify-write in the service).
+	// Omitted/null = no change. "" is a valid clear for description.
 	Description *string `json:"description" validate:"omitempty,max=160"`
 	Color       *string `json:"color"       validate:"omitempty,hexcolor"`
 	Icon        *string `json:"icon"        validate:"omitempty,oneof=board rocket target bolt bug"`
@@ -78,8 +70,7 @@ type BoardMemberResponse struct {
 }
 
 type AddMemberRequest struct {
-	// Invite by email — the inviter types the exact address (no user list is
-	// exposed, for privacy). The service resolves it to a registered user.
+	// Exact email only — no user directory is exposed.
 	Email string `json:"email" validate:"required,email"`
 	Role  string `json:"role"  validate:"required,oneof=owner manager member"`
 }
@@ -88,9 +79,7 @@ type UpdateMemberRoleRequest struct {
 	Role string `json:"role" validate:"required,oneof=owner manager member"`
 }
 
-// StashedBoardDTO is one row in the stash; stashed_at is backed by the generic
-// boards.deleted_at column. Appearance fields mirror the project-list cards so the row
-// renders the same glyph and description.
+// stashed_at is boards.deleted_at.
 type StashedBoardDTO struct {
 	ID          string    `json:"id"`
 	Title       string    `json:"title"`

@@ -22,7 +22,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// jsonBody marshals v to JSON for use as a request body.
 func jsonBody(t *testing.T, v any) *bytes.Buffer {
 	t.Helper()
 	b, err := json.Marshal(v)
@@ -30,20 +29,12 @@ func jsonBody(t *testing.T, v any) *bytes.Buffer {
 	return bytes.NewBuffer(b)
 }
 
-// otherUserID is a member of the same board as validUserID, used to verify
-// the "edit own card" carve-out doesn't leak across users.
 const otherUserID = "11111111-2222-3333-4444-555555555555"
 
-// ────────────────────────────────────────────────
 // CreateCard
-// ────────────────────────────────────────────────
 
-// ────────────────────────────────────────────────
 // UpdateCard
-// ────────────────────────────────────────────────
 
-// cardOwnedBy returns a db.Card with the given creator/assignee, for setting
-// up the "is this user allowed to edit?" branch in UpdateCard.
 func cardOwnedBy(creatorID, assigneeID *string) db.Card {
 	return db.Card{
 		ID:         validCardID,
@@ -56,7 +47,6 @@ func cardOwnedBy(creatorID, assigneeID *string) db.Card {
 
 func ptr(s string) *string { return &s }
 
-// titleOr stands in for the SQL COALESCE when a mock plays the database.
 func titleOr(title *string, stored string) string {
 	if title == nil {
 		return stored
@@ -93,7 +83,6 @@ func TestUpdateCard_ManagerEditsAnyCard_Success(t *testing.T) {
 }
 
 func TestUpdateCard_MemberEditsOwnCard_Success(t *testing.T) {
-	// Member role + caller is the creator → carve-out allows edit.
 	creator := ptr(validUserID)
 	svc := &mock.MockBoardService{
 		GetCardFn: func(ctx context.Context, cardID string) (db.Card, error) {
@@ -122,7 +111,6 @@ func TestUpdateCard_MemberEditsOwnCard_Success(t *testing.T) {
 }
 
 func TestUpdateCard_MemberEditsAssignedCard_Success(t *testing.T) {
-	// Member role + caller is assignee (but not creator) → still allowed.
 	assignee := ptr(validUserID)
 	other := ptr(otherUserID)
 	svc := &mock.MockBoardService{
@@ -151,9 +139,7 @@ func TestUpdateCard_MemberEditsAssignedCard_Success(t *testing.T) {
 	assert.Equal(t, http.StatusOK, w.Code)
 }
 
-// TestUpdateCard_MemberEditsOthersCard_Returns403 — the key permission test:
-// a plain member must NOT be able to edit a card they neither created nor
-// were assigned. Manager+ would pass, this caller is just "member".
+// A plain member can't edit a card they neither created nor were assigned.
 func TestUpdateCard_MemberEditsOthersCard_Returns403(t *testing.T) {
 	other := ptr(otherUserID)
 	svc := &mock.MockBoardService{
@@ -215,8 +201,7 @@ func TestUpdateCard_CardNotFound_Returns404(t *testing.T) {
 	assert.Equal(t, http.StatusNotFound, w.Code)
 }
 
-// TestUpdateCard_NonMember_Returns404 — anti-enumeration applies here too:
-// knowing a valid card ID must not reveal whether you're a member of its board.
+// Anti-enumeration: a valid card id must not reveal membership.
 func TestUpdateCard_NonMember_Returns404(t *testing.T) {
 	other := ptr(otherUserID)
 	svc := &mock.MockBoardService{
@@ -242,14 +227,13 @@ func TestUpdateCard_NonMember_Returns404(t *testing.T) {
 	assert.Equal(t, http.StatusNotFound, w.Code)
 }
 
-// Pins the silent-clobber case AGENTS.md flags: omitting `title` from a PATCH must reach
-// the service as nil (no change), never as "" or a value read from an earlier snapshot.
+// Omitted title must reach the service as nil.
 func TestUpdateCard_PATCHSemantics_OmittedTitle(t *testing.T) {
 	creator := ptr(validUserID)
 	var received service.UpdateCardParams
 	svc := &mock.MockBoardService{
 		GetCardFn: func(ctx context.Context, cardID string) (db.Card, error) {
-			return cardOwnedBy(creator, nil), nil // Title: "Existing"
+			return cardOwnedBy(creator, nil), nil
 		},
 		GetBoardIDByColumnFn: func(ctx context.Context, columnID string) (string, error) {
 			return validBoardID, nil
@@ -264,7 +248,6 @@ func TestUpdateCard_PATCHSemantics_OmittedTitle(t *testing.T) {
 	}
 	h := NewBoardHandler(svc, nil, nil, nil)
 
-	// Only description supplied; title omitted entirely.
 	body := map[string]any{"description": "hello"}
 	req := withUserID(httptest.NewRequest(http.MethodPatch, "/cards/"+validCardID, jsonBody(t, body)), validUserID)
 	req = chiCtx(req, "cardID", validCardID)
@@ -278,9 +261,7 @@ func TestUpdateCard_PATCHSemantics_OmittedTitle(t *testing.T) {
 	assert.Equal(t, "hello", *received.Description)
 }
 
-// The My Work snooze regression: a PATCH touching only due_date must not wipe assignee,
-// priority, description or estimated_hours — once, every omitted column was nulled and
-// the card left its owner's inbox. Only due_date may be marked as set.
+// Snooze regression: a due_date-only PATCH must not wipe other fields.
 func TestUpdateCard_PartialPatch_PreservesUntouchedFields(t *testing.T) {
 	assignee := ptr(validUserID)
 	var received service.UpdateCardParams
@@ -301,7 +282,7 @@ func TestUpdateCard_PartialPatch_PreservesUntouchedFields(t *testing.T) {
 			return validBoardID, nil
 		},
 		GetBoardMemberRoleFn: func(ctx context.Context, boardID, userID string) (string, error) {
-			return "member", nil // not manager — relies on the assignee carve-out
+			return "member", nil
 		},
 		UpdateCardFn: func(ctx context.Context, arg service.UpdateCardParams) (service.UpdateCardResult, error) {
 			received = arg
@@ -310,7 +291,6 @@ func TestUpdateCard_PartialPatch_PreservesUntouchedFields(t *testing.T) {
 	}
 	h := NewBoardHandler(svc, nil, nil, nil)
 
-	// Snooze: only due_date supplied, exactly like lib/myWorkApi snoozeCardDueDate.
 	body := map[string]any{"due_date": "2026-06-10"}
 	req := withUserID(httptest.NewRequest(http.MethodPatch, "/cards/"+validCardID, jsonBody(t, body)), validUserID)
 	req = chiCtx(req, "cardID", validCardID)
@@ -328,10 +308,7 @@ func TestUpdateCard_PartialPatch_PreservesUntouchedFields(t *testing.T) {
 	require.NotNil(t, received.DueDate.Value)
 }
 
-// TestUpdateCard_PATCHSemantics_EmptyTitleRejected verifies the validator
-// guard: title has `omitempty,min=1,max=200`, so explicitly sending "" must
-// be rejected (would otherwise blank out the title). AGENTS.md: "" on a
-// required column → 400.
+// "" on a required column → 400.
 func TestUpdateCard_PATCHSemantics_EmptyTitleRejected(t *testing.T) {
 	creator := ptr(validUserID)
 	svc := &mock.MockBoardService{
@@ -345,7 +322,6 @@ func TestUpdateCard_PATCHSemantics_EmptyTitleRejected(t *testing.T) {
 	}
 	h := NewBoardHandler(svc, nil, nil, nil)
 
-	// Send raw JSON because the helper wraps map[string]any.
 	body := strings.NewReader(`{"title": ""}`)
 	req := withUserID(httptest.NewRequest(http.MethodPatch, "/cards/"+validCardID, body), validUserID)
 	req = chiCtx(req, "cardID", validCardID)
@@ -356,9 +332,7 @@ func TestUpdateCard_PATCHSemantics_EmptyTitleRejected(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 }
 
-// ────────────────────────────────────────────────
 // GetCard
-// ────────────────────────────────────────────────
 
 func TestGetCard_Success_RoundtripsTitle(t *testing.T) {
 	svc := &mock.MockBoardService{
@@ -378,7 +352,6 @@ func TestGetCard_Success_RoundtripsTitle(t *testing.T) {
 
 	var body map[string]any
 	require.NoError(t, json.NewDecoder(w.Body).Decode(&body))
-	// Enriched response is now snake_case dto.CardDetailResponse.
 	assert.Equal(t, "Hello", body["title"])
 }
 
@@ -401,7 +374,6 @@ func TestGetCard_InvalidID_Returns400(t *testing.T) {
 }
 
 func TestGetCard_NotFound_Returns404(t *testing.T) {
-	// Handler maps both pgx.ErrNoRows and sql.ErrNoRows to 404.
 	svc := &mock.MockBoardService{
 		GetCardDetailFn: func(ctx context.Context, cardID string) (service.CardDetailData, error) {
 			return service.CardDetailData{}, sql.ErrNoRows
@@ -435,9 +407,7 @@ func TestGetCard_DBError_Returns500(t *testing.T) {
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
 }
 
-// TestUpdateCard_RespondsWithSnakeCase pins the wire shape. The handler used to
-// respond with the raw sqlc row, which marshals as PascalCase — no client reads
-// that, and the Swagger annotation promises dto.CardResponse.
+// Pins the snake_case wire shape.
 func TestUpdateCard_RespondsWithSnakeCase(t *testing.T) {
 	creator := ptr(validUserID)
 	svc := &mock.MockBoardService{
@@ -472,9 +442,7 @@ func TestUpdateCard_RespondsWithSnakeCase(t *testing.T) {
 	assert.NotContains(t, got, "Title")
 }
 
-// Guards a trap: every CARD_UPDATED field must come from the updated row, never the
-// request. A request-sourced field is null whenever the caller omitted it, and the
-// receiving store spreads the payload over its copy — the value vanishes everywhere.
+// CARD_UPDATED fields come from the updated row, never the request.
 func TestUpdateCard_OmittedDueDate_BroadcastsStoredValue(t *testing.T) {
 	creator := ptr(validUserID)
 	due := time.Date(2026, 3, 14, 0, 0, 0, 0, time.UTC)
@@ -491,13 +459,12 @@ func TestUpdateCard_OmittedDueDate_BroadcastsStoredValue(t *testing.T) {
 			return "member", nil
 		},
 		UpdateCardFn: func(ctx context.Context, arg service.UpdateCardParams) (service.UpdateCardResult, error) {
-			return service.UpdateCardResult{Card: db.Card{ID: arg.ID, ColumnID: validColumnID, Title: titleOr(arg.Title, "Existing"), DueDate: &due}}, nil // due_date omitted → DB keeps it
+			return service.UpdateCardResult{Card: db.Card{ID: arg.ID, ColumnID: validColumnID, Title: titleOr(arg.Title, "Existing"), DueDate: &due}}, nil
 		},
 	}
 	bc := &mock.MockBroadcaster{}
 	h := NewBoardHandler(svc, nil, nil, bc)
 
-	// Body carries no due_date; the broadcast must still carry the stored one.
 	req := withUserID(httptest.NewRequest(http.MethodPatch, "/cards/"+validCardID,
 		jsonBody(t, map[string]any{"title": "renamed"})), validUserID)
 	req = chiCtx(req, "cardID", validCardID)
@@ -519,8 +486,6 @@ func TestUpdateCard_OmittedDueDate_BroadcastsStoredValue(t *testing.T) {
 	assert.Equal(t, "2026-03-14", *msg.Payload.DueDate)
 }
 
-// Tags and dev notes come from the update result, so an edit that omitted them still
-// broadcasts the stored values instead of blanking them on other clients.
 func TestUpdateCard_BroadcastsStoredTagsAndNotes(t *testing.T) {
 	creator := ptr(validUserID)
 	ac := "Filters by priority"
@@ -570,8 +535,7 @@ func TestUpdateCard_BroadcastsStoredTagsAndNotes(t *testing.T) {
 	require.Len(t, resp.Tags, 1, "the response carries the stored tags too")
 }
 
-// JSON null cannot clear a field (it decodes like an omitted key), so "" and 0 are the
-// clear sentinels. See docs/adr/0009.
+// "" and 0 are the clear sentinels (docs/adr/0009).
 func TestUpdateCard_ClearSentinels_StoreNull(t *testing.T) {
 	var received service.UpdateCardParams
 	svc := &mock.MockBoardService{

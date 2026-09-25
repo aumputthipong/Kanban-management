@@ -7,8 +7,6 @@ import (
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/service"
 )
 
-// MockBoardCommandService implements service.BoardCommandServicer with the
-// function-field pattern: a test sets only the methods it exercises.
 type MockBoardCommandService struct {
 	VerifyCardInBoardFn   func(ctx context.Context, cardID, boardID string) error
 	CreateCardWSFn        func(ctx context.Context, columnID, creatorID, title, priority string, position float64, assigneeID, dueDate, description *string, subtaskTitles []string) (db.CreateCardRow, []db.CardSubtask, error)
@@ -57,8 +55,6 @@ func (m *MockBoardCommandService) UpdateColumn(ctx context.Context, p service.Up
 	return m.UpdateColumnFn(ctx, p)
 }
 
-// MockBroadcaster records every board room a message was sent to, so a test can
-// assert that a mutation actually reached the room rather than only the database.
 type MockBroadcaster struct {
 	Sent    []BroadcastCall
 	Evicted []string
@@ -73,7 +69,6 @@ func (m *MockBroadcaster) Broadcast(boardID string, message []byte) {
 	m.Sent = append(m.Sent, BroadcastCall{BoardID: boardID, Message: message})
 }
 
-// EvictUser records evictions as "boardID/userID", after any broadcasts already in Sent.
 func (m *MockBroadcaster) EvictUser(boardID, userID string) {
 	m.Evicted = append(m.Evicted, boardID+"/"+userID)
 }

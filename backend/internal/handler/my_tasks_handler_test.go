@@ -75,7 +75,6 @@ func TestGetMyTasks_FilterFromQuery_IncludeFromSettings(t *testing.T) {
 	httputil.MakeHandler(h.GetMyTasks)(httptest.NewRecorder(), req)
 
 	assert.Equal(t, service.MyWorkFilter("today"), captured.Filter)
-	// include_unassigned in the URL is intentionally ignored; settings wins.
 	assert.True(t, captured.IncludeUnassigned)
 	assert.False(t, captured.Today.IsZero(), "service should receive a non-zero Today pivot")
 }
@@ -139,7 +138,6 @@ func TestCompleteMyTask_Success_RecordsActivityAndBroadcastsMove(t *testing.T) {
 	assert.Equal(t, validBoardID, recorded.BoardID)
 	assert.Equal(t, validUserID, recorded.ActorID)
 
-	// Activity first (audit log is the source of truth), then the move.
 	require.Len(t, bc.Sent, 2)
 	var activity struct {
 		Type string `json:"type"`
@@ -186,10 +184,6 @@ func TestCompleteMyTask_NotAssignee_404(t *testing.T) {
 	assert.Empty(t, bc.Sent, "nothing moved, so nothing is broadcast")
 }
 
-// spyRecorder is a tiny ActivityRecorder used by my-tasks handler tests to
-// assert the audit row would have been written. It intentionally lives next
-// to the test rather than under internal/service/mock — only one test cares
-// about Record calls and the surface is two methods.
 type spyRecorder struct {
 	record      func(ctx context.Context, p service.RecordParams) error
 	recordAsync func(p service.RecordParams)

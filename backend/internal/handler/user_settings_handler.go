@@ -18,9 +18,6 @@ func NewUserSettingsHandler(s service.UserSettingsServicer) *UserSettingsHandler
 	return &UserSettingsHandler{service: s}
 }
 
-// GetSettings returns the caller's workspace preferences, materializing a
-// default row on first read so the API never branches on "missing".
-//
 // @Summary  My workspace settings
 // @Tags     me
 // @Produce  json
@@ -41,9 +38,6 @@ func (h *UserSettingsHandler) GetSettings(w http.ResponseWriter, r *http.Request
 	return nil
 }
 
-// UpdateSettings applies a partial update. Omitted (nil) fields are left
-// unchanged.
-//
 // @Summary  Update my workspace settings
 // @Tags     me
 // @Accept   json

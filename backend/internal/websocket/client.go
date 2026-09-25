@@ -1,6 +1,4 @@
-// Connection lifecycle: HTTP → WebSocket upgrade, ReadPump, WritePump, and the
-// Client struct. This file manages connections only — no business logic or DB
-// calls. Message routing lives in dispatcher.go and the handler_*.go files.
+// Connection lifecycle only — no business logic or DB calls.
 package websocket
 
 import (
@@ -20,10 +18,7 @@ const (
 	dbTimeout      = 5 * time.Second
 )
 
-// newUpgrader builds a WebSocket upgrader whose CheckOrigin only accepts the
-// configured frontend origin. An empty allowedOrigin disables the check (used
-// in tests) — production must pass FRONTEND_URL. Without this guard any site
-// the user visits could open a credentialed WS to our backend (CSWSH).
+// Only the configured origin (CSWSH guard). Empty disables the check — tests only.
 func newUpgrader(allowedOrigin string) websocket.Upgrader {
 	return websocket.Upgrader{
 		ReadBufferSize:  1024,
@@ -58,9 +53,7 @@ func (c *Client) ReadPump() {
 		return nil
 	})
 
-	// Inbound frames are discarded: writes go over REST and the socket only fans
-	// out. The read loop still has to run — it is what surfaces pongs and a
-	// closed connection, which is how a client is ever unregistered.
+	// Inbound frames are discarded, but the loop must run: it surfaces pongs and closes.
 	for {
 		if _, _, err := c.conn.ReadMessage(); err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure, websocket.CloseNoStatusReceived) {

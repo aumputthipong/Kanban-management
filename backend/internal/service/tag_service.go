@@ -12,8 +12,7 @@ import (
 
 const maxTagNameLen = 50
 
-// Sentinel validation errors so handlers can map them to a 422 with a safe,
-// user-facing message — instead of leaking the raw DB error via err.Error().
+// Safe, user-facing messages — handlers map these to 422.
 var (
 	ErrTagNameEmpty   = errors.New("tag name cannot be empty")
 	ErrTagNameTooLong = errors.New("tag name too long (max 50 chars)")
@@ -37,7 +36,7 @@ func (s *TagService) CreateTag(ctx context.Context, boardID, name, color string)
 	if name == "" {
 		return db.Tag{}, ErrTagNameEmpty
 	}
-	// Characters, not bytes: len() counts a Thai character as 3, rejecting short Thai tags.
+	// Characters, not bytes — a Thai character is 3 bytes.
 	if utf8.RuneCountInString(name) > maxTagNameLen {
 		return db.Tag{}, ErrTagNameTooLong
 	}

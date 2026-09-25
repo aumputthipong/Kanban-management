@@ -1,4 +1,3 @@
-// internal/service/demo_service.go
 package service
 
 import (
@@ -13,20 +12,15 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// DemoValidity is how long a sandbox survives before the purge sweep reclaims it.
 const DemoValidity = 24 * time.Hour
 
-// purgeBatchSize caps one sweep so a backlog cannot hold a transaction open for
-// minutes; the next tick picks up the rest.
+// Caps one sweep so a backlog can't hold a transaction open for minutes.
 const purgeBatchSize = 200
 
-// demoEmailDomain is deliberately not a real domain — nothing should ever try to
-// deliver mail to a sandbox account.
+// Not a real domain — nothing should ever deliver mail to a sandbox.
 const demoEmailDomain = "sandbox.turtask.invalid"
 
-// DemoService mints throwaway sandbox accounts for the "Try demo" button and
-// reclaims them once they expire. Per-visitor rather than one shared login —
-// see docs/adr/0010.
+// Per-visitor sandboxes rather than one shared login — docs/adr/0010.
 type DemoService struct {
 	pool     *pgxpool.Pool
 	queries  *db.Queries
@@ -43,7 +37,6 @@ func NewDemoService(pool *pgxpool.Pool, queries *db.Queries) *DemoService {
 	}
 }
 
-// DemoSandbox is a freshly minted demo identity plus the board to land them on.
 type DemoSandbox struct {
 	UserID   string
 	Email    string
@@ -52,9 +45,7 @@ type DemoSandbox struct {
 	ExpireAt time.Time
 }
 
-// CreateSandbox provisions a demo user and their own copy of the sample board.
-// Deliberately not one transaction: SeedSampleBoard's callees open their own, and
-// a half-seeded sandbox is throwaway data the purge collects anyway.
+// Not one transaction: SeedSampleBoard's callees open their own; the purge collects half-seeded sandboxes.
 func (s *DemoService) CreateSandbox(ctx context.Context, companionEmail string) (DemoSandbox, error) {
 	suffix, err := randomSuffix()
 	if err != nil {
@@ -71,9 +62,7 @@ func (s *DemoService) CreateSandbox(ctx context.Context, companionEmail string) 
 		return DemoSandbox{}, fmt.Errorf("create demo user: %w", err)
 	}
 
-	// The shared seed account joins as the second member so avatars, the Members
-	// tab and the ownership view have someone other than the visitor in them. Its
-	// absence (an unseeded database) is not worth failing the demo over.
+	// Companion member so the board isn't a one-person view. Missing seed data isn't fatal.
 	var companionID *string
 	if companionEmail != "" {
 		if companion, lookupErr := s.queries.GetUserByEmail(ctx, companionEmail); lookupErr == nil {
@@ -99,11 +88,7 @@ func (s *DemoService) CreateSandbox(ctx context.Context, companionEmail string) 
 	}, nil
 }
 
-// PurgeExpired deletes expired sandboxes and returns how many users went.
-//
-// Order matters: boards first (one cascade takes columns, cards, members, tags,
-// planning and that board's activities), then the tables whose user reference has
-// no ON DELETE clause and would otherwise block the final delete.
+// Order matters: boards first (cascade), then tables whose user FK has no ON DELETE.
 func (s *DemoService) PurgeExpired(ctx context.Context) (int64, error) {
 	ids, err := s.queries.ListExpiredDemoUserIDs(ctx, purgeBatchSize)
 	if err != nil {
@@ -143,9 +128,7 @@ func (s *DemoService) PurgeExpired(ctx context.Context) (int64, error) {
 	return removed, nil
 }
 
-// StartPurgeLoop sweeps expired sandboxes on a ticker until ctx is cancelled.
-// A failed sweep only logs — the next tick retries, and a purge backlog degrades
-// disk use, not correctness.
+// A failed sweep only logs — the next tick retries.
 func (s *DemoService) StartPurgeLoop(ctx context.Context, every time.Duration) {
 	sweep := func() {
 		removed, err := s.PurgeExpired(ctx)
@@ -171,8 +154,7 @@ func (s *DemoService) StartPurgeLoop(ctx context.Context, every time.Duration) {
 	}
 }
 
-// randomSuffix returns 96 bits of hex — enough that two concurrent visitors
-// never collide on the users.email unique index.
+// 96 bits, so concurrent visitors never collide on users.email.
 func randomSuffix() (string, error) {
 	b := make([]byte, 12)
 	if _, err := rand.Read(b); err != nil {

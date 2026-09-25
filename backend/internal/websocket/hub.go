@@ -1,8 +1,6 @@
 package websocket
 
-// Hub manages client connections grouped into one room per board ID. It is
-// fan-out only: REST handlers persist and then call Broadcast. The hub itself
-// holds no services and performs no writes.
+// Fan-out only: REST handlers persist, then Broadcast. The hub performs no writes.
 type Hub struct {
 	rooms map[string]map[*Client]bool
 
@@ -11,8 +9,7 @@ type Hub struct {
 	unregister chan *Client
 	evict      chan roomMember
 	stop       chan struct{}
-	// allowedOrigin is the single trusted browser origin (FRONTEND_URL).
-	// Empty string disables origin checking — only acceptable in tests.
+	// Empty disables origin checking — tests only.
 	allowedOrigin string
 }
 
@@ -38,9 +35,7 @@ func NewHub(allowedOrigin string) *Hub {
 	}
 }
 
-// Broadcast queues a message for every client in a board's room. Safe from any
-// goroutine, and a no-op once the hub has shut down — REST handlers call this
-// after their mutation commits, so a shutdown must not block them.
+// No-op after shutdown, so late handlers never block.
 func (h *Hub) Broadcast(boardID string, message []byte) {
 	select {
 	case h.broadcast <- BroadcastMessage{BoardID: boardID, Message: message}:
@@ -48,9 +43,7 @@ func (h *Hub) Broadcast(boardID string, message []byte) {
 	}
 }
 
-// EvictUser closes a user's connections to one board's room. Membership is checked only
-// at the handshake, so without this a removed member keeps receiving the board live.
-// Messages already queued (e.g. the member list that removed them) are still delivered.
+// Membership is only checked at the handshake. Already-queued messages are still delivered.
 func (h *Hub) EvictUser(boardID, userID string) {
 	select {
 	case h.evict <- roomMember{boardID: boardID, userID: userID}:
@@ -58,9 +51,7 @@ func (h *Hub) EvictUser(boardID, userID string) {
 	}
 }
 
-// Shutdown closes every active WS connection and stops the hub goroutine.
-// Idempotent — safe to call once at SIGTERM. Pumps observe a closed `send`
-// channel and exit; ReadPump returns when the underlying conn closes.
+// Idempotent.
 func (h *Hub) Shutdown() {
 	select {
 	case <-h.stop:
@@ -94,7 +85,6 @@ func (h *Hub) Run() {
 					delete(clients, client)
 					close(client.send)
 
-					// Drop the room once empty to free memory.
 					if len(clients) == 0 {
 						delete(h.rooms, client.boardID)
 					}
@@ -119,8 +109,7 @@ func (h *Hub) Run() {
 					select {
 					case client.send <- broadcastMsg.Message:
 					default:
-						// Slow or dead client: drop it so a full send buffer
-						// can't block the hub.
+						// Drop slow clients so a full buffer can't block the hub.
 						close(client.send)
 						delete(clients, client)
 					}

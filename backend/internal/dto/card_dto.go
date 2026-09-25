@@ -31,9 +31,6 @@ type CardResponse struct {
 	ImplementationNote *string       `json:"implementation_note"`
 }
 
-// CardDetailResponse is the fully enriched single card returned by
-// GET /api/cards/{id}. Unlike the raw sqlc row, it is snake_case and carries
-// everything a detail view needs: dev notes, subtasks, tags, assignee name.
 type CardDetailResponse struct {
 	ID                 string            `json:"id"`
 	ColumnID           string            `json:"column_id"`
@@ -53,9 +50,7 @@ type CardDetailResponse struct {
 	Tags               []TagResponse     `json:"tags"`
 }
 
-// MyTaskResponse is one row in the My Work list. `group` is computed
-// server-side relative to the user's "today" (Asia/Bangkok in S.1) and is one
-// of: overdue, today, this_week, later, no_date.
+// Group: overdue | today | this_week | later | no_date, relative to the user's today.
 type MyTaskResponse struct {
 	ID                string   `json:"id"`
 	Title             string   `json:"title"`
@@ -71,8 +66,7 @@ type MyTaskResponse struct {
 	CompletedSubtasks int64    `json:"completed_subtasks"`
 }
 
-// MyWorkCounts is the count per group across the *unfiltered* result set, so
-// the frontend can render the filter-chip counter without a second request.
+// Counts cover the unfiltered inbox.
 type MyWorkCounts struct {
 	Overdue  int `json:"overdue"`
 	Today    int `json:"today"`
@@ -82,16 +76,12 @@ type MyWorkCounts struct {
 	Total    int `json:"total"`
 }
 
-// MyWorkResponse is the envelope returned by GET /api/my-tasks. `cards` is
-// already filtered by the requested filter; `counts` reflects the full inbox.
 type MyWorkResponse struct {
 	Cards  []MyTaskResponse `json:"cards"`
 	Counts MyWorkCounts     `json:"counts"`
 }
 
-// CreateCardRequest is the body of POST /api/cards. Position 0 means "append": the
-// service computes one past the current maximum. Subtasks are titles only — the card
-// does not exist yet, and they are inserted in the same transaction.
+// Position 0 = append. Subtasks are inserted in the same transaction.
 type CreateCardRequest struct {
 	ColumnID    string   `json:"column_id"   validate:"required,uuid"`
 	Title       string   `json:"title"       validate:"required,min=1,max=200"`
@@ -113,8 +103,7 @@ type UpdateCardRequest struct {
 	TagIDs             *[]string `json:"tag_ids"             validate:"omitempty,dive,uuid"`
 	AcceptanceCriteria *string   `json:"acceptance_criteria" validate:"omitempty,max=10000"`
 	ImplementationNote *string   `json:"implementation_note" validate:"omitempty,max=10000"`
-	// ChangedFields is the client-computed diff, recorded on the activity row so the
-	// feed can say what changed without re-reading the previous row.
+	// Client-computed diff, stored on the activity row.
 	ChangedFields []string `json:"changed_fields"      validate:"omitempty,max=20,dive,min=1,max=40"`
 }
 
@@ -125,8 +114,7 @@ type CreateTagRequest struct {
 
 type SubtaskRequest struct {
 	Title string `json:"title" validate:"required,min=1,max=200"`
-	// Ignored: the server appends. Kept because unknown fields are rejected, and clients
-	// that still send it must not start failing with 400.
+	// Ignored (server appends); kept so older clients don't get a 400.
 	Position *float64 `json:"position,omitempty"`
 }
 

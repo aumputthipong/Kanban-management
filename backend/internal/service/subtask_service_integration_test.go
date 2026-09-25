@@ -1,7 +1,5 @@
 //go:build integration
 
-// Integration tests for SubtaskService. Position assignment and partial updates only
-// misbehave under concurrency, so they need overlapping requests against a real Postgres.
 package service_test
 
 import (
@@ -52,11 +50,10 @@ func positionsOf(t *testing.T, f *subtaskFixture) []float64 {
 	return out
 }
 
-// The bug that shipped: the client sent count+1, which repeats a position once a middle
-// subtask is deleted, and tied rows then swapped places on every update.
+// Regression: client-side count+1 repeated a position after a middle delete.
 func TestCreateSubtask_AfterDeletingMiddle_AppendsAfterLast(t *testing.T) {
 	ctx := context.Background()
-	f := newSubtaskFixture(t) // seeds one subtask at position 1
+	f := newSubtaskFixture(t)
 
 	second, err := f.svc.CreateSubtask(ctx, f.cardID, "second")
 	require.NoError(t, err)
@@ -118,7 +115,6 @@ func TestCreateSubtask_Success(t *testing.T) {
 	assert.False(t, st.IsDone)
 }
 
-// A partial update (title only) must leave is_done/position as they were.
 func TestUpdateSubtask_PartialUpdate_PreservesOtherFields(t *testing.T) {
 	ctx := context.Background()
 	f := newSubtaskFixture(t)
@@ -130,8 +126,7 @@ func TestUpdateSubtask_PartialUpdate_PreservesOtherFields(t *testing.T) {
 	assert.False(t, updated.IsDone)
 }
 
-// Regression for the old read-modify-write: two edits of different fields raced and
-// the later full-row write discarded the other. Repeated because one round can pass by luck.
+// Repeated because one round can pass by luck.
 func TestUpdateSubtask_ConcurrentDifferentFieldEdits_BothLand(t *testing.T) {
 	ctx := context.Background()
 	f := newSubtaskFixture(t)

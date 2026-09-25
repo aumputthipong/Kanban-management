@@ -1,4 +1,3 @@
-// Package migrate runs SQL migrations on application startup using golang-migrate.
 package migrate
 
 import (
@@ -12,16 +11,11 @@ import (
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 )
 
-// fileSourceURL turns an OS path into a "file://" URL golang-migrate can parse.
-// filepath.ToSlash is the whole fix and must stay: with Windows backslashes url.Parse
-// reads the drive letter as the authority and fails on the "port". With slashes it
-// reads C: as host and golang-migrate rejoins host+path. On Unix ToSlash is a no-op.
+// filepath.ToSlash must stay: with backslashes url.Parse reads the drive letter as host:port.
 func fileSourceURL(sourcePath string) string {
 	return "file://" + filepath.ToSlash(sourcePath)
 }
 
-// Run applies all pending up-migrations from sourcePath against dbURL. Idempotent —
-// already-applied migrations are skipped. dbURL is normalized to the pgx/v5 driver.
 func Run(sourcePath, dbURL string) error {
 	migrationsURL := fileSourceURL(sourcePath)
 	driverURL := normalizeDBURL(dbURL)
@@ -53,8 +47,6 @@ func Run(sourcePath, dbURL string) error {
 	return nil
 }
 
-// normalizeDBURL converts the common "postgres://" / "postgresql://" prefixes
-// to the "pgx5://" scheme expected by the golang-migrate pgx/v5 driver.
 func normalizeDBURL(dbURL string) string {
 	const (
 		postgres   = "postgres://"

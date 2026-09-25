@@ -1,6 +1,4 @@
-// BoardCommandService holds the write operations invoked from the WebSocket
-// layer (card move/create/delete/update, column and subtask writes). It is
-// split from BoardService so WS handlers don't depend on *db.Queries directly.
+// BoardCommandService holds the board write operations, keeping WS handlers off *db.Queries.
 package service
 
 import (
@@ -25,15 +23,10 @@ func NewBoardCommandService(pool *pgxpool.Pool, queries *db.Queries) *BoardComma
 	return &BoardCommandService{pool: pool, queries: queries}
 }
 
-// ErrEntityBoardMismatch is returned when a WS handler tries to mutate a card or column
-// belonging to another board. Defence-in-depth over the route-level membership gate:
-// without it a member of board A could mutate board B by referencing its UUIDs.
+// Defence in depth: stops a member of board A mutating board B by UUID.
 var ErrEntityBoardMismatch = errors.New("entity does not belong to this board")
 
-// VerifyCardInBoard returns nil iff the given card belongs to boardID.
-// Returns ErrEntityBoardMismatch for cross-board attempts (whether the card
-// is in a different board or simply does not exist) so callers cannot
-// distinguish "wrong board" from "no such card".
+// Missing and cross-board cards return the same error.
 func (s *BoardCommandService) VerifyCardInBoard(ctx context.Context, cardID, boardID string) error {
 	owner, err := s.queries.GetBoardIDByCard(ctx, cardID)
 	if err != nil {
@@ -45,8 +38,6 @@ func (s *BoardCommandService) VerifyCardInBoard(ctx context.Context, cardID, boa
 	return nil
 }
 
-// VerifyColumnInBoard returns nil iff the given column belongs to boardID.
-// See VerifyCardInBoard for the rationale on collapsing the error cases.
 func (s *BoardCommandService) VerifyColumnInBoard(ctx context.Context, columnID, boardID string) error {
 	owner, err := s.queries.GetBoardIDByColumn(ctx, columnID)
 	if err != nil {
@@ -58,9 +49,7 @@ func (s *BoardCommandService) VerifyColumnInBoard(ctx context.Context, columnID,
 	return nil
 }
 
-// -----------------------------
 // Card operations
-// -----------------------------
 
 type MoveCardResult struct {
 	CardTitle   string
@@ -95,9 +84,7 @@ func (s *BoardCommandService) MoveCard(ctx context.Context, cardID, newColumnID 
 	return MoveCardResult{CardTitle: title, IsDone: isDone, CompletedAt: completedAt}, nil
 }
 
-// CreateCardWS creates a card through the WS flow, computing a position when the client
-// sent none. Card and subtasks share one transaction, so a failed subtask rolls the card
-// back. Quick-add passes nil for every optional field.
+// Card and subtasks share one transaction.
 func (s *BoardCommandService) CreateCardWS(ctx context.Context, columnID, creatorID, title, priority string, position float64, assigneeID, dueDate, description *string, subtaskTitles []string) (db.CreateCardRow, []db.CardSubtask, error) {
 	if position <= 0 {
 		maxPos, err := s.queries.GetMaxPositionInColumn(ctx, columnID)
@@ -152,7 +139,6 @@ func (s *BoardCommandService) CreateCardWS(ctx context.Context, columnID, creato
 	return card, subtasks, nil
 }
 
-// DeleteCard returns the card title before deleting it, for the activity log.
 func (s *BoardCommandService) DeleteCard(ctx context.Context, cardID string) (string, error) {
 	var title string
 	if card, err := s.queries.GetCard(ctx, cardID); err == nil {
@@ -207,13 +193,9 @@ func (s *BoardCommandService) ToggleCardDone(ctx context.Context, cardID, boardI
 	}, nil
 }
 
-// -----------------------------
 // Column operations
-// -----------------------------
 
-// CreateColumn inserts a new column before the DONE column if one exists.
-// category and color come from the create-column modal (quick path passes
-// "TODO" and nil).
+// Inserted before the DONE column if one exists.
 func (s *BoardCommandService) CreateColumn(ctx context.Context, boardID, title, category string, color *string) (db.CreateColumnRow, error) {
 	if category != "DONE" {
 		category = "TODO"
@@ -225,7 +207,6 @@ func (s *BoardCommandService) CreateColumn(ctx context.Context, boardID, title, 
 
 	var position float64
 	if err != nil {
-		// No DONE column — append at the end.
 		maxPos, _ := s.queries.GetMaxColumnPositionInBoard(ctx, boardID)
 		if v, ok := maxPos.(float64); ok {
 			position = v + wsPositionGap

@@ -8,8 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// testHub runs a hub whose clients have no real conn. Cleanup unregisters them before
-// Shutdown, which would otherwise try to close their nil conns.
+// Cleanup unregisters clients before Shutdown, which would close their nil conns.
 type testHub struct {
 	*Hub
 	clients []*Client
@@ -35,7 +34,6 @@ func joinRoom(h *testHub, boardID, userID string) *Client {
 	return c
 }
 
-// receive returns the next message, or ok=false once the send channel is closed.
 func receive(t *testing.T, c *Client) (msg string, ok bool) {
 	t.Helper()
 	select {
@@ -70,8 +68,7 @@ func TestEvictUser_ClosesOnlyThatUsersConnectionsOnThatBoard(t *testing.T) {
 	assert.Equal(t, "other", msg, "the user's rooms on other boards are untouched")
 }
 
-// The handler broadcasts the new member list and then evicts, so the removed client
-// must still get that last message before its channel closes.
+// The removed client still gets the last queued message.
 func TestEvictUser_DeliversMessagesQueuedBeforeEviction(t *testing.T) {
 	h := startHub(t)
 	removed := joinRoom(h, "board-1", "user-removed")
@@ -86,8 +83,7 @@ func TestEvictUser_DeliversMessagesQueuedBeforeEviction(t *testing.T) {
 	assert.False(t, ok)
 }
 
-// ReadPump unregisters the client after its conn closes; that must not double-close
-// the send channel the eviction already closed.
+// ReadPump's unregister must not double-close the channel.
 func TestEvictUser_ThenUnregister_DoesNotPanic(t *testing.T) {
 	h := startHub(t)
 	removed := joinRoom(h, "board-1", "user-removed")

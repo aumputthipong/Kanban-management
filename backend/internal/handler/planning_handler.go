@@ -1,6 +1,3 @@
-// Thin REST surface over PlanningService; auth comes from the chi route group. Routes
-// scoped by sessionID/itemID resolve the owning board through the service and re-check
-// membership, so nothing can be touched cross-board.
 package handler
 
 import (
@@ -29,17 +26,14 @@ func NewPlanningHandler(p service.PlanningServicer, b service.BoardServicer, a s
 	return &PlanningHandler{planning: p, boards: b, activity: a}
 }
 
-// recordActivity is best-effort. REST path has no broadcast — the audit row
-// is the only secondary write, so we fire-and-forget via RecordAsync. The
-// WS path still uses sync Record because its broadcast embeds the row's ID
-// and created_at; see AGENTS.md.
+// Fire-and-forget: the REST planning path has no broadcast that needs the row.
 func (h *PlanningHandler) recordActivity(
 	r *http.Request,
 	boardID, actorID, eventType, entityType string,
 	entityID *string,
 	payload any,
 ) {
-	_ = r // request ctx is intentionally not threaded through — async write uses background ctx
+	_ = r // async write uses a background ctx, not the request ctx
 	if h.activity == nil {
 		return
 	}
@@ -56,13 +50,9 @@ func (h *PlanningHandler) recordActivity(
 	})
 }
 
-// strPtr is a literal-to-pointer helper for passing entity IDs into
-// recordActivity. Matches the helper used in the WS layer.
 func strPtr(s string) *string { return &s }
 
-// requireMembership re-checks board membership when the URL only carries a
-// session/item ID — same 404-not-403 anti-enumeration pattern as the card
-// handlers (see card_handler.go).
+// Re-checks membership when the URL only carries a session/item id (404, not 403).
 func (h *PlanningHandler) requireMembership(r *http.Request, boardID, userID string) (core.BoardRole, *httputil.APIError) {
 	role, err := h.boards.GetBoardMemberRole(r.Context(), boardID, userID)
 	if err != nil {
@@ -123,7 +113,7 @@ func itemToResponse(it db.PlanningItem) dto.PlanningItemResponse {
 	}
 }
 
-// ─── Sessions ──────────────────────────────────────────────────────────────
+// Sessions
 
 func (h *PlanningHandler) ListSessions(w http.ResponseWriter, r *http.Request) error {
 	boardID, err := httputil.GetUUIDParam(r, "boardID")
@@ -239,8 +229,7 @@ func (h *PlanningHandler) UpdateSession(w http.ResponseWriter, r *http.Request) 
 	if err := httputil.DecodeAndValidate(r, &req); err != nil {
 		return err
 	}
-	// Defence-in-depth: `omitempty,min=1` already rejects &"" via the min rule, so this is
-	// normally unreachable — it keeps the contract explicit if someone weakens the tag.
+	// Defence in depth — `min=1` already rejects "".
 	if req.Title != nil && *req.Title == "" {
 		return httputil.NewAPIError(http.StatusBadRequest, "title cannot be empty", nil)
 	}
@@ -248,9 +237,6 @@ func (h *PlanningHandler) UpdateSession(w http.ResponseWriter, r *http.Request) 
 	if err != nil {
 		return httputil.NewAPIError(http.StatusInternalServerError, "Failed to update session", err)
 	}
-	// fields list mirrors the CardUpdatedPayload pattern — one event per
-	// PATCH, with the changed-field names so the activity feed can render
-	// "renamed" vs "rescheduled" without diff'ing payloads.
 	fields := make([]string, 0, 3)
 	if req.Title != nil {
 		fields = append(fields, "title")
@@ -287,9 +273,7 @@ func (h *PlanningHandler) DeleteSession(w http.ResponseWriter, r *http.Request) 
 	if apiErr != nil {
 		return apiErr
 	}
-	// Fetch the full session before deleting so the activity payload can
-	// include the title — once DeleteSession runs the row is gone (and the
-	// items cascade with it; we only log the session deletion per spec).
+	// Read first so the activity row can carry the title.
 	sess, err := h.planning.GetSession(r.Context(), sessionID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -312,7 +296,7 @@ func (h *PlanningHandler) DeleteSession(w http.ResponseWriter, r *http.Request) 
 	return nil
 }
 
-// ─── Items ─────────────────────────────────────────────────────────────────
+// Items
 
 func (h *PlanningHandler) CreateItem(w http.ResponseWriter, r *http.Request) error {
 	sessionID := chi.URLParam(r, "sessionID")
@@ -359,9 +343,7 @@ func (h *PlanningHandler) UpdateItem(w http.ResponseWriter, r *http.Request) err
 	if apiErr != nil {
 		return apiErr
 	}
-	// Load the current item to resolve the board for the membership gate and to capture
-	// the pre-update type — retypes need it for previous_type, and promoted items must
-	// stay frozen.
+	// Also captures the pre-update type (previous_type, promoted freeze).
 	current, err := h.planning.GetItem(r.Context(), itemID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -380,15 +362,10 @@ func (h *PlanningHandler) UpdateItem(w http.ResponseWriter, r *http.Request) err
 	if err := httputil.DecodeAndValidate(r, &req); err != nil {
 		return err
 	}
-	// Same defence-in-depth note as UpdateSession's title check. Type and
-	// status are caught directly by `oneof` (their "" doesn't match any
-	// enum value), so this branch only guards title.
 	if req.Title != nil && *req.Title == "" {
 		return httputil.NewAPIError(http.StatusBadRequest, "title cannot be empty", nil)
 	}
-	// Promoted items are frozen for retype: the card already lives on the board with the
-	// original semantics, and a retype would disconnect it from the user's intent without
-	// renaming it. 400 with a Thai message so the optimistic UI can revert and toast.
+	// Promoted items can't be retyped — the card already carries the original meaning.
 	if req.Type != nil && *req.Type != current.Type && current.Status == "promoted" {
 		return httputil.NewAPIError(http.StatusBadRequest, "ส่งเข้า Board แล้ว เปลี่ยนประเภทไม่ได้", nil)
 	}
@@ -396,8 +373,6 @@ func (h *PlanningHandler) UpdateItem(w http.ResponseWriter, r *http.Request) err
 	if err != nil {
 		return httputil.NewAPIError(http.StatusInternalServerError, "Failed to update item", err)
 	}
-	// Position-only changes (drag-reorder) still log an "updated" event so the feed
-	// reflects the action; filtering them out belongs at query time, not here.
 	fields := make([]string, 0, 7)
 	if req.Type != nil {
 		fields = append(fields, "type")
@@ -446,9 +421,7 @@ func (h *PlanningHandler) DeleteItem(w http.ResponseWriter, r *http.Request) err
 	if apiErr != nil {
 		return apiErr
 	}
-	// Fetch the row first so the activity payload can carry type+title
-	// after the delete. Pays one extra query per delete; acceptable since
-	// item delete isn't a hot path.
+	// Read first so the activity row can carry type + title.
 	item, err := h.planning.GetItem(r.Context(), itemID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -484,8 +457,6 @@ func (h *PlanningHandler) PromoteItem(w http.ResponseWriter, r *http.Request) er
 	if apiErr != nil {
 		return apiErr
 	}
-	// Load the item first so we can resolve its board for the membership
-	// gate (and fail fast with 404 on a bad id).
 	before, err := h.planning.GetItem(r.Context(), itemID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -516,9 +487,7 @@ func (h *PlanningHandler) PromoteItem(w http.ResponseWriter, r *http.Request) er
 		}
 		return httputil.NewAPIError(http.StatusInternalServerError, "Failed to promote item", err)
 	}
-	// Single audit event for the planning side. We deliberately do NOT
-	// emit a card.created event here — that would double-count the same
-	// real-world action on the activity feed.
+	// No card.created here — it would double-count on the feed.
 	h.recordActivity(r, boardID, userID,
 		service.EventPlanningItemPromoted, service.EntityPlanningItem,
 		strPtr(item.ID),
@@ -535,11 +504,9 @@ func (h *PlanningHandler) PromoteItem(w http.ResponseWriter, r *http.Request) er
 	return nil
 }
 
-// ─── Card source (reverse lookup) ──────────────────────────────────────────
+// Card source
 
-// GetCardSource powers the card modal's "source" section. It returns 200 with a null
-// body for cards that were never promoted, so the frontend needs no 404 fork. Membership
-// is re-checked here — the /api/cards group has no gate — and a non-member gets 404.
+// null (not 404) when never promoted. Membership is re-checked — /api/cards has no gate.
 func (h *PlanningHandler) GetCardSource(w http.ResponseWriter, r *http.Request) error {
 	cardID := chi.URLParam(r, "cardID")
 	if _, err := uuid.Parse(cardID); err != nil {
@@ -565,9 +532,7 @@ func (h *PlanningHandler) GetCardSource(w http.ResponseWriter, r *http.Request) 
 		return httputil.NewAPIError(http.StatusInternalServerError, "Failed to fetch card source", err)
 	}
 	if source == nil {
-		// Write JSON null explicitly. RespondJSON skips encoding for nil
-		// payloads (emits an empty body), which leaves the client guessing
-		// whether the absence means "no source" or "request truncated".
+		// Explicit JSON null: RespondJSON writes an empty body for nil.
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("null"))

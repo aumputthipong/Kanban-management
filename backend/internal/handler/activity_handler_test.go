@@ -48,8 +48,7 @@ func TestListActivities_Success(t *testing.T) {
 	assert.Equal(t, map[string]any{"title": "Buy milk"}, got[0]["payload"])
 }
 
-// An activity with no payload must serialise as {} — the feed renderer indexes
-// into payload, and a bare null would throw before any row rendered.
+// The feed renderer indexes into payload — null would throw.
 func TestListActivities_EmptyPayload_BecomesObject(t *testing.T) {
 	svc := &mock.MockActivityLister{
 		ListFn: func(ctx context.Context, boardID string, before *time.Time, limit int32) ([]service.ActivityItem, error) {
@@ -110,7 +109,7 @@ func TestListActivities_BadInput_Returns400(t *testing.T) {
 	}
 	for name, query := range cases {
 		t.Run(name, func(t *testing.T) {
-			svc := &mock.MockActivityLister{} // ListFn nil: reaching the service would panic
+			svc := &mock.MockActivityLister{}
 			w := httptest.NewRecorder()
 
 			httputil.MakeHandler(NewActivityHandler(svc).ListByBoard)(w, activityRequest(query))

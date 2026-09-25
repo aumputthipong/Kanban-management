@@ -1,6 +1,4 @@
-// Refresh-token rotation (issue / rotate-on-refresh / revoke) lives on
-// AuthService; access-token issuance stays in the token package.
-// See docs/adr/0001-opaque-refresh-tokens.md.
+// Refresh-token rotation — see docs/adr/0001.
 package service
 
 import (
@@ -15,16 +13,13 @@ import (
 )
 
 var (
-	// ErrRefreshInvalid covers unknown, malformed, or already-replayed tokens.
-	// Callers should respond 401 and force re-login; never reveal which.
+	// 401 and force re-login; never reveal which case it was.
 	ErrRefreshInvalid = errors.New("refresh token invalid")
-	// ErrRefreshExpired separates clock-based expiry from active revocation so
-	// metrics can distinguish "idle user" from "potential attack".
+	// Separate from invalid so metrics can tell idle users from attacks.
 	ErrRefreshExpired = errors.New("refresh token expired")
 )
 
-// IssueRefreshToken mints an opaque refresh token, stores its sha256 hash, and returns
-// the raw value for a Set-Cookie header. userAgent and ip are audit-only, never trusted.
+// Stores only the sha256 hash. userAgent and ip are audit-only.
 func (s *AuthService) IssueRefreshToken(ctx context.Context, userID, userAgent, ip string) (string, error) {
 	raw, err := token.GenerateRefreshToken()
 	if err != nil {
@@ -43,24 +38,17 @@ func (s *AuthService) IssueRefreshToken(ctx context.Context, userID, userAgent, 
 	return raw, nil
 }
 
-// RefreshRotationResult holds the new opaque token and the user identity to
-// re-sign the access token with. UserEmail is needed because access-token
-// claims include it and the handler does not have a fresh user row.
+// UserEmail is needed for the access-token claims.
 type RefreshRotationResult struct {
 	UserID    string
 	UserEmail string
 	RawToken  string
 }
 
-// rotationRaceWindow is how long after a rotation a replay reads as two tabs racing
-// rather than as theft — inside it only that caller is rejected, outside it (or for a
-// logout revoke) the whole token family burns. See docs/adr/0001.
+// Inside this window a replay is two tabs racing; outside it burns the family (docs/adr/0001).
 const rotationRaceWindow = 30 * time.Second
 
-// RotateRefreshToken validates the raw token, revokes it, inserts a replacement and
-// returns the new token plus the user identity. Replaying an already-rotated token is
-// treated as theft and burns every refresh token for the user. The rotation runs in one
-// transaction and locks the row: without the lock two concurrent refreshes both mint.
+// One transaction with a row lock — without it concurrent refreshes both mint.
 func (s *AuthService) RotateRefreshToken(ctx context.Context, rawToken, userAgent, ip string) (RefreshRotationResult, error) {
 	if rawToken == "" {
 		return RefreshRotationResult{}, ErrRefreshInvalid
@@ -79,16 +67,13 @@ func (s *AuthService) RotateRefreshToken(ctx context.Context, rawToken, userAgen
 		return RefreshRotationResult{}, ErrRefreshInvalid
 	}
 
-	// Replay: the token was rotated before, so the genuine client should already be
-	// using its replacement — unless this lands inside the race window.
 	if row.RevokedAt != nil {
 		raced := row.ReplacedBy != nil && time.Since(*row.RevokedAt) < rotationRaceWindow
 		if !raced {
 			if err := qtx.RevokeAllRefreshTokensForUser(ctx, row.UserID); err != nil {
 				return RefreshRotationResult{}, fmt.Errorf("revoke token family: %w", err)
 			}
-			// Commit the burn before returning the error — the deferred
-			// rollback would otherwise undo the defence we just triggered.
+			// Commit the burn first — the deferred rollback would undo it.
 			if err := tx.Commit(ctx); err != nil {
 				return RefreshRotationResult{}, fmt.Errorf("commit token family revoke: %w", err)
 			}
@@ -137,8 +122,7 @@ func (s *AuthService) RotateRefreshToken(ctx context.Context, rawToken, userAgen
 	}, nil
 }
 
-// RevokeRefreshToken is called on logout. Missing or already-revoked tokens
-// are silently ignored — logout should never error from the client's view.
+// Missing or already-revoked tokens are ignored — logout never errors.
 func (s *AuthService) RevokeRefreshToken(ctx context.Context, rawToken string) error {
 	if rawToken == "" {
 		return nil

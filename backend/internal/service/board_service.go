@@ -17,8 +17,7 @@ type BoardService struct {
 	queries *db.Queries
 }
 
-// ColumnData and CardData use string IDs (not uuid.UUID) to match the types
-// sqlc already generates, avoiding a conversion round-trip.
+// String ids to match what sqlc generates.
 type ColumnData struct {
 	ID       string
 	Title    string
@@ -85,9 +84,7 @@ func NewBoardService(pool *pgxpool.Pool, queries *db.Queries) *BoardService {
 	}
 }
 
-// CreateBoard creates a board with its four default columns and adds ownerID as
-// the owner, all in one transaction. description/color/icon are optional; a nil
-// pointer lets the CreateBoard query apply the column default via COALESCE.
+// Board, default columns and owner in one transaction; nil appearance uses the column default.
 func (s *BoardService) CreateBoard(ctx context.Context, title string, description, color, icon *string, ownerID string) (string, error) {
 	if strings.TrimSpace(title) == "" {
 		return "", fmt.Errorf("board title cannot be empty")
@@ -160,7 +157,6 @@ func (s *BoardService) GetAllBoards(ctx context.Context, userID string) ([]Board
 		return nil, err
 	}
 
-	// group members by board ID
 	membersByBoard := make(map[string][]dto.MemberSummary, len(stats))
 	for _, m := range memberRows {
 		membersByBoard[m.BoardID] = append(membersByBoard[m.BoardID], dto.MemberSummary{
@@ -211,9 +207,7 @@ func (s *BoardService) GetBoardMemberRole(ctx context.Context, boardID, userID s
 	})
 }
 
-// GetStashedBoardMemberRole resolves the caller's role only when the board is
-// stashed — used by the /api/stash gate so restore / permanent-delete work on
-// stashed boards while GetBoardMemberRole keeps 404ing for them everywhere else.
+// Matches stashed boards only (the /api/stash gate).
 func (s *BoardService) GetStashedBoardMemberRole(ctx context.Context, boardID, userID string) (string, error) {
 	return s.queries.GetStashedBoardMemberRole(ctx, db.GetStashedBoardMemberRoleParams{
 		BoardID: boardID,
@@ -221,9 +215,7 @@ func (s *BoardService) GetStashedBoardMemberRole(ctx context.Context, boardID, u
 	})
 }
 
-// TouchBoardMemberAccess bumps the membership's last_accessed_at when the
-// previous touch is older than the 5-minute throttle window (enforced in
-// SQL). Safe to call from a goroutine: best-effort, no business semantics.
+// Throttled to 5 minutes in SQL. Best-effort.
 func (s *BoardService) TouchBoardMemberAccess(ctx context.Context, boardID, userID string) error {
 	return s.queries.TouchBoardMemberIfStale(ctx, db.TouchBoardMemberIfStaleParams{
 		BoardID: boardID,
@@ -239,8 +231,7 @@ func (s *BoardService) GetBoardIDByCard(ctx context.Context, cardID string) (str
 	return s.queries.GetBoardIDByCard(ctx, cardID)
 }
 
-// MyTaskData mirrors the My Work row shape. `Status` and `Group` are both derived in
-// SQL — Group is the date bucket computed against the caller's "today".
+// Status and Group are derived in SQL.
 type MyTaskData struct {
 	ID                string
 	Title             string
@@ -257,8 +248,7 @@ type MyTaskData struct {
 	CompletedSubtasks int64
 }
 
-// MyWorkFilter narrows what GetMyWork returns. Counts always reflect the
-// unfiltered inbox so the frontend can render filter-chip counters.
+// Counts always cover the unfiltered inbox.
 type MyWorkFilter string
 
 const (
@@ -269,8 +259,6 @@ const (
 	MyWorkFilterNoDate   MyWorkFilter = "no_date"
 )
 
-// MyWorkCounts mirrors dto.MyWorkCounts but lives in service so the layer
-// stays decoupled from the wire shape.
 type MyWorkCounts struct {
 	Overdue  int
 	Today    int
@@ -284,9 +272,7 @@ type MyWorkOptions struct {
 	UserID            string
 	IncludeUnassigned bool
 	Filter            MyWorkFilter
-	// Today is the caller-local date. The handler injects this in the user's
-	// timezone (Asia/Bangkok hardcoded in S.1) so the SQL CASE-bucket aligns
-	// with the day the user sees as "today".
+	// Caller-local date, so the SQL buckets match the user's "today".
 	Today time.Time
 }
 
@@ -295,8 +281,6 @@ type MyWorkResult struct {
 	Counts MyWorkCounts
 }
 
-// defaultTZ is the workspace fallback when a user has no timezone set or the
-// configured one fails to load. Bangkok matches the default in user_settings.
 var defaultTZ = func() *time.Location {
 	loc, err := time.LoadLocation("Asia/Bangkok")
 	if err != nil {
@@ -305,9 +289,7 @@ var defaultTZ = func() *time.Location {
 	return loc
 }()
 
-// MyWorkToday returns "today" in the supplied IANA timezone, truncated to
-// midnight, ready to pass to GetMyWork as the bucket pivot. An empty or
-// unknown tz falls back to Asia/Bangkok.
+// Unknown or empty tz falls back to Asia/Bangkok.
 func MyWorkToday(now time.Time, tz string) time.Time {
 	loc := defaultTZ
 	if tz != "" {
@@ -319,8 +301,6 @@ func MyWorkToday(now time.Time, tz string) time.Time {
 	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, loc)
 }
 
-// GetMyWork lists the caller's inbox across boards in one query. Counts are computed in
-// Go before the filter is applied, so chip totals always reflect the full inbox.
 func (s *BoardService) GetMyWork(ctx context.Context, opts MyWorkOptions) (MyWorkResult, error) {
 	rows, err := s.queries.GetMyTasks(ctx, db.GetMyTasksParams{
 		Today:             opts.Today,
@@ -387,22 +367,17 @@ func matchesFilter(f MyWorkFilter, group string) bool {
 	}
 }
 
-// CompleteMyTaskResult captures the side data the handler needs to write an
-// activity row (board scope, card title for the feed) without forcing a
-// second roundtrip.
 type CompleteMyTaskResult struct {
 	OK        bool
 	BoardID   string
 	CardTitle string
-	// The card as stored after the move, for the CARD_MOVED broadcast. Zero when !OK.
+	// Zero when !OK.
 	ColumnID    string
 	Position    float64
 	CompletedAt *time.Time
 }
 
-// CompleteMyTask marks a card done and moves it to the board's first DONE column,
-// returning OK=false when the caller is not the assignee so the handler can 404. BoardID
-// and CardTitle let the handler record the activity without another read.
+// OK=false when the caller isn't the assignee (the handler 404s).
 func (s *BoardService) CompleteMyTask(ctx context.Context, cardID, userID string) (CompleteMyTaskResult, error) {
 	boardID, err := s.queries.GetBoardIDByCard(ctx, cardID)
 	if err != nil {
@@ -415,9 +390,6 @@ func (s *BoardService) CompleteMyTask(ctx context.Context, cardID, userID string
 	if err != nil {
 		return CompleteMyTaskResult{}, fmt.Errorf("find DONE column: %w", err)
 	}
-	// Fetch the card up front so we can return the title on success; cheap
-	// because cards.id is the primary key. Skip it if the assignee gate
-	// would reject — but we need the row to know the title either way.
 	card, err := s.queries.GetCard(ctx, cardID)
 	if err != nil {
 		return CompleteMyTaskResult{}, fmt.Errorf("load card: %w", err)
@@ -433,7 +405,7 @@ func (s *BoardService) CompleteMyTask(ctx context.Context, cardID, userID string
 	if rows == 0 {
 		return CompleteMyTaskResult{BoardID: boardID, CardTitle: card.Title}, nil
 	}
-	// completed_at is set by NOW() in SQL; re-read so the broadcast carries the stored value.
+	// Re-read: completed_at is set by NOW() in SQL.
 	done, err := s.queries.GetCard(ctx, cardID)
 	if err != nil {
 		return CompleteMyTaskResult{}, fmt.Errorf("reload completed card: %w", err)
@@ -456,10 +428,7 @@ func (s *BoardService) RestoreBoard(ctx context.Context, id string) error {
 	return s.queries.RestoreStashedBoard(ctx, id)
 }
 
-// UpdateBoard read-modify-writes one board. Any nil pointer leaves the
-// existing value untouched (omit/null = no change); a non-nil pointer
-// overwrites — including Description "" which is a valid clear since the
-// column is NOT NULL DEFAULT ”.
+// nil = no change; Description "" is a valid clear.
 func (s *BoardService) UpdateBoard(ctx context.Context, id string, title *string, budget *float64, description, color, icon *string) (db.Board, error) {
 	existingBoard, err := s.queries.GetBoardByID(ctx, id)
 	if err != nil {
@@ -498,8 +467,7 @@ func (s *BoardService) UpdateBoard(ctx context.Context, id string, title *string
 	})
 }
 
-// GetBoardWithCards loads all of a board's columns, cards, subtasks and tags in
-// a fixed number of batched queries (no per-card round-trips).
+// Batched queries — no per-card round-trips.
 func (s *BoardService) GetBoardWithCards(ctx context.Context, boardID string) ([]ColumnData, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
@@ -522,7 +490,6 @@ func (s *BoardService) GetBoardWithCards(ctx context.Context, boardID string) ([
 		return nil, fmt.Errorf("fetch cards: %w", err)
 	}
 
-	// Batch load tags for all cards.
 	cardIDs := make([]string, len(cards))
 	for i, card := range cards {
 		cardIDs[i] = card.ID
@@ -570,7 +537,7 @@ func (s *BoardService) GetBoardWithCards(ctx context.Context, boardID string) ([
 
 	result := make([]ColumnData, 0, len(columns))
 	for _, col := range columns {
-		// nil map entry → empty slice, so the frontend gets [] not null.
+		// nil → [] so the frontend never gets null.
 		colCards := cardsByColumn[col.ID]
 		if colCards == nil {
 			colCards = []CardData{}

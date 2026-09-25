@@ -7,10 +7,7 @@ import (
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/service"
 )
 
-// MockPlanningService implements service.PlanningServicer using the same
-// "function field per method" pattern as MockBoardService. Each test sets
-// only the Fn fields it needs; unset methods panic if called so missing
-// stubs surface loudly instead of returning zero values silently.
+// Unset Fn fields panic, so a missing stub fails loudly.
 type MockPlanningService struct {
 	ListSessionsByBoardFn func(ctx context.Context, boardID string) ([]db.ListPlanningSessionsByBoardRow, error)
 	GetSessionFn          func(ctx context.Context, sessionID string) (db.PlanningSession, error)
@@ -114,13 +111,9 @@ func (m *MockPlanningService) DeleteComment(ctx context.Context, commentID strin
 	return m.DeleteCommentFn(ctx, commentID)
 }
 
-// MockActivityRecorder captures each Record() call so tests can assert exactly one row
-// was written for an event type. A capture slice is simpler than reimplementing
-// arg-equality per test.
 type MockActivityRecorder struct {
 	Calls []service.RecordParams
-	// RecordFn is optional — set it to override the default (record + return
-	// a fake Activity with the call's event_type echoed back).
+	// Optional; the default echoes the call's event_type back.
 	RecordFn func(ctx context.Context, p service.RecordParams) (db.Activity, error)
 }
 
@@ -132,8 +125,6 @@ func (m *MockActivityRecorder) Record(ctx context.Context, p service.RecordParam
 	return db.Activity{EventType: p.EventType, EntityType: p.EntityType}, nil
 }
 
-// RecordAsync mirrors Record for capture purposes — tests still inspect
-// m.Calls regardless of whether the handler chose the sync or async path.
 func (m *MockActivityRecorder) RecordAsync(p service.RecordParams) {
 	m.Calls = append(m.Calls, p)
 }

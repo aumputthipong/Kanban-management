@@ -19,8 +19,6 @@ import (
 
 const otherColumnID = "3a7c8e11-90d2-4b6f-8c25-71ff4d9e0a68"
 
-// memberBoardService resolves validCardID onto validBoardID and answers the
-// membership gate. Tests override individual fields to model the failure cases.
 func memberBoardService() *mock.MockBoardService {
 	return &mock.MockBoardService{
 		GetCardFn: func(ctx context.Context, cardID string) (db.Card, error) {
@@ -47,7 +45,6 @@ func patchReq(t *testing.T, target, body string, params ...string) *http.Request
 	return withUserID(chiCtx(r, params...), validUserID)
 }
 
-// decodeBroadcast returns the type tag and payload of the single message sent.
 func decodeBroadcast(t *testing.T, bc *mock.MockBroadcaster) (string, map[string]any) {
 	t.Helper()
 	require.Len(t, bc.Sent, 1, "expected exactly one broadcast")
@@ -59,9 +56,7 @@ func decodeBroadcast(t *testing.T, bc *mock.MockBroadcaster) (string, map[string
 	return msg.Type, msg.Payload
 }
 
-// ────────────────────────────────────────────────
 // MoveCard
-// ────────────────────────────────────────────────
 
 func TestMoveCard_Success_BroadcastsCardMoved(t *testing.T) {
 	cmd := &mock.MockBoardCommandService{
@@ -83,13 +78,11 @@ func TestMoveCard_Success_BroadcastsCardMoved(t *testing.T) {
 	assert.Equal(t, "CARD_MOVED", msgType)
 	assert.Equal(t, validCardID, payload["card_id"])
 	assert.Equal(t, otherColumnID, payload["new_column_id"])
-	// is_done is derived from the target column, never taken from the request body.
 	assert.Equal(t, true, payload["is_done"])
 	assert.Equal(t, validBoardID, bc.Sent[0].BoardID)
 }
 
-// A member of board A must not be able to move a card into board B by naming one of
-// its columns — the same anti-enumeration 404 as a missing column.
+// Cross-board move gets the same anti-enumeration 404.
 func TestMoveCard_ColumnOnAnotherBoard_Returns404(t *testing.T) {
 	cmd := &mock.MockBoardCommandService{
 		VerifyColumnInBoardFn: func(ctx context.Context, columnID, boardID string) error {
@@ -148,9 +141,7 @@ func TestMoveCard_MalformedCardID_Returns400(t *testing.T) {
 	assert.Empty(t, bc.Sent)
 }
 
-// ────────────────────────────────────────────────
 // DeleteCard
-// ────────────────────────────────────────────────
 
 func TestDeleteCard_Success_BroadcastsCardDeleted(t *testing.T) {
 	cmd := &mock.MockBoardCommandService{
@@ -170,9 +161,7 @@ func TestDeleteCard_Success_BroadcastsCardDeleted(t *testing.T) {
 	assert.Equal(t, validCardID, payload["card_id"])
 }
 
-// ────────────────────────────────────────────────
 // ToggleCardDone
-// ────────────────────────────────────────────────
 
 func TestToggleCardDone_Success_BroadcastsCardMoved(t *testing.T) {
 	cmd := &mock.MockBoardCommandService{
@@ -189,14 +178,12 @@ func TestToggleCardDone_Success_BroadcastsCardMoved(t *testing.T) {
 	httputil.MakeHandler(h.ToggleCardDone)(w, req)
 
 	require.Equal(t, http.StatusNoContent, w.Code)
-	// Broadcast as CARD_MOVED so the client reuses one handler for both paths.
 	msgType, payload := decodeBroadcast(t, bc)
 	assert.Equal(t, "CARD_MOVED", msgType)
 	assert.Equal(t, otherColumnID, payload["new_column_id"])
 	assert.Equal(t, true, payload["is_done"])
 }
 
-// is_done is a pointer so an omitted field is a 400, not a silent "mark it undone".
 func TestToggleCardDone_MissingIsDone_Returns400(t *testing.T) {
 	cmd := &mock.MockBoardCommandService{
 		ToggleCardDoneFn: func(ctx context.Context, cardID, boardID string, isDone bool) (service.ToggleCardDoneResult, error) {
@@ -215,9 +202,7 @@ func TestToggleCardDone_MissingIsDone_Returns400(t *testing.T) {
 	assert.Empty(t, bc.Sent)
 }
 
-// ────────────────────────────────────────────────
 // Columns
-// ────────────────────────────────────────────────
 
 func TestCreateColumn_Success_BroadcastsColumnCreated(t *testing.T) {
 	cmd := &mock.MockBoardCommandService{
@@ -242,7 +227,6 @@ func TestCreateColumn_Success_BroadcastsColumnCreated(t *testing.T) {
 	assert.Contains(t, w.Body.String(), "Review")
 }
 
-// category is a closed set on the client, so an unknown value must not reach the DB.
 func TestCreateColumn_UnknownCategory_Returns400(t *testing.T) {
 	cmd := &mock.MockBoardCommandService{
 		CreateColumnFn: func(ctx context.Context, boardID, title, category string, color *string) (db.CreateColumnRow, error) {
@@ -309,9 +293,7 @@ func TestDeleteColumn_NonMember_Returns404(t *testing.T) {
 	assert.Empty(t, bc.Sent)
 }
 
-// ────────────────────────────────────────────────
 // CreateCard
-// ────────────────────────────────────────────────
 
 func createCardReq(t *testing.T, body string) *http.Request {
 	t.Helper()
@@ -323,8 +305,7 @@ func createCardReq(t *testing.T, body string) *http.Request {
 func TestCreateCard_WithSubtasks_PassesThemToTheService(t *testing.T) {
 	cmd := &mock.MockBoardCommandService{
 		CreateCardWSFn: func(ctx context.Context, columnID, creatorID, title, priority string, position float64, assigneeID, dueDate, description *string, subtaskTitles []string) (db.CreateCardRow, []db.CardSubtask, error) {
-			// The whole reason this endpoint exists: the old REST create dropped
-			// description and subtasks on the floor.
+			// The old REST create dropped description and subtasks.
 			assert.Equal(t, validUserID, creatorID)
 			assert.Equal(t, []string{"one", "two"}, subtaskTitles)
 			require.NotNil(t, description)
@@ -409,9 +390,7 @@ func TestCreateCard_MissingUserID_Returns401(t *testing.T) {
 	assert.Equal(t, http.StatusUnauthorized, w.Code)
 }
 
-// The activity feed is live only because the handler announces the row it just
-// wrote. Deleting the WS write handlers removed the previous source of
-// ACTIVITY_CREATED, so this pins the replacement.
+// Pins the handler as the source of ACTIVITY_CREATED.
 func TestMoveCard_AlsoBroadcastsTheActivityRow(t *testing.T) {
 	cmd := &mock.MockBoardCommandService{
 		VerifyColumnInBoardFn: func(ctx context.Context, columnID, boardID string) error { return nil },

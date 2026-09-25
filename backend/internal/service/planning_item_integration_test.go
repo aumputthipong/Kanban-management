@@ -1,9 +1,5 @@
 //go:build integration
 
-// Integration tests for the PlanningService methods promote_integration_test.go
-// doesn't cover: CreateItem's position-gap calc and GetCardSource's
-// promoted-vs-never-promoted branch. Reuses this package's shared `fixture`
-// (see promote_integration_test.go) — same seeded board/session/item.
 package service_test
 
 import (
@@ -16,7 +12,7 @@ import (
 
 func TestCreateItem_SecondItem_LandsAfterFirstByTheGap(t *testing.T) {
 	ctx := context.Background()
-	f := newFixture(t) // seeds one REQ item already, at position 65536 (planningPositionGap)
+	f := newFixture(t)
 
 	second, err := f.svc.CreateItem(ctx, f.sessID, "DEC", "Second item", nil)
 	require.NoError(t, err)

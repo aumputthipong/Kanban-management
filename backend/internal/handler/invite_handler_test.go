@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// ─── CreateInvite ───────────────────────────────────────────────────────────
+// CreateInvite
 
 func TestCreateInvite_Success(t *testing.T) {
 	svc := &mock.MockInviteService{
@@ -51,7 +51,7 @@ func TestCreateInvite_InvalidBoardID_Returns400(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 }
 
-// ─── GetActiveInvite ────────────────────────────────────────────────────────
+// GetActiveInvite
 
 func TestGetActiveInvite_None_Returns204(t *testing.T) {
 	svc := &mock.MockInviteService{
@@ -88,7 +88,7 @@ func TestGetActiveInvite_Found_Returns200(t *testing.T) {
 	assert.Equal(t, "abc", body["token"])
 }
 
-// ─── AcceptInvite ───────────────────────────────────────────────────────────
+// AcceptInvite
 
 func TestAcceptInvite_Success(t *testing.T) {
 	svc := &mock.MockInviteService{
@@ -115,7 +115,7 @@ func TestAcceptInvite_Success(t *testing.T) {
 func TestAcceptInvite_Unauthorized_Returns401(t *testing.T) {
 	h := NewInviteHandler(&mock.MockInviteService{}, nil, nil, nil)
 	req := httptest.NewRequest(http.MethodPost, "/invites/tok123/accept", nil)
-	req = chiCtx(req, "token", "tok123") // no userID in context
+	req = chiCtx(req, "token", "tok123")
 	w := httptest.NewRecorder()
 
 	httputil.MakeHandler(h.AcceptInvite)(w, req)
@@ -193,8 +193,7 @@ func TestAcceptInvite_RecordsMemberAddedViaInvite(t *testing.T) {
 	assert.Equal(t, service.MemberChangedPayload{UserID: otherUserID, Name: "Bob", Role: "manager", Via: "invite"}, got[0].Payload)
 }
 
-// Re-opening the link (or a double-click) as an existing member must not re-log
-// "joined the board" or re-broadcast an unchanged member list.
+// Re-opening the link must not re-log or re-broadcast.
 func TestAcceptInvite_AlreadyMember_NoActivityNoBroadcast(t *testing.T) {
 	var got []service.RecordParams
 	svc := &mock.MockInviteService{

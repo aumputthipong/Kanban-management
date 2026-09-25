@@ -1,8 +1,5 @@
 //go:build integration
 
-// Integration tests for the planning comment thread. Handler tests cover the permission
-// matrix; these prove the SQL contract — soft delete preserves position, list returns
-// deleted rows, and editing an already-deleted row returns the sentinel.
 package service_test
 
 import (
@@ -18,8 +15,7 @@ import (
 )
 
 func TestComments_SoftDeletePreservesPosition(t *testing.T) {
-	// A delete mid-thread must not shift later comments up — reading order is part of the
-	// conversation. The list returns deleted rows so the UI can place a placeholder.
+	// A delete must not shift later comments.
 	ctx := context.Background()
 	pool := testutil.NewTestDB(t)
 	seed := testutil.NewSeed(t, pool)
@@ -50,9 +46,7 @@ func TestComments_SoftDeletePreservesPosition(t *testing.T) {
 }
 
 func TestEditComment_OnSoftDeleted_ReturnsSentinel(t *testing.T) {
-	// UpdatePlanningItemComment is guarded by "deleted_at IS NULL", so an edit landing
-	// after a delete updates zero rows and the service maps that to a sentinel for a 409.
-	// Without the guard the edit would resurrect the body on a tombstoned row.
+	// An edit after delete must not resurrect a tombstoned row.
 	ctx := context.Background()
 	pool := testutil.NewTestDB(t)
 	seed := testutil.NewSeed(t, pool)

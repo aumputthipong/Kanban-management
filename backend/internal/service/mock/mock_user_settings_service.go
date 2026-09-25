@@ -6,8 +6,6 @@ import (
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/service"
 )
 
-// MockUserSettingsService implements service.UserSettingsServicer using
-// function fields per the project's mock convention.
 type MockUserSettingsService struct {
 	GetFn    func(ctx context.Context, userID string) (service.UserSettingsData, error)
 	UpdateFn func(ctx context.Context, userID string, p service.UpdateUserSettingsParams) (service.UserSettingsData, error)

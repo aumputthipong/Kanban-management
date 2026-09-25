@@ -12,10 +12,7 @@ import (
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/db"
 )
 
-// SeedHelper bundles the minimum factory functions integration tests need.
-// Each helper inserts a row with sensible defaults and returns the resulting
-// ID; pass non-zero fields to override. Callers fail the test on any error
-// — there's no recoverable seed failure in a fresh template-cloned DB.
+// Factories insert a row with defaults and return its id; any error fails the test.
 type SeedHelper struct {
 	t       *testing.T
 	pool    *pgxpool.Pool
@@ -41,9 +38,6 @@ func (s *SeedHelper) User(ctx context.Context) string {
 	return u.ID
 }
 
-// Board creates a board and adds the given user as owner (mirrors the real
-// CreateBoard flow in board_service which inserts the row + owner member
-// in one transaction).
 func (s *SeedHelper) Board(ctx context.Context, ownerID string) string {
 	s.t.Helper()
 	b, err := s.queries.CreateBoard(ctx, db.CreateBoardParams{Title: "Test Board"})
@@ -60,9 +54,6 @@ func (s *SeedHelper) Board(ctx context.Context, ownerID string) string {
 	return b.ID
 }
 
-// Column creates a column with the given category ("TODO", "IN_PROGRESS",
-// "DONE"). Position auto-increments per call so multiple columns in the
-// same board don't collide.
 func (s *SeedHelper) Column(ctx context.Context, boardID, category string, position float64) string {
 	s.t.Helper()
 	c, err := s.queries.CreateColumn(ctx, db.CreateColumnParams{
@@ -91,8 +82,6 @@ func (s *SeedHelper) PlanningSession(ctx context.Context, boardID, createdBy str
 	return sess.ID
 }
 
-// PlanningItem creates a live item with default type REQ. Use ItemWithType
-// for a specific type.
 func (s *SeedHelper) PlanningItem(ctx context.Context, sessionID string) string {
 	return s.PlanningItemWithType(ctx, sessionID, "REQ")
 }
@@ -111,7 +100,6 @@ func (s *SeedHelper) PlanningItemWithType(ctx context.Context, sessionID, itemTy
 	return it.ID
 }
 
-// Card creates a card in the given column with default title/position.
 func (s *SeedHelper) Card(ctx context.Context, columnID string) string {
 	s.t.Helper()
 	c, err := s.queries.CreateCard(ctx, db.CreateCardParams{
@@ -125,7 +113,6 @@ func (s *SeedHelper) Card(ctx context.Context, columnID string) string {
 	return c.ID
 }
 
-// Subtask appends a subtask to the given card with a default title.
 func (s *SeedHelper) Subtask(ctx context.Context, cardID string) string {
 	s.t.Helper()
 	st, err := s.queries.AppendSubtask(ctx, db.AppendSubtaskParams{
@@ -138,7 +125,6 @@ func (s *SeedHelper) Subtask(ctx context.Context, cardID string) string {
 	return st.ID
 }
 
-// Tag creates a board-scoped tag with the given name.
 func (s *SeedHelper) Tag(ctx context.Context, boardID, name string) string {
 	s.t.Helper()
 	tag, err := s.queries.CreateTag(ctx, db.CreateTagParams{

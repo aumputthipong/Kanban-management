@@ -6,7 +6,6 @@ import (
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/service"
 )
 
-// MockDemoService implements service.DemoServicer
 type MockDemoService struct {
 	CreateSandboxFn func(ctx context.Context, companionEmail string) (service.DemoSandbox, error)
 	PurgeExpiredFn  func(ctx context.Context) (int64, error)

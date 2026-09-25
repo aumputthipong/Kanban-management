@@ -23,10 +23,6 @@ interface Props {
   sessionId: string;
 }
 
-// The capture surface: one text input (Enter commits) plus a type segmented control.
-// Items state and mutations live in useSessionItems; this owns local UI state only.
-// Keyboard support stays minimal on purpose — the old cmd-1/D/S bindings each
-// collided with a browser default, so they were unreliable. Do not reintroduce them.
 export function SessionCaptureView({ boardId, sessionId }: Props) {
   const {
     detail,
@@ -47,17 +43,12 @@ export function SessionCaptureView({ boardId, sessionId }: Props) {
   const [draft, setDraft] = useState("");
   const [focusIndex, setFocusIndex] = useState<number>(-1);
   const [showExport, setShowExport] = useState(false);
-  // Ephemeral id set — a tick no longer persists a "selected" status. Committing
-  // promotes the ticked ids in one go.
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  // Synced to ?filter= so the URL survives copy-paste. Read from the URL directly:
-  // useSearchParams would force a Suspense boundary at the page level in Next 16.
+  // Read from the URL directly: useSearchParams forces a Suspense boundary.
   const [filter, setFilter] = useState<SessionFilter>(() => readFilterFromURL());
   const inputRef = useRef<HTMLInputElement | null>(null);
 
-  // Deep-link from #item-<id>, run once after items load. setState-during-render,
-  // not an effect — see AGENTS.md, "Data fetching & loading states".
   const [deepLinkHandled, setDeepLinkHandled] = useState(false);
   if (!deepLinkHandled && items.length > 0) {
     setDeepLinkHandled(true);
@@ -67,7 +58,6 @@ export function SessionCaptureView({ boardId, sessionId }: Props) {
       const targetIdx = items.findIndex((it) => it.id === match[1]);
       if (targetIdx >= 0) {
         setFocusIndex(targetIdx);
-        // rAF defers the DOM read to after paint, so reading by id here is safe.
         requestAnimationFrame(() => {
           const el = document.getElementById(`item-${match[1]}`);
           el?.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -83,7 +73,6 @@ export function SessionCaptureView({ boardId, sessionId }: Props) {
     [items],
   );
 
-  // Make sure the row is visible under the current filter before scrolling to it.
   const jumpToItem = (itemId: string) => {
     if (filter !== "all" && filter !== "q") handleFilterChange("q");
     requestAnimationFrame(() => {
@@ -162,7 +151,7 @@ export function SessionCaptureView({ boardId, sessionId }: Props) {
             {savedAt && <>บันทึกอัตโนมัติแล้ว · {formatRelativeFromNow(savedAt)}</>}
           </p>
 
-          {/* Capture box sits at the top so it never sinks below a long list. */}
+          {/* Capture box */}
           <CaptureInput
             inputRef={inputRef}
             draft={draft}
@@ -258,7 +247,6 @@ export function SessionCaptureView({ boardId, sessionId }: Props) {
                   onPromote={() => promoteOne(it)}
                   onDelete={() => removeItem(it)}
                   onUp={() => {
-                    // First row → back up to the capture box (now above the list).
                     if (i === 0) {
                       setFocusIndex(-1);
                       inputRef.current?.focus();
@@ -289,8 +277,6 @@ export function SessionCaptureView({ boardId, sessionId }: Props) {
   );
 }
 
-// Filter lives in the URL via history.replaceState — survives reload and copy-paste
-// without triggering a Next router re-render.
 const VALID_FILTERS: SessionFilter[] = ["all", "req", "dec", "q", "dropped"];
 
 function readFilterFromURL(): SessionFilter {

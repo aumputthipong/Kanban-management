@@ -10,9 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestMain seeds JWT_SECRET before any test signs or parses a token. secret()
-// calls os.Exit on an empty value, which would kill the whole test binary
-// instead of failing one case. Must be >= MinSecretBytes.
+// secret() exits on an empty JWT_SECRET, killing the whole test binary.
 func TestMain(m *testing.M) {
 	if os.Getenv("JWT_SECRET") == "" {
 		if err := os.Setenv("JWT_SECRET", "test-secret-do-not-use-in-prod-0123456789"); err != nil {
@@ -32,8 +30,7 @@ func TestParseWSTicket_FreshTicket_ReturnsUserID(t *testing.T) {
 	assert.Equal(t, "user-1", claims.UserID)
 }
 
-// The whole point of the `aud` claim: a ticket lifted out of a URL or an
-// access log must not open the REST API.
+// A ticket lifted from a URL or log must not open the REST API.
 func TestParse_WSTicket_Rejected(t *testing.T) {
 	ticket, err := GenerateWSTicket("user-1")
 	require.NoError(t, err)
@@ -43,8 +40,6 @@ func TestParse_WSTicket_Rejected(t *testing.T) {
 	assert.Error(t, err)
 }
 
-// The mirror case: the WS handshake must not become a second place to present
-// a long-lived session credential.
 func TestParseWSTicket_AccessToken_Rejected(t *testing.T) {
 	access, err := Generate("user-1", "user@example.com")
 	require.NoError(t, err)

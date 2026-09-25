@@ -14,18 +14,11 @@ interface BoardAppearancePickerProps {
   color: string;
   icon: string;
   canManage: boolean;
-  /** Which control is mid-save (so we can show a spinner without blocking). */
   saving: "color" | "icon" | null;
   onPickColor: (color: string) => void;
   onPickIcon: (icon: BoardIconKey) => void;
 }
 
-/**
- * Live identity preview + colour swatches + icon grid. Selections save
- * immediately (optimistic) via the parent; the chosen value is reflected here
- * the instant it is clicked. Mirrors the project-list card glyph so what the
- * user picks is what they see on the dashboard.
- */
 export function BoardAppearancePicker({
   name,
   color,
@@ -39,7 +32,7 @@ export function BoardAppearancePicker({
 
   return (
     <div className="flex flex-col gap-3.5">
-      {/* preview */}
+      {/* Preview */}
       <div className="flex items-center gap-3.5 p-3.5 rounded-lg border border-slate-200 bg-slate-50">
         <div
           className="w-[46px] h-[46px] rounded-lg flex items-center justify-center text-white shrink-0 transition-colors"
@@ -57,7 +50,7 @@ export function BoardAppearancePicker({
         </div>
       </div>
 
-      {/* colour swatches */}
+      {/* Colours */}
       <div className="flex items-center gap-2.5">
         {BOARD_COLORS.map((c) => (
           <button
@@ -77,7 +70,7 @@ export function BoardAppearancePicker({
         )}
       </div>
 
-      {/* icon grid */}
+      {/* Icons */}
       <div className="flex items-center gap-2">
         {(Object.keys(BOARD_ICONS) as BoardIconKey[]).map((key) => {
           const G = BOARD_ICONS[key];

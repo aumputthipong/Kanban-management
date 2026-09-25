@@ -21,7 +21,6 @@ interface TagSelectorProps {
   boardId: string;
   selected: Tag[];
   onChange: (tags: Tag[]) => void;
-  /** Persist the current tag set (per-field auto-save). Called after add/remove. */
   onCommit?: () => void;
   canEdit: boolean;
 }
@@ -38,8 +37,6 @@ function TagSelectorImpl({ boardId, selected, onChange, onCommit, canEdit }: Tag
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Reset loading state on board switch using the setState-during-render pattern
-  // (https://react.dev/reference/react/useState#storing-information-from-previous-renders).
   if (loadedBoardId !== boardId) {
     setLoadedBoardId(boardId);
     setBoardTags([]);
@@ -54,8 +51,7 @@ function TagSelectorImpl({ boardId, selected, onChange, onCommit, canEdit }: Tag
         if (!cancelled) setBoardTags(Array.isArray(data) ? data : []);
       })
       .catch(() => {
-        // Best-effort: on failure the selector shows no existing tags (the user
-        // can still type a new one). `finally` clears the spinner either way.
+        // Best-effort: the user can still create a new tag.
       })
       .finally(() => {
         if (!cancelled) setLoadingTags(false);
@@ -65,7 +61,6 @@ function TagSelectorImpl({ boardId, selected, onChange, onCommit, canEdit }: Tag
     };
   }, [boardId]);
 
-  // Position dropdown relative to input using viewport coords
   useEffect(() => {
     if (!open || !inputRef.current) return;
     const rect = inputRef.current.getBoundingClientRect();
@@ -133,7 +128,7 @@ function TagSelectorImpl({ boardId, selected, onChange, onCommit, canEdit }: Tag
       setCreating(false);
       setNewColor(TAG_COLORS[0].key);
     } catch {
-      // Network failure on create: leave the form open so the user can retry.
+      // Keep the form open so the user can retry.
     }
   };
 

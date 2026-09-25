@@ -1,6 +1,4 @@
-// Planning origin of a card, for the detail modal's "source" section. The backend
-// returns JSON null (not 404) when there is none, so state is undefined (loading),
-// null (no source), or the object.
+// undefined = loading, null = no source (the backend returns null, not 404).
 import { useEffect, useState } from "react";
 import { planningApi } from "@/lib/planningApi";
 import type { CardSource } from "@/types/planning";
@@ -13,7 +11,6 @@ interface State {
 export function useCardSource(cardId: string | null): State {
   const [source, setSource] = useState<CardSource | null | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(false);
-  // Reset during render when the consumer switches cards, not in an effect (AGENTS.md).
   const [trackedCardId, setTrackedCardId] = useState<string | null>(cardId);
   if (trackedCardId !== cardId) {
     setTrackedCardId(cardId);
@@ -31,7 +28,6 @@ export function useCardSource(cardId: string | null): State {
         if (!cancelled) setSource(result);
       })
       .catch(() => {
-        // Treat a fetch failure as "no source" — apiClient already toasts real errors.
         if (!cancelled) setSource(null);
       })
       .finally(() => {

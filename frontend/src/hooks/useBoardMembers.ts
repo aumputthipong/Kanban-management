@@ -32,19 +32,16 @@ export function useBoardMembers(boardId: string) {
     };
   }, [boardId]);
 
-  // Invite by exact email — no user list is fetched/exposed (privacy). Returns
-  // an error message to show inline (e.g. "user not found") or null on success.
   const addMember = async (email: string, role: string): Promise<string | null> => {
     setIsAdding(true);
     try {
       await apiClient(`/boards/${boardId}/members`, {
         data: { email, role },
       });
-      // Re-fetch the full list so the UI reflects the actual DB state
       const fresh: BoardMember[] = await apiClient(`/boards/${boardId}/members`);
       const cleaned = Array.isArray(fresh) ? fresh.filter(Boolean) : [];
       setMembers(cleaned);
-      setBoardMembers(cleaned); // sync Zustand so MemberFilterBar also updates
+      setBoardMembers(cleaned);
       return null;
     } catch (err) {
       return err instanceof Error ? err.message : "เพิ่มสมาชิกไม่สำเร็จ";
@@ -55,7 +52,6 @@ export function useBoardMembers(boardId: string) {
   const removeMember = async (userId: string) => {
     setLoadingId(userId);
     try {
-      // apiClient handles credentials and error-status checking.
       await apiClient(`/boards/${boardId}/members/${userId}`, {
         method: "DELETE",
       });
@@ -71,7 +67,6 @@ export function useBoardMembers(boardId: string) {
   const changeRole = async (userId: string, role: string) => {
     setLoadingId(userId);
     try {
-      // apiClient sets the headers and parses the JSON response.
       await apiClient(`/boards/${boardId}/members/${userId}`, {
         method: "PATCH",
         data: { role },

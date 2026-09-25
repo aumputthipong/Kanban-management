@@ -3,7 +3,7 @@
 import { useRef, useState, useEffect } from "react";
 import { useBoardStore } from "@/store/useBoardStore";
 
-// ---- shared config ----
+// Config
 export type Priority = "high" | "medium" | "low";
 
 const PRIORITY_CONFIG: {
@@ -18,7 +18,7 @@ const PRIORITY_CONFIG: {
   { value: "low",    label: "Low",    bars: 1, color: "#3b82f6", dimColor: "#93c5fd" },
 ];
 
-// ---- signal-bar icon (Linear style) ----
+// Signal bars icon
 export function SignalBars({
   priority,
   size = 14,
@@ -31,7 +31,6 @@ export function SignalBars({
   const activeColor = cfg?.color ?? "#94a3b8";
   const emptyColor = "#e2e8f0";
 
-  // 3 bars: widths are 3px each, heights grow: 4, 8, 12 (scaled by size/12)
   const scale = size / 12;
   const barWidth = Math.round(3 * scale);
   const gap = Math.round(2 * scale);
@@ -55,7 +54,7 @@ export function SignalBars({
   );
 }
 
-// ---- dropdown component ----
+// Dropdown
 export function PriorityFilterDropdown() {
   const filterPriorities = useBoardStore((s) => s.filterPriorities);
   const toggleFilterPriority = useBoardStore((s) => s.toggleFilterPriority);
@@ -79,7 +78,7 @@ export function PriorityFilterDropdown() {
 
   return (
     <div className="relative" ref={ref}>
-      {/* trigger button */}
+      {/* Trigger */}
       <button
         onClick={() => setOpen((v) => !v)}
         className={`cursor-pointer flex items-center gap-1.5 h-7 px-2.5 rounded-lg border text-xs font-medium transition-colors ${
@@ -88,7 +87,6 @@ export function PriorityFilterDropdown() {
             : "bg-white border-slate-200 text-slate-600 hover:border-slate-400 hover:text-slate-800"
         }`}
       >
-        {/* show mixed bars or a single priority bar */}
         {isActive && filterPriorities.length === 1 ? (
           <SignalBars priority={filterPriorities[0] as Priority} size={13} />
         ) : (
@@ -114,7 +112,7 @@ export function PriorityFilterDropdown() {
         </svg>
       </button>
 
-      {/* dropdown */}
+      {/* Menu */}
       {open && (
         <div className="absolute top-9 left-0 z-50 w-44 bg-white border border-slate-200 rounded-xl shadow-lg py-1.5 overflow-hidden">
           {PRIORITY_CONFIG.map(({ value, label }) => {

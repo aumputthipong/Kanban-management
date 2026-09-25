@@ -95,7 +95,7 @@ export function TasksTabContent({
 
   return (
     <div>
-      {/* Header — title + urgency summary + actions */}
+      {/* Header */}
       <div className="flex items-end gap-4 mb-5">
         <div className="flex-1 min-w-0">
           <h2 className="text-2xl font-bold text-slate-900 leading-tight tracking-tight">
@@ -177,7 +177,7 @@ export function TasksTabContent({
             </section>
           )}
 
-          {/* ถัดไป — upcoming buckets: empties collapse, the rest list as rows */}
+          {/* Upcoming */}
           <section>
             <GroupLabel label="ถัดไป" />
             {emptyUpcoming.length > 0 && (

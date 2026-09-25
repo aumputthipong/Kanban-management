@@ -6,7 +6,6 @@ import { useToastStore } from "@/store/useToastStore";
 
 const replace = vi.fn();
 vi.mock("next/navigation", () => ({ useRouter: () => ({ replace }) }));
-// The socket itself is not under test here.
 vi.mock("@/hooks/useWebSocket", () => ({ useWebSocket: () => ({ status: "open" }) }));
 
 beforeEach(() => {

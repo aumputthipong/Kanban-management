@@ -10,8 +10,6 @@ import (
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/service"
 )
 
-// CreateColumn adds a column to a board.
-//
 // @Summary  Create column
 // @Tags     columns
 // @Accept   json
@@ -65,9 +63,6 @@ func (h *BoardCommandHandler) CreateColumn(w http.ResponseWriter, r *http.Reques
 	return nil
 }
 
-// UpdateColumn sets a column's title, category and colour. Title and category are both
-// required: the underlying SQL assigns them outright rather than through COALESCE.
-//
 // @Summary  Update column
 // @Tags     columns
 // @Accept   json
@@ -114,8 +109,6 @@ func (h *BoardCommandHandler) UpdateColumn(w http.ResponseWriter, r *http.Reques
 	return nil
 }
 
-// DeleteColumn removes a column and the cards in it.
-//
 // @Summary  Delete column
 // @Tags     columns
 // @Produce  json

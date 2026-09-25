@@ -32,8 +32,7 @@ export function TeamTabContent({ boardId, onSelectCard }: TeamTabContentProps) {
         </p>
       </div>
 
-      {/* Ownership is the primary focus (flexible width); activity is a fixed
-          secondary column. items-start so it doesn't stretch to match height. */}
+      {/* Ownership + activity */}
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_400px] gap-5 items-start">
         <TeamOwnershipList onSelectCard={onSelectCard} />
         <TeamActivityPanel

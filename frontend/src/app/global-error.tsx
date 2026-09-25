@@ -4,8 +4,7 @@ import { useEffect } from "react";
 import { logger } from "@/lib/logger";
 import { captureException } from "@/lib/sentry";
 
-// global-error replaces the root layout when the layout itself crashes,
-// so it must render its own <html> and <body>.
+// Replaces the root layout on crash, so it renders its own <html> and <body>.
 export default function GlobalError({
   error,
   reset,

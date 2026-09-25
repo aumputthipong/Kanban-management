@@ -21,10 +21,7 @@ export function completeMyTask(cardId: string): Promise<void> {
   return apiClient(`/my-tasks/${cardId}/complete`, { method: "POST" });
 }
 
-/**
- * Snooze a card by setting `due_date`. Reuses PATCH /cards/:id — the assignee can
- * already edit their own card through that handler's inline permission gate.
- */
+/** Reuses PATCH /cards/:id — the assignee can already edit their own card. */
 export function snoozeCardDueDate(cardId: string, dueDate: string): Promise<unknown> {
   return apiClient(`/cards/${cardId}`, {
     method: "PATCH",
@@ -32,10 +29,6 @@ export function snoozeCardDueDate(cardId: string, dueDate: string): Promise<unkn
   });
 }
 
-/**
- * Compute a YYYY-MM-DD string for "today + offset days" in the user's local
- * tz. Used by the snooze quick options ("tomorrow" = +1, "next week" = +7).
- */
 export function relativeDueDate(offsetDays: number): string {
   const d = new Date();
   d.setDate(d.getDate() + offsetDays);

@@ -9,18 +9,13 @@ import (
 	chiMiddleware "github.com/go-chi/chi/v5/middleware"
 )
 
-// sensitivePathPrefixes are request paths whose query string must be redacted
-// before being logged. The OAuth callback carries `code` / `state`, and the
-// WebSocket handshake carries a short-lived auth ticket it cannot send as a
-// header; extend this list rather than adding ad-hoc redactions per call site.
+// Paths whose query string is redacted (OAuth code/state, WS ticket). Extend here, not per call site.
 var sensitivePathPrefixes = []string{
 	"/api/auth/google/callback",
 	"/ws/",
 }
 
-// RequestLogger replaces chi's stdlib Logger, emitting structured slog output and
-// redacting query strings on sensitive paths. chi's logger prints the raw query, so
-// OAuth codes and WS tickets would land in stdout, Sentry breadcrumbs and any aggregator.
+// chi's Logger prints the raw query — OAuth codes and WS tickets would leak.
 func RequestLogger(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()

@@ -1,8 +1,5 @@
 //go:build integration
 
-// Integration tests for ActivityService, the audit log. RecordAsync hands off to a
-// background worker a mock cannot exercise: whether the write lands, and whether it
-// survives the caller's context being gone by the time it runs.
 package service_test
 
 import (
@@ -53,9 +50,7 @@ func TestActivityRecord_Success_StoresMarshaledPayload(t *testing.T) {
 	})
 	require.NoError(t, err)
 	assert.Equal(t, service.EventCardCreated, act.EventType)
-	// Postgres's jsonb round-trips through its own canonical text form (it
-	// adds a space after ":" and ",") rather than preserving Go's compact
-	// json.Marshal output byte-for-byte, so compare structurally.
+	// jsonb normalises whitespace — compare structurally.
 	assert.JSONEq(t, `{"title":"New Card","column_id":"col-1"}`, string(act.Payload))
 }
 
@@ -71,10 +66,7 @@ func TestActivityRecord_NilPayload_StoresEmptyObject(t *testing.T) {
 	assert.JSONEq(t, `{}`, string(act.Payload))
 }
 
-// RecordAsync hands the job to a background goroutine and returns immediately
-// — there's nothing to assert right after the call. Poll briefly for the row
-// to land rather than sleeping a fixed guess, and give up with a clear
-// failure if the worker never wrote it.
+// Poll for the row instead of sleeping a fixed guess.
 func TestActivityRecordAsync_JobIsWrittenByTheBackgroundWorker(t *testing.T) {
 	ctx := context.Background()
 	f := newActivityFixture(t)
@@ -119,8 +111,7 @@ func TestActivityList_DefaultsLimitTo30(t *testing.T) {
 func TestActivityList_ClampsOverLimitTo30(t *testing.T) {
 	ctx := context.Background()
 	f := newActivityFixture(t)
-	// Need more than 30 rows, or a clamped and an unclamped request would
-	// return the same count and this would pass either way.
+	// More than 30 rows, or clamped and unclamped would match.
 	for i := 0; i < 40; i++ {
 		_, err := f.svc.Record(ctx, service.RecordParams{
 			BoardID: f.boardID, ActorID: f.userID,

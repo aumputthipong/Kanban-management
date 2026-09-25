@@ -1,8 +1,5 @@
 //go:build integration
 
-// Integration tests for AuthService.RotateRefreshToken against a real Postgres. Rotation
-// is a read-check-write across two rows, and a mock cannot observe whether concurrent
-// refreshes both mint, or whether a failed step leaves the old token usable (ADR 0001).
 package service_test
 
 import (
@@ -41,7 +38,6 @@ func newRefreshFixture(t *testing.T) *refreshFixture {
 	}
 }
 
-// liveTokenCount counts refresh tokens for the user that are still usable.
 func (f *refreshFixture) liveTokenCount(ctx context.Context, t *testing.T) int {
 	t.Helper()
 	var n int
@@ -68,9 +64,7 @@ func TestRotateRefreshToken_HappyPath_OldTokenStopsWorking(t *testing.T) {
 	assert.Equal(t, 1, f.liveTokenCount(ctx, t), "exactly one token should be live after rotation")
 }
 
-// The test that motivated the transaction plus FOR UPDATE. Without the row lock both
-// callers read the token as un-revoked, both insert a replacement, and one token yields
-// two valid sessions — the state replay detection exists to make impossible.
+// Without the row lock one token would yield two valid sessions.
 func TestRotateRefreshToken_ConcurrentRefresh_OnlyOneMintsAReplacement(t *testing.T) {
 	ctx := context.Background()
 	f := newRefreshFixture(t)
@@ -106,7 +100,7 @@ func TestRotateRefreshToken_ConcurrentRefresh_OnlyOneMintsAReplacement(t *testin
 		case err == nil:
 			successes++
 		case errors.Is(err, service.ErrRefreshInvalid):
-			// expected loser: the lock made it read the token as already used
+			// expected loser
 		default:
 			t.Errorf("unexpected error from concurrent rotation: %v", err)
 		}
@@ -116,8 +110,7 @@ func TestRotateRefreshToken_ConcurrentRefresh_OnlyOneMintsAReplacement(t *testin
 	assert.Equal(t, 1, f.liveTokenCount(ctx, t), "a single token must never yield two live sessions")
 }
 
-// A replay that arrives inside rotationRaceWindow is two tabs racing, not
-// theft: the caller is rejected but the user's other sessions survive.
+// A replay inside rotationRaceWindow is two tabs racing, not theft.
 func TestRotateRefreshToken_ReplayInsideRaceWindow_KeepsOtherSessionsAlive(t *testing.T) {
 	ctx := context.Background()
 	f := newRefreshFixture(t)
@@ -127,7 +120,6 @@ func TestRotateRefreshToken_ReplayInsideRaceWindow_KeepsOtherSessionsAlive(t *te
 	_, err = f.svc.RotateRefreshToken(ctx, raw, "tab-1", "127.0.0.1")
 	require.NoError(t, err)
 
-	// The second tab presents the token it read before tab 1 rotated it.
 	_, err = f.svc.RotateRefreshToken(ctx, raw, "tab-2", "127.0.0.1")
 	assert.ErrorIs(t, err, service.ErrRefreshInvalid, "the racing caller must be rejected")
 
@@ -135,9 +127,7 @@ func TestRotateRefreshToken_ReplayInsideRaceWindow_KeepsOtherSessionsAlive(t *te
 		"a tab race must not log the user out of their other sessions")
 }
 
-// A replay of a token rotated long ago is treated as theft: every refresh
-// token for the user is revoked, so the attacker and the victim both lose the
-// session and the victim is forced to re-authenticate.
+// A replay after the window is theft: the whole token family is revoked.
 func TestRotateRefreshToken_ReplayAfterRaceWindow_BurnsWholeFamily(t *testing.T) {
 	ctx := context.Background()
 	f := newRefreshFixture(t)
@@ -147,7 +137,6 @@ func TestRotateRefreshToken_ReplayAfterRaceWindow_BurnsWholeFamily(t *testing.T)
 	_, err = f.svc.RotateRefreshToken(ctx, stolen, "victim", "127.0.0.1")
 	require.NoError(t, err)
 
-	// Age the revoke past the race window so the replay reads as theft.
 	_, err = f.pool.Exec(ctx,
 		`UPDATE refresh_tokens SET revoked_at = revoked_at - INTERVAL '10 minutes'
 		 WHERE user_id = $1 AND revoked_at IS NOT NULL`,
@@ -162,9 +151,7 @@ func TestRotateRefreshToken_ReplayAfterRaceWindow_BurnsWholeFamily(t *testing.T)
 		"replay outside the race window must revoke every session for the user")
 }
 
-// The revoke of the old token and the insert of its replacement must land
-// together. If they could not, a caller that saw an error would still be
-// holding a usable token.
+// Revoke and insert must land together.
 func TestRotateRefreshToken_ExpiredToken_LeavesNoReplacementBehind(t *testing.T) {
 	ctx := context.Background()
 	f := newRefreshFixture(t)

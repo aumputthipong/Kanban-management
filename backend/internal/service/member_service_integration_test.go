@@ -1,8 +1,5 @@
 //go:build integration
 
-// Integration tests for BoardService's member methods. They branch in Go on a role
-// read from the database; a mock could confirm the branching but not that the
-// owner-role guard is checked against the stored row.
 package service_test
 
 import (
@@ -42,9 +39,6 @@ func newMemberFixture(t *testing.T) *memberFixture {
 	}
 }
 
-// addPlainMember seeds a second user and adds them to the board directly
-// (bypassing AddBoardMemberByEmail, since these tests are about what
-// happens to an existing plain member, not about the add path itself).
 func (f *memberFixture) addPlainMember(ctx context.Context, t *testing.T) string {
 	t.Helper()
 	userID := f.seed.User(ctx)
@@ -85,8 +79,7 @@ func TestAddBoardMemberByEmail_AlreadyMember_ErrAlreadyMember(t *testing.T) {
 	assert.ErrorIs(t, err, service.ErrAlreadyMember)
 }
 
-// Managers adding the same email at once: one add wins, the rest must get
-// ErrAlreadyMember (409) rather than a unique-constraint 500. Rounds widen a narrow window.
+// Concurrent adds: one wins, the rest get ErrAlreadyMember, not a 500.
 func TestAddBoardMemberByEmail_Concurrent_OneAddsRestAlreadyMember(t *testing.T) {
 	ctx := context.Background()
 	f := newMemberFixture(t)

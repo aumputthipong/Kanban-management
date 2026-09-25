@@ -1,6 +1,3 @@
-// Item comment thread handlers, split out so planning_handler.go stays focused on the
-// session and item surface. Permissions follow the 404-not-403 anti-enumeration pattern
-// (docs/adr/0004). Activity body previews are truncated to 80 chars.
 package handler
 
 import (
@@ -28,8 +25,7 @@ func commentToResponse(row db.ListPlanningItemCommentsRow) dto.PlanningCommentRe
 		CreatedAt:  row.CreatedAt.Format(timeFormat),
 		UpdatedAt:  row.UpdatedAt.Format(timeFormat),
 	}
-	// Soft-deleted rows return deleted_at with a nil body so the UI can render a
-	// placeholder. Returning the body would leak content after a delete.
+	// Never return the body of a deleted comment.
 	if row.DeletedAt != nil {
 		ts := row.DeletedAt.Format(timeFormat)
 		out.DeletedAt = &ts
@@ -49,7 +45,6 @@ func bodyPreview(s string) string {
 	return s[:commentBodyPreviewLen] + "…"
 }
 
-// ListComments returns the full thread including soft-deleted rows.
 func (h *PlanningHandler) ListComments(w http.ResponseWriter, r *http.Request) error {
 	itemID := chi.URLParam(r, "itemID")
 	if _, err := uuid.Parse(itemID); err != nil {
@@ -115,13 +110,12 @@ func (h *PlanningHandler) CreateComment(w http.ResponseWriter, r *http.Request) 
 		service.PlanningCommentCreatedPayload{ItemID: itemID, BodyPreview: bodyPreview(req.Body)},
 	)
 
-	// Hydrate author_name so the frontend can append the row without a refetch.
 	body := row.Body
 	resp := dto.PlanningCommentResponse{
 		ID:         row.ID,
 		ItemID:     row.ItemID,
 		AuthorID:   row.AuthorID,
-		AuthorName: "", // filled below if we can resolve
+		AuthorName: "",
 		Body:       &body,
 		CreatedAt:  row.CreatedAt.Format(timeFormat),
 		UpdatedAt:  row.UpdatedAt.Format(timeFormat),
@@ -161,7 +155,7 @@ func (h *PlanningHandler) EditComment(w http.ResponseWriter, r *http.Request) er
 	if _, apiErr := h.requireMembership(r, boardID, userID); apiErr != nil {
 		return apiErr
 	}
-	// Edit-own only, and a 404 so probing other people's comment IDs reveals nothing.
+	// 404, not 403 — probing other people's comment ids reveals nothing.
 	if existing.AuthorID != userID {
 		return httputil.NewAPIError(http.StatusNotFound, "Not found", nil)
 	}
@@ -224,14 +218,13 @@ func (h *PlanningHandler) DeleteComment(w http.ResponseWriter, r *http.Request) 
 	if apiErr != nil {
 		return apiErr
 	}
-	// Delete = own, or board owner/manager. Anything else is a 404 (see ADR 0004).
+	// Own, or owner/manager. Anything else is a 404 (docs/adr/0004).
 	isOwn := existing.AuthorID == userID
 	canForceDelete := role == core.RoleOwner || role == core.RoleManager
 	if !isOwn && !canForceDelete {
 		return httputil.NewAPIError(http.StatusNotFound, "Not found", nil)
 	}
 	if existing.DeletedAt != nil {
-		// Idempotent — a re-delete is a no-op rather than an error.
 		w.WriteHeader(http.StatusNoContent)
 		return nil
 	}

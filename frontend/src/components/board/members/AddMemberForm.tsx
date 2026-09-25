@@ -7,10 +7,7 @@ interface AddMemberFormProps {
   onAdd: (email: string, role: string) => Promise<string | null>;
 }
 
-// Invite by typing an exact email — no user list is shown (privacy: you can't
-// browse who's registered, you must know the address). The server resolves the
-// email to a registered account; an unknown / already-member address comes back
-// as an inline error.
+// Exact email only — there is no user directory to browse (privacy).
 export function AddMemberForm({ isAdding, onAdd }: AddMemberFormProps) {
   const [email, setEmail] = useState("");
   const [selectedRole, setSelectedRole] = useState<"manager" | "member">("member");
@@ -31,7 +28,7 @@ export function AddMemberForm({ isAdding, onAdd }: AddMemberFormProps) {
   return (
     <div className="p-3">
       <div className="flex flex-wrap items-center gap-2.5">
-        {/* email field */}
+        {/* Email */}
         <label className="flex h-10 min-w-0 flex-1 items-center gap-2.5 rounded-md border border-slate-200 bg-slate-50/70 px-3 transition focus-within:border-indigo-200 focus-within:bg-white focus-within:ring-2 focus-within:ring-blue-900/10">
           <Mail size={18} className="shrink-0 text-slate-400" />
           <input
@@ -53,7 +50,7 @@ export function AddMemberForm({ isAdding, onAdd }: AddMemberFormProps) {
           />
         </label>
 
-        {/* role select */}
+        {/* Role */}
         <div className="relative shrink-0">
           <select
             value={selectedRole}

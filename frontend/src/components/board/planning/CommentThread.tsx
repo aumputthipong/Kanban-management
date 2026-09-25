@@ -1,8 +1,5 @@
 "use client";
 
-// Comment list plus compose row for one planning item, inline under the row. Deleted
-// comments keep their slot as an italic placeholder so the thread does not jump.
-// Edit and delete are own-comment-only; the server enforces it too (404 otherwise).
 import { KeyboardEvent, useState } from "react";
 import { Pencil, Trash2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -37,7 +34,6 @@ export function CommentThread({
   };
 
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
-    // Cmd/Ctrl+Enter sends (Slack/Linear convention); plain Enter inserts a newline.
     if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
       e.preventDefault();
       handleSubmit();
@@ -102,7 +98,6 @@ function CommentRow({ comment, isOwn, onEdit, onDelete }: RowProps) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(comment.body ?? "");
 
-  // Soft-deleted comments keep their slot for context; the italic label says why.
   if (comment.deleted_at) {
     return (
       <li className="flex flex-col gap-0.5 text-xs">

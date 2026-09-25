@@ -5,8 +5,7 @@ import { API_URL } from "@/lib/constants";
 import type { Subtask } from "@/types/board";
 
 export function useSubtaskActions() {
-  // Stable identity: consumers put this in effect deps, and a fresh function per
-  // render would refetch on every one. It closes over nothing from this scope.
+  // Stable identity — consumers put this in effect deps.
   const fetchSubtasks = useCallback(async (cardId: string) => {
     try {
       const response = await fetch(`${API_URL}/cards/${cardId}/subtasks`, {
@@ -35,7 +34,7 @@ export function useSubtaskActions() {
 
       const newSubtask: Subtask = await response.json();
 
-      // Re-read after the await: the CARD_SUBTASKS_UPDATED broadcast may already carry it.
+      // Re-read after the await: the broadcast may already carry it.
       const { columns, setSubtasksToCard } = useBoardStore.getState();
       const card = columns.flatMap((c) => c.cards).find((c) => c.id === cardId);
       const list = card?.subtasks ?? [];
@@ -77,7 +76,6 @@ export function useSubtaskActions() {
     const removed = card?.subtasks?.find((st) => st.id === subtaskId);
     if (!removed) return;
 
-    // Optimistic remove from UI
     store.deleteSubtaskFromCard(cardId, subtaskId);
 
     let undone = false;
@@ -87,12 +85,10 @@ export function useSubtaskActions() {
       duration: 5000,
       onAction: () => {
         undone = true;
-        // Restore: fetch fresh list from server
         fetchSubtasks(cardId);
       },
     });
 
-    // Delay API call — gives user time to undo
     setTimeout(async () => {
       if (undone) return;
       try {

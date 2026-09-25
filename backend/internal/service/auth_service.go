@@ -1,4 +1,3 @@
-// internal/service/auth_service.go
 package service
 
 import (
@@ -20,8 +19,7 @@ var (
 	ErrOAuthOnly    = errors.New("account registered via OAuth, please use Google or GitHub")
 )
 
-// AuthService owns identity (register / login / OAuth) and the refresh-token
-// lifecycle. It holds the pool because refresh rotation runs in a transaction.
+// Holds the pool because refresh rotation runs in a transaction.
 type AuthService struct {
 	pool    *pgxpool.Pool
 	queries *db.Queries
@@ -40,7 +38,6 @@ type RegisterParams struct {
 func (s *AuthService) Register(ctx context.Context, arg RegisterParams) (db.User, error) {
 	_, err := s.queries.GetUserByEmail(ctx, arg.Email)
 	if err == nil {
-		// A nil error means the query found a user with this email already.
 		return db.User{}, ErrEmailTaken
 	}
 	hash, err := bcrypt.GenerateFromPassword([]byte(arg.Password), bcrypt.DefaultCost)
@@ -56,7 +53,7 @@ func (s *AuthService) Register(ctx context.Context, arg RegisterParams) (db.User
 		ProviderID:   nil,
 	})
 	if err != nil {
-		// The read above is only a fast path; a concurrent signup can still win the insert.
+		// Fast path only — a concurrent signup can still win the insert.
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.UniqueViolation {
 			return db.User{}, ErrEmailTaken

@@ -2,10 +2,8 @@
 
 interface MyWorkGreetingProps {
   fullName?: string | null;
-  /** Tasks still due today; null while counts are unavailable. */
   todayLeft: number | null;
   doneToday: number;
-  /** Stat tiles rendered on the right of the panel. */
   children?: React.ReactNode;
 }
 
@@ -27,8 +25,6 @@ function daySummary(left: number, total: number): string {
   return `วันนี้เหลืออีก ${left} งาน จากทั้งหมด ${total} งาน`;
 }
 
-// Top band of the My Work container: who/when on the left with the day's progress,
-// stat tiles on the right. No fill of its own — the container's rule separates it.
 export function MyWorkGreeting({ fullName, todayLeft, doneToday, children }: MyWorkGreetingProps) {
   const now = new Date();
   const display = fullName?.split(" ")[0] ?? "คุณ";

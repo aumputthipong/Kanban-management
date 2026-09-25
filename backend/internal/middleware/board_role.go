@@ -7,8 +7,6 @@ import (
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/httputil"
 )
 
-// roleRank assigns a numeric rank to each role so we can compare with `<`.
-// Higher rank = more privilege. owner > manager > member.
 func roleRank(r core.BoardRole) int {
 	switch r {
 	case core.RoleOwner:
@@ -21,10 +19,7 @@ func roleRank(r core.BoardRole) int {
 	return 0
 }
 
-// RequireBoardRole gates the next handler on the caller having at least
-// minRole on the current board. It MUST be chained after RequireBoardMember,
-// which is what injects the role into the context. Returns 403 on insufficient
-// privilege; the original 404-for-non-members policy lives in RequireBoardMember.
+// Must be chained after RequireBoardMember. 403 on insufficient role.
 func RequireBoardRole(minRole core.BoardRole) func(http.Handler) http.Handler {
 	minRank := roleRank(minRole)
 	return func(next http.Handler) http.Handler {

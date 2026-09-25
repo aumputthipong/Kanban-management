@@ -1,4 +1,3 @@
-// internal/handler/oauth_handler.go
 package handler
 
 import (
@@ -54,7 +53,6 @@ func NewOAuthHandler(
 	}
 }
 
-// GET /api/auth/google
 func (h *OAuthHandler) RedirectToGoogle(w http.ResponseWriter, r *http.Request) error {
 	state, err := generateState()
 	if err != nil {
@@ -74,7 +72,6 @@ func (h *OAuthHandler) RedirectToGoogle(w http.ResponseWriter, r *http.Request) 
 	return nil
 }
 
-// GET /api/auth/google/callback
 func (h *OAuthHandler) HandleGoogleCallback(w http.ResponseWriter, r *http.Request) error {
 	cookie, err := r.Cookie("oauth_state")
 	if err != nil || cookie.Value != r.URL.Query().Get("state") {
@@ -106,8 +103,7 @@ func (h *OAuthHandler) HandleGoogleCallback(w http.ResponseWriter, r *http.Reque
 
 	refreshRaw, err := h.authService.IssueRefreshToken(r.Context(), user.ID, r.UserAgent(), r.RemoteAddr)
 	if err != nil {
-		// Non-fatal: user still gets a 15-minute session via the access cookie
-		// and will be bounced to login when it expires.
+		// Non-fatal: the access cookie still works until it expires.
 		slog.Error("issue refresh token on oauth", "user_id", user.ID, "err", err)
 	} else {
 		token.SetRefreshCookie(w, refreshRaw, h.production, h.crossSite)
@@ -117,7 +113,6 @@ func (h *OAuthHandler) HandleGoogleCallback(w http.ResponseWriter, r *http.Reque
 	return nil
 }
 
-// fetchGoogleUserInfo retrieves the authenticated user's profile using the Bearer token.
 func fetchGoogleUserInfo(ctx context.Context, accessToken string) (*googleUserInfo, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet,
 		"https://www.googleapis.com/oauth2/v2/userinfo", nil)

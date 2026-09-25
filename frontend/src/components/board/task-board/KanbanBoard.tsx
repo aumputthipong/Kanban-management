@@ -59,9 +59,7 @@ export function KanbanBoard({ boardId }: { boardId: string }) {
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
   );
 
-  // pointerWithin first so an empty column under the cursor wins over a neighbouring
-  // card in a dense one; rectIntersection covers boundaries, closestCorners covers
-  // dragging past the edge of the board.
+  // pointerWithin first so an empty column beats a neighbouring card in a dense one.
   const collisionDetection: CollisionDetection = useCallback((args) => {
     const pointerCollisions = pointerWithin(args);
     if (pointerCollisions.length > 0) {
@@ -114,8 +112,7 @@ export function KanbanBoard({ boardId }: { boardId: string }) {
         setDropTarget(null);
         return;
       }
-      // Determine whether the pointer is past the midpoint of the over card.
-      // If so, indicator shows BEFORE the next card (or at end if over is last).
+      // Past the over card's midpoint → indicator goes after it.
       const activeTranslated = active.rect.current.translated;
       let placeAfter = false;
       if (over.rect && activeTranslated) {

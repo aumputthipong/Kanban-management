@@ -1,8 +1,6 @@
 import { useSyncExternalStore } from "react";
 
-// Returns true when viewport width < lg breakpoint (1024px).
-// Used by Sidebar to force-collapse on tablet — see frontend/design.md
-// "Responsive → md tier" rule.
+// Below the lg breakpoint (1024px) — design.md "Responsive → md tier".
 const MAX_WIDTH = "(max-width: 1023.98px)";
 
 function subscribe(callback: () => void): () => void {

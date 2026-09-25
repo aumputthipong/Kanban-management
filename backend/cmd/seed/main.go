@@ -1,6 +1,4 @@
-// Command seed creates the shared demo account (published in the README) and its
-// sample board. Idempotent — it exits unchanged if the demo user exists.
-// Run: DB_URL=postgres://... go run ./cmd/seed
+// Command seed creates the demo account and its sample board. Idempotent.
 package main
 
 import (
@@ -47,8 +45,7 @@ func seed(ctx context.Context, pool *pgxpool.Pool) error {
 	boards := service.NewBoardService(pool, queries)
 	cmds := service.NewBoardCommandService(pool, queries)
 
-	// Register hashes the password (so the demo account can actually log in) and
-	// returns ErrEmailTaken if it already exists — our idempotency guard.
+	// ErrEmailTaken means the demo user already exists.
 	demo, err := auth.Register(ctx, service.RegisterParams{
 		Email: service.SeedDemoEmail, FullName: "Demo User", Password: service.SeedDemoPassword,
 	})

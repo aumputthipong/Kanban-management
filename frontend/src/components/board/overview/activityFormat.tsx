@@ -15,8 +15,7 @@ import {
 } from "lucide-react";
 import type { Activity } from "@/types/activity";
 
-// Deterministic pastel palette for avatar initials — keyed off the user's name
-// so the same person always gets the same color across the Team views.
+// Keyed off the name so a person keeps the same colour everywhere.
 const AVATAR_PALETTE = [
   "bg-rose-200 text-rose-700",
   "bg-amber-200 text-amber-700",
@@ -41,14 +40,9 @@ export function initials(name: string): string {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
-// Merge consecutive card.updated events from the same actor on the same card
-// within this window into one row — reduces feed spam from rapid field edits.
 const UPDATE_GROUP_WINDOW_MS = 10 * 60 * 1000;
 
-// Activities arrive newest-first. We walk them in order and, when we see a
-// card.updated event, check if the most-recent item in the output list is
-// another card.updated by the same actor on the same card within the window.
-// If so, merge the `fields` arrays into that existing item instead of pushing.
+/** Merges card.updated rows from the same actor + card within UPDATE_GROUP_WINDOW_MS. */
 export function groupCardUpdates(activities: Activity[]): Activity[] {
   const out: Activity[] = [];
   for (const a of activities) {
@@ -108,7 +102,6 @@ export function formatAbsoluteTime(iso: string): string {
   });
 }
 
-// Pretty field names for "card.updated" — converts raw DB keys into human labels.
 const FIELD_LABELS: Record<string, string> = {
   title: "title",
   description: "description",
@@ -121,7 +114,7 @@ const FIELD_LABELS: Record<string, string> = {
   is_done: "status",
 };
 
-// Older member.added rows carry only user_id; fall back to a generic label, never the raw id.
+// Older member.added rows only carry user_id — never show the raw id.
 function memberName(p: Record<string, unknown>): string {
   return typeof p.name === "string" && p.name ? p.name : "a member";
 }
@@ -212,8 +205,6 @@ export function describeActivity(
   }
 }
 
-// Tiny action badge that overlays the bottom-right of the avatar — encodes the
-// event type so the avatar color stays bound to the actor (not the action).
 export function eventBadge(
   eventType: string,
   payload: Record<string, unknown>,
@@ -265,7 +256,6 @@ export function eventBadge(
   return { Icon: Pencil, bg: "bg-slate-400" };
 }
 
-// Coarse category for the activity filter chips.
 export type ActivityCategory = "all" | "moved" | "addremove" | "edited";
 
 export function activityCategory(eventType: string): Exclude<ActivityCategory, "all"> {

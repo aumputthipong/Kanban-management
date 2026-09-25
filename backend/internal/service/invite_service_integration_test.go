@@ -1,8 +1,5 @@
 //go:build integration
 
-// Integration tests for InviteService. CreateInvite revokes-then-creates in one
-// transaction (one live link per board); AcceptInvite joins idempotently. Neither
-// is observable through a mock.
 package service_test
 
 import (
@@ -55,9 +52,7 @@ func TestCreateInvite_Success_ReturnsUsableLink(t *testing.T) {
 	assert.True(t, link.ExpiresAt.After(time.Now()))
 }
 
-// "a board has at most one live link": regenerating must revoke the old
-// token, not leave two active ones — that's the whole reason this needs a
-// transaction rather than two independent calls.
+// Regenerating must revoke the old token.
 func TestCreateInvite_Regenerate_OldTokenNoLongerActive(t *testing.T) {
 	ctx := context.Background()
 	f := newInviteFixture(t)
@@ -125,15 +120,14 @@ func TestAcceptInvite_NewUser_JoinsAsMember(t *testing.T) {
 	assert.Equal(t, "member", role)
 }
 
-// An existing member accepting must not error, duplicate the row, or downgrade their
-// role to "member" — the owner here must stay owner.
+// Must not duplicate the row or downgrade the owner.
 func TestAcceptInvite_AlreadyMember_IdempotentNoDuplicateRow(t *testing.T) {
 	ctx := context.Background()
 	f := newInviteFixture(t)
 	link, err := f.svc.CreateInvite(ctx, f.boardID, f.ownerID)
 	require.NoError(t, err)
 
-	boardID, joined, err := f.svc.AcceptInvite(ctx, link.Token, f.ownerID) // owner is already a member
+	boardID, joined, err := f.svc.AcceptInvite(ctx, link.Token, f.ownerID)
 	require.NoError(t, err)
 	assert.Equal(t, f.boardID, boardID)
 	assert.False(t, joined)
@@ -150,8 +144,7 @@ func TestAcceptInvite_AlreadyMember_IdempotentNoDuplicateRow(t *testing.T) {
 	assert.Equal(t, "owner", role)
 }
 
-// A double-clicked join link fires overlapping accepts for one user. All must succeed,
-// exactly one reports joined (so the feed logs one join), one row. Rounds widen the window.
+// Overlapping accepts: all succeed, exactly one reports joined.
 func TestAcceptInvite_ConcurrentSameUser_AllSucceedOneRow(t *testing.T) {
 	ctx := context.Background()
 	f := newInviteFixture(t)

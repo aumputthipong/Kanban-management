@@ -1,8 +1,4 @@
-/**
- * Use instead of `console.*` so production output has one switch. `error` and `warn`
- * always log; `info` and `debug` are silenced in production builds unless
- * NEXT_PUBLIC_LOG_LEVEL=debug is set.
- */
+// Use instead of console.*; info/debug are silent in production unless NEXT_PUBLIC_LOG_LEVEL=debug.
 
 const isProduction = process.env.NODE_ENV === "production";
 const verbose = process.env.NEXT_PUBLIC_LOG_LEVEL === "debug";

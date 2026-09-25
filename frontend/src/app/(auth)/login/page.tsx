@@ -1,4 +1,3 @@
-// src/app/(auth)/login/page.tsx
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
@@ -14,9 +13,7 @@ const OAUTH_ERROR_MESSAGES: Record<string, string> = {
   access_denied: "Google sign-in was cancelled.",
 };
 
-// `useSearchParams` bails out of static prerendering, so Next 16 requires
-// the consumer be wrapped in a Suspense boundary. Move the form into an
-// inner component and the page itself becomes the Suspense parent.
+// useSearchParams needs a Suspense boundary in Next 16.
 export default function LoginPage() {
   return (
     <Suspense
@@ -40,7 +37,6 @@ function LoginForm() {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Show error passed back from OAuth callback redirect
   useEffect(() => {
     const oauthError = searchParams.get("error");
     if (oauthError) {
@@ -59,8 +55,7 @@ function LoginForm() {
         data: { email, password },
       });
 
-      // Honour ?redirect= (set by apiClient's 401 bounce) — relative paths only,
-      // to avoid an open-redirect. Anything else falls back to the dashboard.
+      // Relative paths only — prevents an open redirect.
       const redirect = searchParams.get("redirect");
       const dest =
         redirect && redirect.startsWith("/") && !redirect.startsWith("//")

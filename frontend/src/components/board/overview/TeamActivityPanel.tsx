@@ -21,8 +21,6 @@ const FILTERS: { key: ActivityCategory; label: string }[] = [
   { key: "edited", label: "แก้ไข" },
 ];
 
-// Timeline node styling, keyed off a coarse event kind. The colour encodes the
-// kind of change; the actor stays in the text, not the node.
 type NodeKind = "move" | "create" | "delete" | "edit";
 const NODE: Record<NodeKind, { wrap: string; Icon: typeof Plus }> = {
   move: { wrap: "bg-indigo-50 text-blue-700", Icon: ArrowUpRight },

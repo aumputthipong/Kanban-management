@@ -18,14 +18,11 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// Broadcaster fans a message out to one board's WebSocket room. The hub implements
-// it; handlers depend on the interface so a test can assert what was broadcast.
 type Broadcaster interface {
 	Broadcast(boardID string, message []byte)
 }
 
-// RoomEvictor drops a user's live connections to a board. It is type-asserted on the
-// Broadcaster (the hub implements both) so handler constructors stay unchanged.
+// Type-asserted on the Broadcaster so constructors stay unchanged.
 type RoomEvictor interface {
 	EvictUser(boardID, userID string)
 }
@@ -36,9 +33,7 @@ func evictFromBoard(b Broadcaster, boardID, userID string) {
 	}
 }
 
-// BoardCommandHandler is the REST write path for the kanban board: move, delete and
-// done-toggle a card, plus column CRUD. It persists through the same service the WS
-// handlers use and then broadcasts, so a dropped socket costs realtime, not the write.
+// REST write path for the kanban board; broadcasts after persisting.
 type BoardCommandHandler struct {
 	boardCmd     service.BoardCommandServicer
 	boardService service.BoardServicer
@@ -60,9 +55,7 @@ func NewBoardCommandHandler(
 	}
 }
 
-// emit sends a message shaped exactly like the WebSocket handlers' own, so existing
-// frontend listeners need no change. Best-effort like the audit row: the mutation has
-// already committed and must not fail because fan-out did.
+// Best-effort: the mutation has already committed.
 func emitTo(b Broadcaster, boardID string, msgType core.WSEvent, payload map[string]any) {
 	if b == nil {
 		return
@@ -83,9 +76,7 @@ func (h *BoardCommandHandler) record(ctx context.Context, p service.RecordParams
 	recordActivity(ctx, h.activity, h.broadcaster, p)
 }
 
-// recordActivity writes the audit row and announces it, so the activity feed stays live.
-// It uses the synchronous Record rather than RecordAsync because the broadcast
-// needs the row's id and created_at, which only the sync call returns.
+// Sync Record, not RecordAsync — the broadcast needs the row's id and created_at.
 func recordActivity(ctx context.Context, rec service.ActivityRecorder, b Broadcaster, p service.RecordParams) {
 	if rec == nil {
 		return
@@ -98,7 +89,6 @@ func recordActivity(ctx context.Context, rec service.ActivityRecorder, b Broadca
 	emitTo(b, p.BoardID, core.WSActivityCreated, activityPayload(act))
 }
 
-// activityPayload is the wire shape the activity feed consumes.
 func activityPayload(act db.Activity) map[string]any {
 	payload := json.RawMessage(act.Payload)
 	if len(payload) == 0 {
@@ -116,7 +106,6 @@ func activityPayload(act db.Activity) map[string]any {
 	}
 }
 
-// cardContext resolves the board owning cardID and gates membership on it.
 func (h *BoardCommandHandler) cardContext(r *http.Request, cardID string) (string, string, *httputil.APIError) {
 	userID, ok := r.Context().Value(middleware.UserIDKey).(string)
 	if !ok || userID == "" {
@@ -141,7 +130,6 @@ func (h *BoardCommandHandler) cardContext(r *http.Request, cardID string) (strin
 	return boardID, userID, nil
 }
 
-// columnContext resolves the board owning columnID and gates membership on it.
 func (h *BoardCommandHandler) columnContext(r *http.Request, columnID string) (string, string, *httputil.APIError) {
 	userID, ok := r.Context().Value(middleware.UserIDKey).(string)
 	if !ok || userID == "" {

@@ -14,8 +14,6 @@ interface MyWorkStatCardsProps {
 const TILE = "flex min-w-26 flex-col items-start gap-1 rounded-lg border bg-white px-4 py-3 text-left";
 const FOCUS = "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary";
 
-// Outlined tiles on the white container. Today and Overdue are shortcuts to the
-// matching note tab; the open tab's tile carries the primary ring.
 export function MyWorkStatCards({ overdue, today, thisWeek, activeTab, onSelectTab }: MyWorkStatCardsProps) {
   const tabTile = (tab: MyWorkNoteTab) =>
     `${TILE} ${FOCUS} transition-colors ${

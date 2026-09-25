@@ -1,8 +1,5 @@
 //go:build integration
 
-// Integration tests for BoardCommandService — the write path the WebSocket layer calls.
-// CreateCardWS is transactional, MoveCard derives is_done from the target column, and
-// CreateColumn computes a position unlocked. None of that is observable through a mock.
 package service_test
 
 import (
@@ -45,8 +42,7 @@ func newCommandFixture(t *testing.T) *commandFixture {
 	}
 }
 
-// columnPosition reads one column's position. There is no GetColumnByID query (nothing
-// in production needs one), so this goes at the table directly, like liveTokenCount.
+// No GetColumnByID query exists, so read the table directly.
 func (f *commandFixture) columnPosition(ctx context.Context, t *testing.T, columnID string) float64 {
 	t.Helper()
 	var pos float64
@@ -54,9 +50,7 @@ func (f *commandFixture) columnPosition(ctx context.Context, t *testing.T, colum
 	return pos
 }
 
-// ────────────────────────────────────────────────
 // MoveCard
-// ────────────────────────────────────────────────
 
 func TestMoveCard_IntoDoneColumn_MarksDoneWithTimestamp(t *testing.T) {
 	ctx := context.Background()
@@ -88,9 +82,7 @@ func TestMoveCard_IntoTodoColumn_NotDoneNoTimestamp(t *testing.T) {
 	assert.Nil(t, result.CompletedAt)
 }
 
-// ────────────────────────────────────────────────
 // CreateCardWS
-// ────────────────────────────────────────────────
 
 func TestCreateCardWS_Success_CardAndSubtasksLandTogether(t *testing.T) {
 	ctx := context.Background()
@@ -103,15 +95,12 @@ func TestCreateCardWS_Success_CardAndSubtasksLandTogether(t *testing.T) {
 	require.Len(t, subtasks, 2)
 	assert.Equal(t, "Step 1", subtasks[0].Title)
 
-	// Confirm both actually committed, not just returned in memory.
 	saved, err := f.queries.GetSubtasksByCardID(ctx, card.ID)
 	require.NoError(t, err)
 	assert.Len(t, saved, 2)
 }
 
-// A card that already exists in the column determines where the next one
-// lands when the caller passes position <= 0 (quick-add's case) — the new
-// card must go after the highest existing position, not at some fixed spot.
+// position <= 0 (quick-add) lands after the highest existing card.
 func TestCreateCardWS_ZeroPosition_LandsAfterExistingCards(t *testing.T) {
 	ctx := context.Background()
 	f := newCommandFixture(t)
@@ -125,13 +114,9 @@ func TestCreateCardWS_ZeroPosition_LandsAfterExistingCards(t *testing.T) {
 	assert.Greater(t, second.Position, first.Position, "a zero position must be computed after the existing max, not default to the same spot")
 }
 
-// NOT TESTED: transactional rollback of CreateCardWS on a failed subtask insert.
-// card_subtasks has no constraint a second insert can violate while the first succeeds,
-// so there is no reachable failing input. Add the test here if a migration adds one.
+// Not tested: CreateCardWS rollback — no reachable failing subtask insert yet.
 
-// ────────────────────────────────────────────────
 // ToggleCardDone
-// ────────────────────────────────────────────────
 
 func TestToggleCardDone_ToDone_MovesToBoardsDoneColumn(t *testing.T) {
 	ctx := context.Background()
@@ -160,9 +145,7 @@ func TestToggleCardDone_BackToNotDone_MovesToBoardsFirstTodoColumn(t *testing.T)
 	assert.Nil(t, result.CompletedAt)
 }
 
-// ────────────────────────────────────────────────
 // CreateColumn
-// ────────────────────────────────────────────────
 
 func TestCreateColumn_NoDoneColumnYet_AppendsAtEnd(t *testing.T) {
 	ctx := context.Background()
@@ -188,10 +171,7 @@ func TestCreateColumn_DoneColumnExists_InsertsBeforeIt(t *testing.T) {
 	assert.Less(t, col.Position, f.columnPosition(ctx, t, done), "a new column must land strictly before the DONE column")
 }
 
-// Documents a known race rather than fixing it: CreateColumn reads the DONE and max
-// non-DONE positions, computes a midpoint in Go and writes, with no lock in between. Two
-// callers racing compute the identical midpoint, so both columns land on the same
-// position. The fix has to move the calculation into SQL, not read-then-write in Go.
+// Documents a known race (T6): concurrent creates can share a position. Fix belongs in SQL.
 func TestCreateColumn_ConcurrentCreates_CanCollideOnPosition_T6(t *testing.T) {
 	ctx := context.Background()
 	f := newCommandFixture(t)
@@ -226,14 +206,10 @@ func TestCreateColumn_ConcurrentCreates_CanCollideOnPosition_T6(t *testing.T) {
 	}
 	t.Logf("T6: %d concurrent CreateColumn calls produced %d distinct positions (collisions = %d)",
 		goroutines, len(unique), goroutines-len(unique))
-	// Deliberately not asserting len(unique) == goroutines: that invariant is what the
-	// race violates today. The job here is to keep proving it exists, and to stay green
-	// once real locking lands (the Logf above then reports zero collisions).
+	// Not asserting uniqueness — that's the invariant the race breaks today.
 }
 
-// ────────────────────────────────────────────────
 // VerifyCardInBoard / VerifyColumnInBoard
-// ────────────────────────────────────────────────
 
 func TestVerifyCardInBoard_CardBelongsToBoard_NoError(t *testing.T) {
 	ctx := context.Background()
@@ -244,8 +220,6 @@ func TestVerifyCardInBoard_CardBelongsToBoard_NoError(t *testing.T) {
 	assert.NoError(t, f.svc.VerifyCardInBoard(ctx, cardID, f.boardID))
 }
 
-// The exact cross-board attack the comment describes: a WS client connected
-// to boardA sends a card id that actually belongs to boardB.
 func TestVerifyCardInBoard_CardBelongsToDifferentBoard_ErrEntityBoardMismatch(t *testing.T) {
 	ctx := context.Background()
 	f := newCommandFixture(t)

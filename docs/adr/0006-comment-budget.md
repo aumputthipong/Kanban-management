@@ -1,6 +1,6 @@
 # 0006 — Comment budget by block size, not density
 
-**Status:** Accepted
+**Status:** Superseded by [0011](0011-minimal-comments.md)
 
 ## Context
 

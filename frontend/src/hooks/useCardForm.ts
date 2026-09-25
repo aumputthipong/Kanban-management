@@ -17,7 +17,6 @@ function buildInitialForm(card: Card): FormState {
   };
 }
 
-// True when a field differs between two snapshots; tags compare by id-set.
 function fieldEqual(field: keyof FormState, a: FormState, b: FormState): boolean {
   if (field === "tags") {
     const ai = a.tags.map((t) => t.id).sort().join(",");
@@ -27,12 +26,7 @@ function fieldEqual(field: keyof FormState, a: FormState, b: FormState): boolean
   return a[field] === b[field];
 }
 
-/**
- * Owns the editable form for one card. State initialises from `card` once and is
- * never sync'd back — remount with `key={card.id}` to switch cards. A commit names
- * its field and only that field is saved: the rest of the form may be stale
- * (docs/adr/0009-card-patch-sends-changed-fields.md).
- */
+/** Remount with `key={card.id}` to switch cards. Commits send one field — docs/adr/0009. */
 export function useCardForm(
   card: Card,
   boardId: string,
@@ -41,26 +35,22 @@ export function useCardForm(
 ) {
   const [form, setForm] = useState<FormState>(() => buildInitialForm(card));
 
-  // formRef mirrors `form` synchronously so a commit in the same event as a change reads
-  // the new value. committedRef holds the last persisted value, to skip no-op writes.
+  // formRef: read by same-event commits. committedRef: skips no-op writes.
   const formRef = useRef(form);
   const committedRef = useRef(form);
 
   const [members, setMembers] = useState<BoardMember[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  // Single write path — keeps formRef current synchronously for immediate commits.
   const updateForm = useCallback(<K extends keyof FormState>(field: K, value: FormState[K]) => {
     const next = { ...formRef.current, [field]: value } as FormState;
     formRef.current = next;
     setForm(next);
   }, []);
 
-  // Deps, not refs, for card.title/onCommit — nothing may be written to a ref during
-  // render (react-hooks/refs). formRef/committedRef are only read inside handlers.
+  // Deps, not refs — refs may not be written during render (react-hooks/refs).
   const commitField = useCallback((field: keyof FormState) => {
     const cur = formRef.current;
-    // An empty title would 400 at the API; revert and surface an inline error.
     if (field === "title" && !cur.title.trim()) {
       const reverted = { ...cur, title: card.title };
       formRef.current = reverted;
@@ -89,8 +79,7 @@ export function useCardForm(
     fetchMembers();
   }, [isOpen, boardId]);
 
-  // Each field's handler is cached so its identity stays STABLE across renders —
-  // a fresh closure per render defeats React.memo and re-renders the modal per keystroke.
+  // Cached per field — a fresh closure per render defeats React.memo.
   type ChangeHandler = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>,
   ) => void;

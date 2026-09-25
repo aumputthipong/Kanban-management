@@ -12,11 +12,7 @@ interface ActivityState {
   reset: () => void;
 }
 
-/**
- * Activity feed for the viewed board. Separate from `useBoardStore` because it grows
- * append-only and is reset on every board change. `prependActivity` (called on
- * ACTIVITY_CREATED) de-duplicates on id and caps the list at 100.
- */
+// Separate from useBoardStore: append-only, reset on board change, capped at 100.
 export const useActivityStore = create<ActivityState>((set) => ({
   activities: [],
   loading: false,

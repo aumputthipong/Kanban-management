@@ -75,9 +75,7 @@ func TestSetRefreshCookieScopedAndStrict(t *testing.T) {
 func TestSetRefreshCookieCrossSite(t *testing.T) {
 	t.Parallel()
 	w := httptest.NewRecorder()
-	// Cross-site deploy (frontend and backend on different sites): SameSite must
-	// be None so the browser sends the cookie, and Secure is forced regardless
-	// of the production flag.
+	// Cross-site: SameSite=None, and Secure regardless of production.
 	SetRefreshCookie(w, "raw-value", false, true)
 	c := w.Result().Cookies()[0]
 	if c.SameSite != http.SameSiteNoneMode {
@@ -90,8 +88,7 @@ func TestSetRefreshCookieCrossSite(t *testing.T) {
 
 func TestClearRefreshCookieMatchesPath(t *testing.T) {
 	t.Parallel()
-	// MUST set Path to the same value used at write time or the browser
-	// won't delete it — easy footgun, hence the explicit test.
+	// Path must match the write, or the browser won't delete it.
 	w := httptest.NewRecorder()
 	ClearRefreshCookie(w, false, false)
 	c := w.Result().Cookies()[0]

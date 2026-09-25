@@ -30,7 +30,7 @@ function seed(card: Card) {
 
 const storedCard = () => useBoardStore.getState().columns[0].cards[0];
 
-// Mirrors card_handler.go UpdateCard: assignee_id only, never assignee_name.
+// Mirrors card_handler.go UpdateCard: assignee_id only.
 function cardUpdated(overrides: Record<string, unknown> = {}) {
   return {
     type: WS_EVENT.CardUpdated,

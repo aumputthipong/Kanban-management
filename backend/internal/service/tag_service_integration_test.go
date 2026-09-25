@@ -1,9 +1,5 @@
 //go:build integration
 
-// Integration tests for TagService. Validation is pure Go and already
-// covered at the handler layer (mocked) — these focus on what only a real
-// Postgres can show: the DB-scoped delete and the UNIQUE(board_id, name)
-// constraint's interaction with the length check.
 package service_test
 
 import (
@@ -64,8 +60,7 @@ func TestCreateTag_51AsciiChars_ErrTagNameTooLong(t *testing.T) {
 	assert.ErrorIs(t, err, service.ErrTagNameTooLong)
 }
 
-// The limit counts characters. It used to count bytes, so 20 Thai characters (60 bytes)
-// were rejected against the 50-character limit on a Thai-first UI.
+// 20 Thai characters are 60 bytes — the limit must count characters.
 func TestCreateTag_ThaiName_LimitCountsCharactersNotBytes(t *testing.T) {
 	ctx := context.Background()
 	f := newTagFixture(t)
@@ -78,9 +73,7 @@ func TestCreateTag_ThaiName_LimitCountsCharactersNotBytes(t *testing.T) {
 	assert.ErrorIs(t, err, service.ErrTagNameTooLong)
 }
 
-// DeleteTag's query scopes the DELETE by board_id, so naming a tag id that
-// belongs to a different board must be a no-op rather than letting a member
-// of board B delete a tag that only board A owns.
+// Scoped by board_id, so a foreign tag id is a no-op.
 func TestDeleteTag_WrongBoardID_DoesNotDelete(t *testing.T) {
 	ctx := context.Background()
 	f := newTagFixture(t)

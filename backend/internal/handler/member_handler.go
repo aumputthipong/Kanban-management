@@ -30,8 +30,7 @@ func (h *BoardHandler) GetBoardMembers(w http.ResponseWriter, r *http.Request) e
 
 	result := toMemberResponses(members)
 
-	// Board membership changes infrequently; short private cache cuts the
-	// refetch storm when a user opens multiple board tabs.
+	// Short private cache for users opening several board tabs.
 	w.Header().Set("Cache-Control", "private, max-age=30")
 	httputil.RespondJSON(w, http.StatusOK, result)
 	return nil
@@ -51,9 +50,7 @@ func toMemberResponses(members []db.GetBoardMembersRow) []dto.BoardMemberRespons
 	return result
 }
 
-// broadcastMembers sends the board's full member list after a membership change. Open
-// boards use it for the assignee picker, the member filter and client-side edit rights.
-// It returns the list it sent (nil on a failed read) so callers can name the member.
+// Returns the list it sent (nil on a failed read).
 func broadcastMembers(ctx context.Context, svc service.BoardServicer, b Broadcaster, boardID string) []db.GetBoardMembersRow {
 	if b == nil {
 		return nil
@@ -67,8 +64,7 @@ func broadcastMembers(ctx context.Context, svc service.BoardServicer, b Broadcas
 	return members
 }
 
-// memberSnapshot reads one member before a change that removes or alters them. A failed
-// read only costs the feed a name, so it is logged and a bare row returned.
+// A failed read only costs the feed a name.
 func memberSnapshot(ctx context.Context, svc service.BoardServicer, rec service.ActivityRecorder, boardID, userID string) db.GetBoardMembersRow {
 	if rec == nil {
 		return db.GetBoardMembersRow{UserID: userID}
@@ -143,7 +139,7 @@ func (h *BoardHandler) RemoveBoardMember(w http.ResponseWriter, r *http.Request)
 	if err := h.boardService.RemoveBoardMember(r.Context(), boardID, userIDStr); err != nil {
 		return httputil.NewAPIError(http.StatusInternalServerError, "Failed to remove member", err)
 	}
-	// Broadcast first: the removed user's client needs the new list to leave the board.
+	// Broadcast first: the removed user's client needs the list to leave.
 	broadcastMembers(r.Context(), h.boardService, h.broadcaster, boardID)
 	evictFromBoard(h.broadcaster, boardID, userIDStr)
 	actorID, _ := r.Context().Value(middleware.UserIDKey).(string)
@@ -188,8 +184,7 @@ func (h *BoardHandler) UpdateMemberRole(w http.ResponseWriter, r *http.Request) 
 	return nil
 }
 
-// LeaveBoard removes the current user from the board. An owner must transfer
-// ownership before they can leave.
+// An owner must transfer ownership before leaving.
 func (h *BoardHandler) LeaveBoard(w http.ResponseWriter, r *http.Request) error {
 	boardID, err := httputil.GetUUIDParam(r, "boardID")
 	if err != nil {

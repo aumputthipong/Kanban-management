@@ -1,7 +1,4 @@
-// Mirrors backend dto.PlanningSession* / PlanningItemResponse. The three item types
-// answer what we want, what we decided, and what we still do not know. "DROP" is a
-// status on an item, not a fourth type.
-
+// Mirrors backend dto.Planning*. "DROP" is a status, not a fourth type.
 export type PlanningItemType = "REQ" | "DEC" | "Q";
 export type PlanningItemStatus = "live" | "selected" | "dropped" | "promoted";
 
@@ -30,8 +27,6 @@ export interface PlanningItem {
   promoted_to_card_id: string | null;
   position: number;
   created_at: string;
-  // Copied onto the resulting card on promote, so the dev sees the context the
-  // requirement owner captured during planning.
   acceptance_criteria?: string | null;
   implementation_note?: string | null;
 }
@@ -47,8 +42,7 @@ export interface PlanningSessionDetail {
   items: PlanningItem[];
 }
 
-// One comment on an item thread. `body` is null on soft-deleted rows; the UI shows an
-// italic placeholder plus the original author so the thread does not shift.
+// `body` is null on soft-deleted rows.
 export interface PlanningComment {
   id: string;
   item_id: string;
@@ -60,8 +54,7 @@ export interface PlanningComment {
   deleted_at: string | null;
 }
 
-// Returned by GET /cards/:cardID/source. The handler responds with null (not 404)
-// when the card was not promoted, so the modal renders the section without a fork.
+// null (not 404) when the card was not promoted.
 export interface CardSource {
   session: {
     id: string;

@@ -6,9 +6,7 @@ import (
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/db"
 )
 
-// MockTagService implements service.TagServicer. Each test sets only the Fn
-// fields it needs; unset methods panic if called so a missing stub surfaces
-// loudly instead of returning a zero value the assertions would silently pass.
+// Unset Fn fields panic, so a missing stub fails loudly.
 type MockTagService struct {
 	GetTagsByBoardFn func(ctx context.Context, boardID string) ([]db.Tag, error)
 	CreateTagFn      func(ctx context.Context, boardID, name, color string) (db.Tag, error)

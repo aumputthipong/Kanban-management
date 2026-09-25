@@ -22,11 +22,10 @@ const (
 	EventMemberRemoved   = "member.removed"
 	EventMemberLeft      = "member.left"
 	EventMemberRole      = "member.role_changed"
-	// Logged once, when the last open subtask is ticked; single ticks are too noisy for the feed.
+	// Only when the last open subtask is ticked — single ticks are noise.
 	EventCardSubtasksCompleted = "card.subtasks_completed"
 
-	// Planning section. PromoteItem turns an item into a card, but only the planning side
-	// is logged (planning.item_promoted) so the feed does not carry duplicate card noise.
+	// PromoteItem logs only the planning side, never a duplicate card event.
 	EventPlanningSessionCreated = "planning.session_created"
 	EventPlanningSessionUpdated = "planning.session_updated"
 	EventPlanningSessionDeleted = "planning.session_deleted"
@@ -35,15 +34,11 @@ const (
 	EventPlanningItemDeleted    = "planning.item_deleted"
 	EventPlanningItemPromoted   = "planning.item_promoted"
 
-	// Comment events scope to one item's thread. The payload carries a
-	// truncated body preview so the feed reads sensibly without a join
-	// back to the comments table at render time.
 	EventPlanningCommentCreated = "planning.comment_created"
 	EventPlanningCommentEdited  = "planning.comment_edited"
 	EventPlanningCommentDeleted = "planning.comment_deleted"
 
-	// Claim events — a soft "I'm looking at this" lock. AutoReleased is emitted by
-	// PromoteItem so the feed can tell "X let go" from "promoted, claim auto-cleared".
+	// Legacy: no longer emitted, kept for historical rows (see AGENTS.md).
 	EventPlanningItemClaimed           = "planning.item_claimed"
 	EventPlanningItemReleased          = "planning.item_released"
 	EventPlanningItemClaimAutoReleased = "planning.claim_auto_released_on_promote"
@@ -77,9 +72,7 @@ func NewActivityService(queries *db.Queries) *ActivityService {
 	return s
 }
 
-// worker drains queued RecordAsync jobs, each on a fresh background context so a slow
-// insert is not cancelled when the request that scheduled it returns. Stop drains the
-// buffer and returns; sends after Stop are dropped.
+// Fresh background context per job, so a slow insert outlives its request.
 func (s *ActivityService) worker() {
 	for {
 		select {
@@ -106,8 +99,7 @@ func (s *ActivityService) writeOne(p RecordParams) {
 	}
 }
 
-// Stop signals the worker to drain and exit. Idempotent. Call once at
-// graceful shutdown after the HTTP listener has drained.
+// Idempotent. Call after the HTTP listener has drained.
 func (s *ActivityService) Stop() {
 	select {
 	case <-s.stop:
@@ -116,10 +108,7 @@ func (s *ActivityService) Stop() {
 	}
 }
 
-// RecordAsync enqueues an audit insert and returns immediately, for REST handlers that
-// should not wait on the audit round-trip. A full queue drops the job with a warning —
-// audit is best-effort. Do NOT use it from the WebSocket path: that broadcast needs the
-// ID and created_at only Record's synchronous return provides.
+// Best-effort: a full queue drops the job. Use Record when a broadcast needs the row.
 func (s *ActivityService) RecordAsync(p RecordParams) {
 	select {
 	case s.jobs <- p:
@@ -236,7 +225,7 @@ type CardDoneToggledPayload struct {
 	IsDone bool   `json:"is_done"`
 }
 
-// MemberChangedPayload carries the member's name so the feed still reads after they leave.
+// Carries the name so the feed still reads after the member leaves.
 type MemberChangedPayload struct {
 	UserID       string `json:"user_id"`
 	Name         string `json:"name"`
@@ -263,9 +252,6 @@ type ColumnRenamedPayload struct {
 	NewTitle string `json:"new_title"`
 }
 
-// Planning payloads. Item events carry title and type so the feed renders without a
-// re-fetch, and the Updated payloads carry a `fields` slice so one event covers any
-// partial PATCH (drop, select, rename, retype all fold into planning.item_updated).
 type PlanningSessionCreatedPayload struct {
 	Title string `json:"title"`
 }
@@ -284,9 +270,6 @@ type PlanningItemCreatedPayload struct {
 	Title string `json:"title"`
 }
 
-// Comment payloads. Carry a truncated body preview so the feed can render
-// "X commented: 'first 80 chars…'" without joining back to the comments
-// table when rendering.
 type PlanningCommentCreatedPayload struct {
 	ItemID      string `json:"item_id"`
 	BodyPreview string `json:"body_preview"`
@@ -301,9 +284,6 @@ type PlanningCommentDeletedPayload struct {
 	ItemID string `json:"item_id"`
 }
 
-// Claim payloads carry the item title so the feed can render
-// "X is looking at 'Add Google login'" without a re-fetch. Released
-// + AutoReleased share the same shape.
 type PlanningItemClaimedPayload struct {
 	Title string `json:"title"`
 	Type  string `json:"type"`
@@ -318,9 +298,7 @@ type PlanningItemUpdatedPayload struct {
 	Type   string   `json:"type"`
 	Title  string   `json:"title"`
 	Fields []string `json:"fields"`
-	// PreviousType is set only when "type" is in Fields, so the chip tooltip can render
-	// its history without a second query. Omitted when empty, keeping non-retype updates
-	// byte-identical to the previous payload shape.
+	// Only set when "type" is in Fields.
 	PreviousType string `json:"previous_type,omitempty"`
 }
 

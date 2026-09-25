@@ -22,11 +22,11 @@ import { OverviewTabContent } from "../overview/OverviewTabContent";
 import { TasksTabContent } from "../overview/TasksTabContent";
 import { TeamTabContent } from "../overview/TeamTabContent";
 
-// ─── Tab config ───────────────────────────────────────────────────────────────
+// Tabs
 const TABS = ["Overview", "Tasks", "Team"] as const;
 type Tab = (typeof TABS)[number];
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// Helpers
 function computeCanEdit(
   card: Card,
   currentUserId: string,
@@ -39,7 +39,7 @@ function computeCanEdit(
   return member ? member.role === "owner" || member.role === "manager" : false;
 }
 
-// ─── Skeleton ─────────────────────────────────────────────────────────────────
+// Skeleton
 function DashboardSkeleton() {
   return (
     <div className="flex flex-col gap-5 max-w-6xl mx-auto pb-10">
@@ -58,7 +58,7 @@ function DashboardSkeleton() {
   );
 }
 
-// ─── Main ─────────────────────────────────────────────────────────────────────
+// Main
 interface BoardDashboardProps {
   boardId: string;
 }
@@ -94,7 +94,6 @@ export function BoardDashboard({ boardId }: BoardDashboardProps) {
     );
   }
 
-  // ── Derived data ─────────────────────────────────────────────────────────────
   const allCards = columns.flatMap((c) => c.cards);
   const doneCount = allCards.filter((c) => c.is_done).length;
 
@@ -124,7 +123,7 @@ export function BoardDashboard({ boardId }: BoardDashboardProps) {
       )}
 
       <div className="flex flex-col gap-5 max-w-6xl mx-auto pb-10">
-        {/* ── Tab bar ───────────────────────────────────────────────────────── */}
+        {/* Tab bar */}
         <div className="flex items-center gap-1 border-b border-slate-200">
           {TABS.map((tab) => {
             const isActive = activeTab === tab;
@@ -149,7 +148,7 @@ export function BoardDashboard({ boardId }: BoardDashboardProps) {
           })}
         </div>
 
-        {/* ── Tab content ───────────────────────────────────────────────────── */}
+        {/* Tab content */}
         {activeTab === "Overview" && (
           <OverviewTabContent
             progress={stats.progress}

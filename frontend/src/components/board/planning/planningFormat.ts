@@ -1,6 +1,3 @@
-// planningFormat.ts — small format helpers used by both the list and the
-// capture views. Kept separate so the views stay focused on layout.
-
 const REL_UNITS: [Intl.RelativeTimeFormatUnit, number][] = [
   ["second", 60],
   ["minute", 60],

@@ -10,8 +10,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// requestWithRole builds a request whose context already carries a board role,
-// mimicking what RequireBoardMember would have injected upstream.
 func requestWithRole(role string, hasRole bool) *http.Request {
 	r := httptest.NewRequest(http.MethodGet, "/", nil)
 	if hasRole {
@@ -27,9 +25,6 @@ func okHandler(called *bool) http.Handler {
 	})
 }
 
-// TestRequireBoardRole_Matrix exhaustively verifies the role hierarchy.
-// owner > manager > member. Each caller role tries each minimum-role gate;
-// pass iff caller rank >= gate rank.
 func TestRequireBoardRole_Matrix(t *testing.T) {
 	type cell struct {
 		caller     core.BoardRole
@@ -70,10 +65,7 @@ func TestRequireBoardRole_Matrix(t *testing.T) {
 	}
 }
 
-// TestRequireBoardRole_MissingRoleContext_Returns403 guards against accidental
-// misuse: if a route forgets to chain RequireBoardMember first, the role
-// context will be absent. Failing closed (403) is the safe default — the
-// alternative would be silently letting anonymous traffic through.
+// Fail closed when RequireBoardMember wasn't chained.
 func TestRequireBoardRole_MissingRoleContext_Returns403(t *testing.T) {
 	var called bool
 	h := RequireBoardRole(core.RoleMember)(okHandler(&called))
@@ -85,9 +77,6 @@ func TestRequireBoardRole_MissingRoleContext_Returns403(t *testing.T) {
 	assert.False(t, called, "next must not run when role context is missing")
 }
 
-// TestRequireBoardRole_EmptyRoleString_Returns403 — defense-in-depth for
-// the same case: even if the key is present but the value is "",
-// BoardRoleFromContext returns ok=false, so we still 403.
 func TestRequireBoardRole_EmptyRoleString_Returns403(t *testing.T) {
 	var called bool
 	h := RequireBoardRole(core.RoleMember)(okHandler(&called))
@@ -102,9 +91,7 @@ func TestRequireBoardRole_EmptyRoleString_Returns403(t *testing.T) {
 	assert.False(t, called)
 }
 
-// A role string outside the known enum (corruption, or a role not yet deployed) ranks 0
-// and must lose against any non-zero gate. Failing closed prevents privilege escalation
-// if the role column is ever influenced.
+// Unknown roles rank 0 and must lose — fail closed.
 func TestRequireBoardRole_UnknownRole_Returns403(t *testing.T) {
 	var called bool
 	h := RequireBoardRole(core.RoleMember)(okHandler(&called))

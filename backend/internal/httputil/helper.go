@@ -9,7 +9,6 @@ import (
 	chiMiddleware "github.com/go-chi/chi/v5/middleware"
 )
 
-// APIError is a typed error that carries an HTTP status code and a user-facing message.
 type APIError struct {
 	StatusCode int
 	Message    string
@@ -31,12 +30,9 @@ func NewAPIError(statusCode int, message string, err error) *APIError {
 	}
 }
 
-// APIFunc is an http.HandlerFunc variant that returns an error.
 type APIFunc func(w http.ResponseWriter, r *http.Request) error
 
-// MakeHandler wraps an APIFunc so every handler error funnels through one place: it
-// logs via slog with the request_id, so an error correlates with its access-log line
-// and Sentry event. 5xx log at Error and go to Sentry; 4xx log at Info and do not.
+// 5xx log at Error and go to Sentry; 4xx log at Info.
 func MakeHandler(h APIFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		err := h(w, r)
@@ -62,9 +58,7 @@ func MakeHandler(h APIFunc) http.HandlerFunc {
 				"request_id", reqID,
 				"error", err.Error(),
 			)
-			// Report server errors when Sentry is configured. The hub is only
-			// on the context when SentryRecoverer mounted it (SENTRY_DSN set);
-			// nil hub => Sentry disabled, skip silently.
+			// The hub is only on the context when SENTRY_DSN is set.
 			if hub := sentry.GetHubFromContext(r.Context()); hub != nil {
 				hub.CaptureException(err)
 			}

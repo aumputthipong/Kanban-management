@@ -13,16 +13,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// GetMyTasks returns the caller's cross-board work inbox: cards assigned to
-// them plus (optionally) unassigned cards on boards they're a member of.
-// Cards are pre-grouped by due-date bucket and counts cover the unfiltered
-// inbox so the UI can render filter chips with totals.
-//
-// Query params:
-//
-//	filter            — all (default) | overdue | today | this_week | no_date
-//	include_unassigned — bool. Solo users without an assignee toggle this on.
-//
 // @Summary  My work (cross-board)
 // @Tags     my-tasks
 // @Produce  json
@@ -40,8 +30,7 @@ func (h *BoardHandler) GetMyTasks(w http.ResponseWriter, r *http.Request) error 
 
 	filter := service.MyWorkFilter(r.URL.Query().Get("filter"))
 
-	// Settings is the source of truth for include_unassigned + timezone.
-	// Query params for these are intentionally ignored (S.2 decision).
+	// Settings is the source of truth; query params are ignored.
 	var include bool
 	var tz string
 	if h.settingsService != nil {
@@ -100,8 +89,6 @@ func (h *BoardHandler) GetMyTasks(w http.ResponseWriter, r *http.Request) error 
 	return nil
 }
 
-// CompleteMyTask marks an assigned card as done. Caller must be the assignee.
-//
 // @Summary  Complete one of my tasks
 // @Tags     my-tasks
 // @Security CookieAuth
@@ -129,11 +116,10 @@ func (h *BoardHandler) CompleteMyTask(w http.ResponseWriter, r *http.Request) er
 		return httputil.NewAPIError(http.StatusInternalServerError, "Failed to complete task", err)
 	}
 	if !result.OK {
-		// Not the assignee, or card doesn't exist.
 		return httputil.NewAPIError(http.StatusNotFound, "Task not found", nil)
 	}
 
-	// Synchronous Record, not RecordAsync: the ACTIVITY_CREATED broadcast needs the row.
+	// Sync Record: the ACTIVITY_CREATED broadcast needs the row.
 	if h.activity != nil {
 		act, aerr := h.activity.Record(r.Context(), service.RecordParams{
 			BoardID:    result.BoardID,
@@ -154,7 +140,7 @@ func (h *BoardHandler) CompleteMyTask(w http.ResponseWriter, r *http.Request) er
 		}
 	}
 
-	// Same event as a drag or tick on the board, so an open board moves the card too.
+	// Same event as a board move, so an open board moves the card too.
 	emitTo(h.broadcaster, result.BoardID, core.WSCardMoved, map[string]any{
 		"card_id":       cardID,
 		"new_column_id": result.ColumnID,

@@ -18,16 +18,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// withBoardRole injects a role into context as RequireBoardMember would have
-// done upstream — LeaveBoard relies on this to decide whether the caller is
-// owner (forbidden to leave).
 func withBoardRole(r *http.Request, role string) *http.Request {
 	return r.WithContext(context.WithValue(r.Context(), middleware.BoardRoleKey, role))
 }
 
-// ────────────────────────────────────────────────
 // GetBoardMembers
-// ────────────────────────────────────────────────
 
 func TestGetBoardMembers_InvalidBoardID_Returns400(t *testing.T) {
 	svc := &mock.MockBoardService{
@@ -47,9 +42,7 @@ func TestGetBoardMembers_InvalidBoardID_Returns400(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 }
 
-// ────────────────────────────────────────────────
 // AddBoardMember
-// ────────────────────────────────────────────────
 
 func TestAddBoardMember_Success(t *testing.T) {
 	var (
@@ -92,9 +85,7 @@ func TestAddBoardMember_InvalidBoardID_Returns400(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 }
 
-// The validator's `oneof` blocks arbitrary role strings before they reach the DB. The
-// backend is the source of truth for permissions, so without this guard any string could
-// land in the role column.
+// The validator's `oneof` keeps arbitrary strings out of the role column.
 func TestAddBoardMember_InvalidRole_Returns400(t *testing.T) {
 	svc := &mock.MockBoardService{
 		AddBoardMemberByEmailFn: func(ctx context.Context, boardID, email, role string) error {
@@ -128,8 +119,6 @@ func TestAddBoardMember_MissingEmail_Returns400(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 }
 
-// A malformed email is rejected by the validator's `email` rule before the
-// service is ever called — the invite path never trusts the address shape.
 func TestAddBoardMember_InvalidEmail_Returns400(t *testing.T) {
 	svc := &mock.MockBoardService{
 		AddBoardMemberByEmailFn: func(ctx context.Context, boardID, email, role string) error {
@@ -203,9 +192,7 @@ func TestAddBoardMember_ServiceError_Returns500(t *testing.T) {
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
 }
 
-// ────────────────────────────────────────────────
 // RemoveBoardMember
-// ────────────────────────────────────────────────
 
 func TestRemoveBoardMember_Success(t *testing.T) {
 	var gotBoardID, gotUserID string
@@ -276,9 +263,7 @@ func TestRemoveBoardMember_ServiceError_Returns500(t *testing.T) {
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
 }
 
-// ────────────────────────────────────────────────
 // UpdateMemberRole
-// ────────────────────────────────────────────────
 
 func TestUpdateMemberRole_Success(t *testing.T) {
 	var gotRole string
@@ -301,9 +286,7 @@ func TestUpdateMemberRole_Success(t *testing.T) {
 	assert.Equal(t, "manager", gotRole)
 }
 
-// Owner is a singleton role assigned at board creation. PATCH role=owner would either
-// create two owners (breaking "owner cannot leave") or silently demote the existing one,
-// so the handler rejects it. If the guard ever goes, this test must scream.
+// Owner is a singleton — PATCH role=owner would create two or demote one.
 func TestUpdateMemberRole_PromoteToOwner_Returns400(t *testing.T) {
 	svc := &mock.MockBoardService{
 		UpdateMemberRoleFn: func(ctx context.Context, boardID, userID, role string) error {
@@ -370,9 +353,7 @@ func TestUpdateMemberRole_ServiceError_Returns500(t *testing.T) {
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
 }
 
-// ────────────────────────────────────────────────
 // LeaveBoard
-// ────────────────────────────────────────────────
 
 func TestLeaveBoard_Member_Success(t *testing.T) {
 	var removedUser string
@@ -415,10 +396,7 @@ func TestLeaveBoard_Manager_Success(t *testing.T) {
 	assert.Equal(t, http.StatusNoContent, w.Code)
 }
 
-// TestLeaveBoard_Owner_Returns403 — load-bearing safety guarantee. A board
-// without an owner becomes unreachable: no one can invite, no one can promote.
-// The handler rejects with a clear message instead of silently removing the
-// owner. Removing this test would mask a regression that orphans boards.
+// An ownerless board is unreachable — this guard must stay.
 func TestLeaveBoard_Owner_Returns403(t *testing.T) {
 	svc := &mock.MockBoardService{
 		RemoveBoardMemberFn: func(ctx context.Context, boardID, userID string) error {
@@ -446,7 +424,7 @@ func TestLeaveBoard_MissingUserID_Returns401(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodPost, "/boards/"+validBoardID+"/leave", nil)
 	req = chiCtx(req, "boardID", validBoardID)
-	req = withBoardRole(req, "member") // role present but auth missing
+	req = withBoardRole(req, "member")
 	w := httptest.NewRecorder()
 
 	httputil.MakeHandler(h.LeaveBoard)(w, req)
@@ -454,9 +432,7 @@ func TestLeaveBoard_MissingUserID_Returns401(t *testing.T) {
 	assert.Equal(t, http.StatusUnauthorized, w.Code)
 }
 
-// TestLeaveBoard_MissingRoleContext_Returns403 — defense-in-depth: if the
-// route is ever wired without RequireBoardMember upstream, the role lookup
-// fails and we must refuse rather than treat absent==non-owner.
+// Fail closed if the route is wired without RequireBoardMember.
 func TestLeaveBoard_MissingRoleContext_Returns403(t *testing.T) {
 	svc := &mock.MockBoardService{
 		RemoveBoardMemberFn: func(ctx context.Context, boardID, userID string) error {
@@ -469,7 +445,6 @@ func TestLeaveBoard_MissingRoleContext_Returns403(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/boards/"+validBoardID+"/leave", nil)
 	req = chiCtx(req, "boardID", validBoardID)
 	req = withUserID(req, validUserID)
-	// No withBoardRole — middleware chain misconfigured.
 	w := httptest.NewRecorder()
 
 	httputil.MakeHandler(h.LeaveBoard)(w, req)
@@ -511,9 +486,7 @@ func TestLeaveBoard_ServiceError_Returns500(t *testing.T) {
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
 }
 
-// ────────────────────────────────────────────────
 // BOARD_MEMBERS_UPDATED broadcast
-// ────────────────────────────────────────────────
 
 func membersAfterChange() func(ctx context.Context, boardID string) ([]db.GetBoardMembersRow, error) {
 	return func(ctx context.Context, boardID string) ([]db.GetBoardMembersRow, error) {
@@ -610,8 +583,7 @@ func TestRemoveBoardMember_ServiceError_DoesNotBroadcast(t *testing.T) {
 	assert.Empty(t, bc.Sent)
 }
 
-// Membership is only checked at the WS handshake, so a removed member must be evicted
-// from the room or they keep receiving the board live.
+// Membership is only checked at the handshake, so removal must evict.
 func TestRemoveAndLeave_EvictTheUserFromTheBoardRoom(t *testing.T) {
 	svc := &mock.MockBoardService{
 		RemoveBoardMemberFn: func(ctx context.Context, boardID, userID string) error { return nil },
@@ -662,9 +634,7 @@ func TestUpdateMemberRole_DoesNotEvict(t *testing.T) {
 	assert.Empty(t, bc.Evicted)
 }
 
-// ────────────────────────────────────────────────
 // Member activity
-// ────────────────────────────────────────────────
 
 func spyMemberRecorder(got *[]service.RecordParams) *spyRecorder {
 	return &spyRecorder{record: func(ctx context.Context, p service.RecordParams) error {
@@ -699,7 +669,7 @@ func TestAddBoardMember_RecordsMemberAdded(t *testing.T) {
 	assert.Equal(t, service.MemberChangedPayload{UserID: otherUserID, Name: "Bob", Role: "manager"}, memberPayload(t, got[0]))
 }
 
-// The name is read before the row is deleted, or the feed could not say who was removed.
+// Read before delete, or the feed can't name who was removed.
 func TestRemoveBoardMember_RecordsNameReadBeforeRemoval(t *testing.T) {
 	var got []service.RecordParams
 	removed := false
@@ -728,7 +698,7 @@ func TestUpdateMemberRole_RecordsPreviousRole(t *testing.T) {
 	var got []service.RecordParams
 	svc := &mock.MockBoardService{
 		UpdateMemberRoleFn: func(ctx context.Context, boardID, userID, role string) error { return nil },
-		GetBoardMembersFn:  membersAfterChange(), // Bob is currently a manager
+		GetBoardMembersFn:  membersAfterChange(),
 	}
 	h := NewBoardHandler(svc, nil, spyMemberRecorder(&got), &mock.MockBroadcaster{})
 	req := withUserID(httptest.NewRequest(http.MethodPatch, "/", strings.NewReader(`{"role":"member"}`)), validUserID)

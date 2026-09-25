@@ -21,8 +21,7 @@ func NewSubtaskService(pool *pgxpool.Pool) *SubtaskService {
 	}
 }
 
-// CreateSubtask appends a subtask after the card's last one. The card row is locked so
-// concurrent appends to one card serialize instead of reading the same MAX(position).
+// Locks the card row so concurrent appends don't read the same MAX(position).
 func (s *SubtaskService) CreateSubtask(ctx context.Context, cardID, title string) (db.CardSubtask, error) {
 	tx, err := s.pool.Begin(ctx)
 	if err != nil {
@@ -56,8 +55,8 @@ func (s *SubtaskService) GetSubtasksByCardID(ctx context.Context, cardID string)
 
 	return subtasks, nil
 }
-// UpdateSubtask patches only the fields present in req. The merge happens in SQL
-// (COALESCE) — reading the row into Go first lets concurrent edits of different fields clobber each other.
+
+// Merged in SQL (COALESCE) so concurrent edits of different fields don't clobber.
 func (s *SubtaskService) UpdateSubtask(ctx context.Context, subtaskID string, req dto.UpdateSubtaskRequest) (db.CardSubtask, error) {
 	updatedSubtask, err := s.queries.UpdateSubtask(ctx, db.UpdateSubtaskParams{
 		ID:       subtaskID,
@@ -72,7 +71,6 @@ func (s *SubtaskService) UpdateSubtask(ctx context.Context, subtaskID string, re
 	return updatedSubtask, nil
 }
 
-// DeleteSubtask removes the subtask row.
 func (s *SubtaskService) DeleteSubtask(ctx context.Context, subtaskID string) error {
 	err := s.queries.DeleteSubtask(ctx, subtaskID)
 	if err != nil {
@@ -82,7 +80,6 @@ func (s *SubtaskService) DeleteSubtask(ctx context.Context, subtaskID string) er
 	return nil
 }
 
-// GetSubtaskByID returns a single subtask by ID.
 func (s *SubtaskService) GetSubtaskByID(ctx context.Context, subtaskID string) (db.CardSubtask, error) {
 	subtask, err := s.queries.GetSubtask(ctx, subtaskID)
 	if err != nil {

@@ -19,8 +19,6 @@ interface TaskNoteProps {
 
 const PRIORITY_RANK: Record<string, number> = { high: 0, medium: 1, low: 2 };
 
-// Highest priority first so the top of the note is what to do next; ties keep the
-// oldest due date first.
 function byPriority(cards: MyWorkCard[]): MyWorkCard[] {
   return [...cards].sort(
     (a, b) =>
@@ -29,8 +27,6 @@ function byPriority(cards: MyWorkCard[]): MyWorkCard[] {
   );
 }
 
-// The single white container of My Work: header (greeting + stats), tab bar, task
-// list — separated by rules, not fills. Today is the primary tab, Overdue secondary.
 export function TaskNote({
   header,
   tab,
@@ -46,7 +42,7 @@ export function TaskNote({
 
   return (
     <section className="relative flex flex-col min-h-0 bg-white border border-slate-200 rounded-2xl overflow-hidden">
-      {/* Top accent bar, same treatment as ProjectCard: full width, clipped by the rounded corners. */}
+      {/* Top accent bar */}
       <span aria-hidden className="absolute inset-x-0 top-0 h-0.75 bg-slate-900" />
       <div className="shrink-0 px-6 py-5">{header}</div>
       <header className="shrink-0 border-y border-slate-200 px-6">
@@ -93,7 +89,6 @@ function NoteTab({
   danger?: boolean;
 }) {
   const badge = danger && count > 0 ? "bg-red-50 text-danger" : active ? "bg-surface-tint text-primary" : "bg-slate-100 text-slate-600";
-  // Underline tab: sits on the bar's bottom rule; the primary line marks the open tab.
   return (
     <button
       type="button"

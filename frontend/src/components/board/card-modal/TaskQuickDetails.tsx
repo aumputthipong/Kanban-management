@@ -45,7 +45,6 @@ function Row({ label, top = false, children }: { label: string; top?: boolean; c
   );
 }
 
-/** Body of the read-only task quick view: meta chips, labelled rows, then the subtask checklist. */
 export function TaskQuickDetails({ summary, detail, loading, onToggleSubtask }: Props) {
   const assignee = detail ? detail.assignee_name : summary.assignee_name;
   const description = detail ? detail.description : summary.description;

@@ -17,8 +17,6 @@ import { boardColor, BoardGlyph } from "@/lib/boardAppearance";
 interface Board {
   id: string;
   title: string;
-  /** Board identity — same fields the Header reads. Optional so callers that
-   * only have id/title still type-check; BoardGlyph/boardColor fall back. */
   icon?: string;
   color?: string;
 }
@@ -31,8 +29,7 @@ export function Sidebar({ boards }: SidebarProps) {
   const pathname = usePathname();
   const { isCollapsed: storeCollapsed, toggle } = useSidebarStore();
   const belowLg = useBelowLg();
-  // <lg viewport is force-collapsed (design.md → Responsive → md tier).
-  // User toggle is only honored at ≥lg.
+  // Force-collapsed below lg (design.md → Responsive).
   const isCollapsed = belowLg || storeCollapsed;
 
   const navItem = (
@@ -68,7 +65,7 @@ export function Sidebar({ boards }: SidebarProps) {
     >
 
       
-      {/* header */}
+      {/* Header */}
       {!isCollapsed && (
         <div className="px-4 py-3.5 border-b border-slate-100 shrink-0">
           <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">
@@ -77,7 +74,7 @@ export function Sidebar({ boards }: SidebarProps) {
         </div>
       )}
       {isCollapsed && <div className="h-12 border-b border-slate-100 shrink-0" />}
-  {/* collapse toggle — hidden at <lg where sidebar is force-collapsed */}
+  {/* Collapse toggle */}
         <button
           onClick={toggle}
           title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
@@ -94,14 +91,14 @@ export function Sidebar({ boards }: SidebarProps) {
             </>
           )}
         </button>
-      {/* nav */}
+      {/* Nav */}
       <nav className="flex-1 overflow-y-auto p-2 space-y-4">
         <div className="space-y-0.5">
           {navItem("/my-work", <Inbox size={16} />, "My Work", true)}
           {navItem("/dashboard", <LayoutDashboard size={16} />, "All Boards", true)}
         </div>
 
-        {/* projects section */}
+        {/* Projects */}
         <div className={`pt-3 border-t border-slate-100 ${isCollapsed ? "" : ""}`}>
           {!isCollapsed && (
             <div className="flex items-center justify-between px-3 mb-1">
@@ -134,9 +131,6 @@ export function Sidebar({ boards }: SidebarProps) {
                       : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
                   }`}
                 >
-                  {/* Board identity icon — same BoardGlyph + accent the Header
-                      uses, so the sidebar mirrors "which project". Active state
-                      is the item bg highlight, not the icon (icon stays put). */}
                   <span
                     className="w-5 h-5 rounded flex items-center justify-center text-white shrink-0"
                     style={{ background: boardColor(board.color) }}
@@ -153,7 +147,7 @@ export function Sidebar({ boards }: SidebarProps) {
         </div>
       </nav>
 
-      {/* footer */}
+      {/* Footer */}
       <div
         className={`p-2 border-t border-slate-100 space-y-0.5 shrink-0 ${
           isCollapsed ? "flex flex-col items-center" : ""

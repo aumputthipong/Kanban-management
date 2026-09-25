@@ -44,7 +44,6 @@ export function BoardMembersSection({ boardId }: BoardMembersSectionProps) {
     if (ok) router.push("/dashboard");
   };
 
-  // Search filters the visible list; counts always reflect the full roster.
   const visible = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return members;
@@ -77,7 +76,7 @@ export function BoardMembersSection({ boardId }: BoardMembersSectionProps) {
 
   return (
     <div className="mx-auto max-w-[1040px]">
-      {/* page header — compact, count as an inline pill */}
+      {/* Header */}
       <div className="mb-4 flex items-center justify-between gap-5">
         <div>
           <h1 className="text-[21px] font-bold tracking-tight text-slate-900">Members</h1>
@@ -93,7 +92,7 @@ export function BoardMembersSection({ boardId }: BoardMembersSectionProps) {
         </span>
       </div>
 
-      {/* Invite + search/filter live in one panel to save vertical space. */}
+      {/* Invite + search */}
       <div className="mb-3 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         {canInvite && (
           <>
@@ -128,7 +127,7 @@ export function BoardMembersSection({ boardId }: BoardMembersSectionProps) {
         </p>
       ) : (
         <>
-          {/* One unified list card — compact group-header strips + rows. */}
+          {/* Member list */}
           <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
             {shown.map((r) => (
               <MemberGroup

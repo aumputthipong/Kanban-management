@@ -21,15 +21,11 @@ import (
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/service/mock"
 )
 
-// validCardID and chiCtx/withUserID helpers are defined in board_handler_test.go (same package)
-
 const (
 	validSubtaskID = "b2c3d4e5-f6a7-8901-bcde-f12345678901"
 	otherCardID    = "c3d4e5f6-a7b8-9012-cdef-123456789012"
 )
 
-// boardsFor resolves validCardID (in validColumnID on validBoardID) and gives the caller
-// role on that board; role "" makes the caller a non-member.
 func boardsFor(role string, card db.Card) *mock.MockBoardService {
 	return &mock.MockBoardService{
 		GetCardFn: func(ctx context.Context, cardID string) (db.Card, error) {
@@ -50,12 +46,10 @@ func boardsFor(role string, card db.Card) *mock.MockBoardService {
 	}
 }
 
-// memberBoards: the caller is a plain member assigned to the card, so they may edit it.
 func memberBoards() *mock.MockBoardService {
 	return boardsFor("member", cardOwnedBy(ptr(otherUserID), ptr(validUserID)))
 }
 
-// bystanderBoards: the caller is a plain member on someone else's card.
 func bystanderBoards() *mock.MockBoardService {
 	return boardsFor("member", cardOwnedBy(ptr(otherUserID), ptr(otherUserID)))
 }
@@ -64,8 +58,6 @@ func nonMemberBoards() *mock.MockBoardService {
 	return boardsFor("", cardOwnedBy(ptr(otherUserID), ptr(validUserID)))
 }
 
-// subtaskService returns a service whose subtask lives on cardID and whose list read
-// (used by the broadcast) succeeds.
 func subtaskService(cardID string) *mock.MockSubtaskService {
 	return &mock.MockSubtaskService{
 		GetSubtaskByIDFn: func(ctx context.Context, subtaskID string) (db.CardSubtask, error) {
@@ -104,9 +96,7 @@ func requireSubtasksBroadcast(t *testing.T, bc *mock.MockBroadcaster) {
 	assert.True(t, msg.Payload.Subtasks[0].IsDone)
 }
 
-// ────────────────────────────────────────────────
 // CreateSubtask
-// ────────────────────────────────────────────────
 
 func TestCreateSubtask_Success_BroadcastsList(t *testing.T) {
 	svc := subtaskService(validCardID)
@@ -177,9 +167,7 @@ func TestCreateSubtask_ServiceError_Returns500WithoutBroadcast(t *testing.T) {
 	assert.Empty(t, bc.Sent)
 }
 
-// ────────────────────────────────────────────────
 // GetSubtasks / GetSubtask
-// ────────────────────────────────────────────────
 
 func TestGetSubtasks_Success(t *testing.T) {
 	h := NewSubtaskHandler(subtaskService(validCardID), memberBoards(), nil, nil)
@@ -248,8 +236,7 @@ func TestGetSubtask_NotFound_Returns404(t *testing.T) {
 	assert.Equal(t, http.StatusNotFound, w.Code)
 }
 
-// A member of one board must not reach a subtask on another board by pairing a card
-// they can see with a foreign subtask ID.
+// A visible card must not reach a foreign subtask.
 func TestGetSubtask_SubtaskOnAnotherCard_Returns404(t *testing.T) {
 	h := NewSubtaskHandler(subtaskService(otherCardID), memberBoards(), nil, nil)
 	w := httptest.NewRecorder()
@@ -259,9 +246,7 @@ func TestGetSubtask_SubtaskOnAnotherCard_Returns404(t *testing.T) {
 	assert.Equal(t, http.StatusNotFound, w.Code)
 }
 
-// ────────────────────────────────────────────────
 // UpdateSubtask
-// ────────────────────────────────────────────────
 
 func TestUpdateSubtask_Success_BroadcastsList(t *testing.T) {
 	svc := subtaskService(validCardID)
@@ -335,8 +320,7 @@ func TestUpdateSubtask_ServiceError_Returns500(t *testing.T) {
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
 }
 
-// The write already committed, so a failed list read for the broadcast must not turn
-// the response into an error; the other clients just miss this one update.
+// The write committed; a failed broadcast read must not fail the response.
 func TestUpdateSubtask_BroadcastReadFails_StillReturns200(t *testing.T) {
 	svc := subtaskService(validCardID)
 	svc.UpdateSubtaskFn = func(ctx context.Context, subtaskID string, req dto.UpdateSubtaskRequest) (db.CardSubtask, error) {
@@ -355,9 +339,7 @@ func TestUpdateSubtask_BroadcastReadFails_StillReturns200(t *testing.T) {
 	assert.Empty(t, bc.Sent)
 }
 
-// ────────────────────────────────────────────────
 // DeleteSubtask
-// ────────────────────────────────────────────────
 
 func TestDeleteSubtask_Success_BroadcastsList(t *testing.T) {
 	called := false
@@ -405,9 +387,7 @@ func TestDeleteSubtask_ServiceError_Returns500(t *testing.T) {
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
 }
 
-// ────────────────────────────────────────────────
-// Edit rule (same as the card: creator, assignee, or manager+)
-// ────────────────────────────────────────────────
+// Edit rule
 
 func TestSubtaskWrites_MemberOnSomeoneElsesCard_Returns403(t *testing.T) {
 	cases := map[string]struct {
@@ -421,7 +401,7 @@ func TestSubtaskWrites_MemberOnSomeoneElsesCard_Returns403(t *testing.T) {
 	}
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
-			// No service Fn is set beyond reads: a write reaching the service would panic.
+			// A write reaching the service would panic.
 			svc := &mock.MockSubtaskService{}
 			bc := &mock.MockBroadcaster{}
 			h := NewSubtaskHandler(svc, bystanderBoards(), nil, bc)
@@ -469,9 +449,7 @@ func TestUpdateSubtask_EditRights_AllowedRoles(t *testing.T) {
 	}
 }
 
-// ────────────────────────────────────────────────
 // card.subtasks_completed activity
-// ────────────────────────────────────────────────
 
 func TestUpdateSubtask_SubtasksCompletedActivity(t *testing.T) {
 	cases := map[string]struct {

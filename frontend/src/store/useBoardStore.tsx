@@ -1,30 +1,21 @@
 import { BoardMember, Card, Column, Subtask } from "@/types/board";
 import { create } from "zustand";
 
-/**
- * Single source of truth for one board's columns, cards and members. Setters are
- * driven both by optimistic user actions and by WS broadcasts, so they must stay
- * idempotent — that is what lets a writer skip filtering its own echo.
- */
+// Setters are called by both optimistic actions and WS broadcasts — keep them idempotent.
 
-/**
- * The viewed board's visual identity, hydrated on load. Separate from `columns`
- * because GET /boards/:id returns columns only — title/icon/color come from the list.
- */
+/** GET /boards/:id returns columns only; title/icon/color come from the list. */
 export interface BoardMeta {
   title: string;
   color?: string;
   icon?: string;
 }
 
-// Sentinel for `filterAssigneeId` meaning "no assignee". null already means "All",
-// and real assignees are UUIDs, so this string cannot collide with a user id.
+// null already means "All"; real assignees are UUIDs, so this can't collide.
 export const UNASSIGNED_FILTER = "unassigned";
 
 interface BoardState {
   columns: Column[];
   currentUserId: string;
-  /** Set when a member-list broadcast no longer includes the current user. */
   removedFromBoard: boolean;
   boardMembers: BoardMember[];
   boardMeta: BoardMeta | null;
@@ -142,7 +133,6 @@ export const useBoardStore = create<BoardState>((set) => ({
 
   addCardToStore: (newCard) =>
     set((state) => {
-      // Idempotent — ignore a card id we already hold (e.g. our own WS echo).
       const isAlreadyExists = state.columns.some((col) =>
         col.cards.some((card) => card.id === newCard.id),
       );

@@ -8,7 +8,6 @@ async function getBoards(): Promise<Board[]> {
   try {
     const cookieStore = await cookies();
 
-    // Call apiClient with the cookie attached and cache configured.
     const boards = await apiClient<Board[]>("/boards", {
       cache: "no-store", 
       headers: {

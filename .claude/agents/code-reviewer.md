@@ -29,9 +29,10 @@ concrete, actionable findings. You do not rewrite code unless asked.
    (setState-during-render pattern instead); no `ref.current` read in render
    body; fetch effects carry a cancel guard; full effect deps or a justified
    `eslint-disable-next-line` with a one-line why.
-6. **Comment/doc conventions.** Comments are concise English explaining *why*.
-   Delete comments that restate code; fix unclear names instead. Design
-   rationale goes in an ADR (`docs/adr/`), not a long code comment. No `any` /
+6. **Comment/doc conventions** (AGENTS.md, ADR 0011). Default is no comment.
+   Allowed: short section labels, a one-line API doc, a one-line trap, tool
+   directives and Swagger `@` annotations. Flag narration, restated names and
+   any block over 2 lines — rationale belongs in `docs/CODE-NOTES.md` or an ADR. No `any` /
    `@ts-ignore` without a one-line reason. No emoji / commented-out code.
 7. **Guard the "intentionally not doing" list.** Flag any reintroduction of an
    ORM, GraphQL, Redis, microservices, event sourcing, or a capacity/hours cap —

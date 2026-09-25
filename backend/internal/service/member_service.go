@@ -9,7 +9,6 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// Invite-by-email outcomes the handler maps to HTTP codes.
 var (
 	ErrUserNotFound  = errors.New("no user with that email")
 	ErrAlreadyMember = errors.New("user is already a member of this board")
@@ -27,10 +26,7 @@ func (s *BoardService) GetBoardMembers(ctx context.Context, boardID string) ([]d
 	return s.queries.GetBoardMembers(ctx, boardID)
 }
 
-// AddBoardMemberByEmail resolves an exact email to a registered user and adds
-// them to the board. Returns ErrUserNotFound when no account has that email
-// (the inviter must type it correctly — there is no user list to pick from) and
-// ErrAlreadyMember when they're already on the board.
+// ErrUserNotFound: no account has that email. ErrAlreadyMember: already on the board.
 func (s *BoardService) AddBoardMemberByEmail(ctx context.Context, boardID, email, role string) error {
 	user, err := s.queries.GetUserByEmail(ctx, email)
 	if err != nil {
@@ -40,8 +36,7 @@ func (s *BoardService) AddBoardMemberByEmail(ctx context.Context, boardID, email
 		return fmt.Errorf("lookup user by email: %w", err)
 	}
 
-	// Decided by ON CONFLICT, not a prior membership read: two concurrent invites of the
-	// same user would both pass a read and the loser would hit the unique constraint (500).
+	// Decided by ON CONFLICT — a prior read would let concurrent invites 500.
 	_, err = s.queries.JoinBoardMember(ctx, db.JoinBoardMemberParams{
 		BoardID: boardID,
 		UserID:  user.ID,

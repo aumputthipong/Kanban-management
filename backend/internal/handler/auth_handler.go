@@ -1,4 +1,3 @@
-// internal/handler/auth_handler.go
 package handler
 
 import (
@@ -29,9 +28,7 @@ func NewAuthHandler(authService service.AuthServicer, demoService service.DemoSe
 	}
 }
 
-// issueSession signs the access JWT, provisions a refresh token, and sets both cookies.
-// Shared by Register, Login and the OAuth callback. A refresh-issuance failure is logged
-// but not fatal: the user still gets a short access token and re-logins when it expires.
+// A refresh-token failure is logged, not fatal: the access token still works until expiry.
 func (h *AuthHandler) issueSession(w http.ResponseWriter, r *http.Request, userID, email string) error {
 	accessTok, err := token.Generate(userID, email)
 	if err != nil {
@@ -48,7 +45,6 @@ func (h *AuthHandler) issueSession(w http.ResponseWriter, r *http.Request, userI
 	return nil
 }
 
-// authUserResponse is the shared response body for register / login / oauth.
 type authUserResponse struct {
 	ID       string `json:"id"`
 	Email    string `json:"email"`
@@ -73,8 +69,6 @@ type oauthRequest struct {
 	ProviderID string `json:"provider_id" validate:"required"`
 }
 
-// Register creates a new credentials user and sets an auth cookie.
-//
 // @Summary  Register
 // @Tags     auth
 // @Accept   json
@@ -113,8 +107,6 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
-// Login authenticates with email + password and sets an auth cookie.
-//
 // @Summary  Login
 // @Tags     auth
 // @Accept   json
@@ -149,10 +141,6 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
-// OAuthCallback upserts the user from a verified OAuth provider payload and
-// sets an auth cookie. Called by the frontend after NextAuth completes the
-// provider handshake.
-//
 // @Summary  OAuth callback (programmatic)
 // @Tags     auth
 // @Accept   json
@@ -183,8 +171,6 @@ func (h *AuthHandler) OAuthCallback(w http.ResponseWriter, r *http.Request) erro
 	return nil
 }
 
-// demoSessionResponse extends the auth body with where to send the visitor and
-// when their sandbox is reclaimed.
 type demoSessionResponse struct {
 	ID        string `json:"id"`
 	Email     string `json:"email"`
@@ -193,12 +179,6 @@ type demoSessionResponse struct {
 	ExpiresAt string `json:"expires_at"`
 }
 
-// Demo provisions a throwaway sandbox account and signs the caller into it, so a
-// visitor who will not register can still use the product. Each call mints its own
-// user and its own board clone; board_id is where the client should land them.
-//
-// Unauthenticated by design — the rate limiter, not a credential, is what bounds it.
-//
 // @Summary  Start a demo session
 // @Tags     auth
 // @Produce  json
@@ -225,10 +205,6 @@ func (h *AuthHandler) Demo(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
-// Logout clears the auth cookie and revokes the refresh token server-side so
-// it cannot be reused even if the cookie was captured. Always returns 204 —
-// missing or already-revoked tokens are not an error for the client.
-//
 // @Summary  Logout
 // @Tags     auth
 // @Success  204
@@ -251,12 +227,6 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
-// Refresh rotates the refresh token and issues a new access token. The
-// presented refresh cookie is invalidated whether or not the call succeeds —
-// rotation is the only mode, there is no "use the same token twice" path.
-// 401 on any failure; the frontend interceptor reads that as "session over"
-// and redirects to /login.
-//
 // @Summary  Refresh session
 // @Tags     auth
 // @Produce  json
@@ -271,9 +241,7 @@ func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) error {
 
 	result, err := h.authService.RotateRefreshToken(r.Context(), c.Value, r.UserAgent(), r.RemoteAddr)
 	if err != nil {
-		// Both invalid and expired surface as 401 to the client; differentiating
-		// them would let an attacker probe for valid-but-expired tokens. Clear
-		// the cookie either way so the browser stops sending it.
+		// Invalid and expired both return 401, so valid-but-expired tokens can't be probed.
 		token.ClearRefreshCookie(w, h.production, h.crossSite)
 		return httputil.NewAPIError(http.StatusUnauthorized, "Unauthorized", nil)
 	}
@@ -288,8 +256,6 @@ func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
-// Me returns the authenticated user's profile.
-//
 // @Summary  Current user
 // @Tags     auth
 // @Produce  json
@@ -316,14 +282,11 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
-// wsTicketResponse is the body of GET /api/ws-ticket.
 type wsTicketResponse struct {
 	Ticket    string `json:"ticket"`
 	ExpiresIn int    `json:"expires_in"`
 }
 
-// WSTicket issues a short-lived, WebSocket-only token for the handshake.
-//
 // @Summary  Issue a WebSocket auth ticket
 // @Tags     auth
 // @Produce  json

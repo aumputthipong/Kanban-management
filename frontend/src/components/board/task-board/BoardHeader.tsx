@@ -15,7 +15,6 @@ import { useBoardStore } from "@/store/useBoardStore";
 import { boardColor, BoardGlyph } from "@/lib/boardAppearance";
 
 interface BoardHeaderProps {
-  /** Fallback label shown until boardMeta hydrates (or if it never does). */
   title?: string;
 }
 
@@ -24,20 +23,16 @@ export function BoardHeader({ title = "Project Board" }: BoardHeaderProps) {
   const params = useParams();
   const boardId = params.boardId as string;
 
-  // The board's own title/icon/colour, hydrated by useBoardData. Falls back to
-  // the generic label + default glyph while loading so the header never flashes
-  // empty.
   const boardMeta = useBoardStore((s) => s.boardMeta);
   const displayTitle = boardMeta?.title || title;
   const accent = boardColor(boardMeta?.color);
 
-  // Base URL for this board.
   const basePath = `/board/${boardId}`;
 
   return (
     <header className="bg-white border-b border-slate-200 w-full z-10 relative">
       <div className="flex items-center justify-between gap-3 px-4 md:px-6 pt-4">
-        {/* ฝั่งซ้าย: โลโก้ + Tabs — tabs scroll-x at narrow widths */}
+        {/* Left: logo + tabs */}
         <div className="flex items-center min-w-0 flex-1">
           <div className="flex items-center gap-2 pr-4 md:pr-6 border-r border-slate-200 shrink-0 min-w-0">
             <div
@@ -98,7 +93,7 @@ export function BoardHeader({ title = "Project Board" }: BoardHeaderProps) {
               <User size={16} />
               Members
             </Link>
-            {/* Calendar (ยังกดไม่ได้ ให้แสดงเป็นสีเทา) */}
+            {/* Calendar */}
              <Link
               href={`${basePath}/calendar`}
               className={`flex items-center gap-2 px-3 py-2 text-sm font-medium border-b-2 transition-colors ${
@@ -113,7 +108,7 @@ export function BoardHeader({ title = "Project Board" }: BoardHeaderProps) {
           </nav>
         </div>
 
-        {/* ฝั่งขวา: Settings (ย้ายมาจาก Sidebar) */}
+        {/* Right: settings */}
         <div className="flex items-center shrink-0">
           <Link
             href={`${basePath}/settings`}

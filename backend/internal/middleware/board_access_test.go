@@ -20,8 +20,6 @@ const (
 	testUserID  = "550e8400-e29b-41d4-a716-446655440000"
 )
 
-// buildRequest assembles a request that mimics the canonical chain
-// RequireAuth → RequireBoardMember: userID already in context, boardID in chi URL params.
 func buildRequest(userID, boardID string) *http.Request {
 	r := httptest.NewRequest(http.MethodGet, "/boards/"+boardID, nil)
 	if userID != "" {
@@ -34,8 +32,6 @@ func buildRequest(userID, boardID string) *http.Request {
 	return r.WithContext(context.WithValue(r.Context(), chi.RouteCtxKey, rctx))
 }
 
-// captureRole is a terminal handler that records what RequireBoardMember
-// injected into the context so the test can assert role propagation.
 func captureRole(captured *string, called *bool) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		*called = true
@@ -67,9 +63,7 @@ func TestRequireBoardMember_Member_PassesAndInjectsRole(t *testing.T) {
 	assert.Equal(t, "admin", role, "role should be injected into context")
 }
 
-// TestRequireBoardMember_NonMember_Returns404 is the anti-enumeration regression:
-// AGENTS.md explicitly forbids 403 here — flipping to 403 would let an attacker
-// distinguish "board exists but I'm not a member" from "board does not exist".
+// Must stay 404 — a 403 reveals that the board exists.
 func TestRequireBoardMember_NonMember_Returns404(t *testing.T) {
 	svc := &mock.MockBoardService{
 		GetBoardMemberRoleFn: func(ctx context.Context, boardID, userID string) (string, error) {
@@ -94,9 +88,7 @@ func TestRequireBoardMember_NonMember_Returns404(t *testing.T) {
 }
 
 func TestRequireBoardMember_NonExistentBoard_Returns404(t *testing.T) {
-	// Service cannot distinguish "board doesn't exist" from "user isn't a member" —
-	// both produce pgx.ErrNoRows from the same join query. This is intentional and
-	// is what makes 404-on-non-member sufficient to prevent enumeration.
+	// One join query: missing board and non-member are both ErrNoRows.
 	svc := &mock.MockBoardService{
 		GetBoardMemberRoleFn: func(ctx context.Context, boardID, userID string) (string, error) {
 			return "", pgx.ErrNoRows
@@ -114,9 +106,6 @@ func TestRequireBoardMember_NonExistentBoard_Returns404(t *testing.T) {
 	assert.False(t, called)
 }
 
-// Regression for a malformed board ID. Before the gate validated the UUID, the bad value
-// reached the uuid column and Postgres 22P02 surfaced as a 500 — which both looked broken
-// and leaked "wrong shape" versus "no such board". Both must now be the same 404.
 func TestRequireBoardMember_MalformedBoardID_Returns404(t *testing.T) {
 	svc := &mock.MockBoardService{
 		GetBoardMemberRoleFn: func(ctx context.Context, boardID, userID string) (string, error) {
@@ -130,7 +119,6 @@ func TestRequireBoardMember_MalformedBoardID_Returns404(t *testing.T) {
 	h := RequireBoardMember(svc)(captureRole(&role, &called))
 
 	w := httptest.NewRecorder()
-	// testBoardID with an extra trailing char -> 13-char final group, invalid UUID.
 	h.ServeHTTP(w, buildRequest(testUserID, testBoardID+"f"))
 
 	assert.Equal(t, http.StatusNotFound, w.Code, "malformed board ID must 404, not 500")
@@ -157,8 +145,7 @@ func TestRequireBoardMember_MissingUserID_Returns401(t *testing.T) {
 }
 
 func TestRequireBoardMember_EmptyUserID_Returns401(t *testing.T) {
-	// Defense-in-depth: if RequireAuth ever stored an empty string instead of
-	// skipping the key entirely, we must still reject — not query the DB with "".
+	// An empty user id must be rejected, not queried.
 	svc := &mock.MockBoardService{
 		GetBoardMemberRoleFn: func(ctx context.Context, boardID, userID string) (string, error) {
 			t.Fatal("service must not be called when userID is empty")
@@ -220,8 +207,6 @@ func TestRequireBoardMember_DBError_Returns500(t *testing.T) {
 	assert.False(t, called)
 }
 
-// TestRequireStashedBoardMember_StashedOwner_Passes confirms the stash gate
-// admits the owner of a stashed board (so restore / permanent-delete work).
 func TestRequireStashedBoardMember_StashedOwner_Passes(t *testing.T) {
 	svc := &mock.MockBoardService{
 		GetStashedBoardMemberRoleFn: func(ctx context.Context, boardID, userID string) (string, error) {
@@ -246,10 +231,7 @@ func TestRequireStashedBoardMember_StashedOwner_Passes(t *testing.T) {
 	assert.Equal(t, "owner", role)
 }
 
-// TestRequireStashedBoardMember_ActiveBoard_Returns404 is the consistency
-// regression: an active (non-stashed) board has no row in the stashed gate, so
-// the stash routes 404 — the inverse of RequireBoardMember 404ing for stashed
-// boards. Together they keep each board reachable through exactly one surface.
+// Each board is reachable through exactly one of the two gates.
 func TestRequireStashedBoardMember_ActiveBoard_Returns404(t *testing.T) {
 	svc := &mock.MockBoardService{
 		GetStashedBoardMemberRoleFn: func(ctx context.Context, boardID, userID string) (string, error) {
@@ -268,9 +250,6 @@ func TestRequireStashedBoardMember_ActiveBoard_Returns404(t *testing.T) {
 	assert.False(t, called)
 }
 
-// TestRequireBoardMember_RoleVariants checks that every role string the
-// service may return is propagated verbatim — RequireBoardRole downstream
-// depends on exact string match.
 func TestRequireBoardMember_RoleVariants(t *testing.T) {
 	roles := []string{"owner", "admin", "member", "viewer"}
 	for _, want := range roles {

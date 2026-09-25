@@ -14,9 +14,7 @@ export const metadata: Metadata = { title: "Project Settings" };
 export default async function BoardSettingsPage({ params }: PageProps) {
   const { boardId } = await params;
 
-  // GET /boards/:id returns the column list, not the board row — the board's
-  // title + member summary only come back from the list endpoint, so we fetch
-  // that and pick the matching board.
+  // GET /boards/:id returns columns only; the board row comes from the list endpoint.
   let board: Board | undefined;
   try {
     const boards = await apiFetch<Board[]>(`/boards`, { cache: "no-store" });

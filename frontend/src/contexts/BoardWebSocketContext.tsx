@@ -6,11 +6,7 @@ import { WS_URL } from "@/lib/constants";
 import { useBoardStore } from "@/store/useBoardStore";
 import { useToastStore } from "@/store/useToastStore";
 
-/**
- * Mounts the board's socket once, at the board route layout. There is no context
- * value any more: writes go over REST, so nothing sends and nothing needs the
- * channel. Inbound messages mutate the stores directly from inside useWebSocket.
- */
+/** Mounts the board socket; inbound messages write to the stores directly. */
 export function BoardWebSocketProvider({
   boardId,
   children,
@@ -23,7 +19,7 @@ export function BoardWebSocketProvider({
   return <>{children}</>;
 }
 
-// Covers being removed by a manager and leaving from another tab, so the copy is neutral.
+// Covers both removal by a manager and leaving from another tab.
 function useLeaveBoardWhenRemoved() {
   const router = useRouter();
   const removed = useBoardStore((s) => s.removedFromBoard);

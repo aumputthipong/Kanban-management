@@ -1,8 +1,5 @@
 //go:build integration
 
-// Integration tests for BoardService's board-level methods. CreateBoard is transactional
-// (board + 4 columns + owner) and the read paths hit *db.Queries with aggregation and
-// gate logic a mock cannot verify — rollback, COALESCE defaults, WHERE-clause gating.
 package service_test
 
 import (
@@ -43,9 +40,7 @@ func newBoardFixture(t *testing.T) *boardFixture {
 	}
 }
 
-// ────────────────────────────────────────────────
 // CreateBoard
-// ────────────────────────────────────────────────
 
 func TestCreateBoard_EmptyTitle_Rejected(t *testing.T) {
 	ctx := context.Background()
@@ -82,9 +77,7 @@ func TestCreateBoard_Success_CreatesFourDefaultColumnsAndOwnerMember(t *testing.
 	assert.Equal(t, "owner", role, "the creator must be added as owner in the same transaction")
 }
 
-// description/color/icon are optional at create time; a nil narg falls back
-// to the column default in SQL via COALESCE. Pins the three documented
-// defaults so a schema change that touches them gets caught here.
+// Pins the three column defaults.
 func TestCreateBoard_NilAppearance_FallsBackToColumnDefaults(t *testing.T) {
 	ctx := context.Background()
 	f := newBoardFixture(t)
@@ -99,9 +92,7 @@ func TestCreateBoard_NilAppearance_FallsBackToColumnDefaults(t *testing.T) {
 	assert.Equal(t, "board", board.Icon)
 }
 
-// AddBoardMember has an FK on user_id, so a nonexistent owner fails after the board and
-// all four columns are already inserted. That is why CreateBoard needs a transaction:
-// otherwise a caller is left with an orphan board nobody can see.
+// The owner FK fails after columns are inserted — the transaction must roll back.
 func TestCreateBoard_NonExistentOwner_RollsBackBoardAndColumnsToo(t *testing.T) {
 	ctx := context.Background()
 	f := newBoardFixture(t)
@@ -116,9 +107,7 @@ func TestCreateBoard_NonExistentOwner_RollsBackBoardAndColumnsToo(t *testing.T) 
 	assert.Equal(t, 0, count, "the board row must not survive when adding the owner fails later in the same tx")
 }
 
-// ────────────────────────────────────────────────
 // UpdateBoard
-// ────────────────────────────────────────────────
 
 func TestUpdateBoard_NilFields_PreserveExistingValues(t *testing.T) {
 	ctx := context.Background()
@@ -146,14 +135,12 @@ func TestUpdateBoard_GivenFields_Overwrite(t *testing.T) {
 	assert.Equal(t, "#FF0000", updated.Color)
 }
 
-// ────────────────────────────────────────────────
 // GetBoardWithCards
-// ────────────────────────────────────────────────
 
 func TestGetBoardWithCards_NoColumns_ReturnsEmptySliceNotNil(t *testing.T) {
 	ctx := context.Background()
 	f := newBoardFixture(t)
-	boardID := f.seed.Board(ctx, f.userID) // testutil's Board seeds no columns
+	boardID := f.seed.Board(ctx, f.userID)
 
 	result, err := f.svc.GetBoardWithCards(ctx, boardID)
 	require.NoError(t, err)
@@ -196,9 +183,7 @@ func TestGetBoardWithCards_AttachesTagsToTheRightCard(t *testing.T) {
 	assert.Empty(t, byID[cardB].Tags, "the untagged card must not inherit the other card's tag")
 }
 
-// ────────────────────────────────────────────────
 // CompleteMyTask
-// ────────────────────────────────────────────────
 
 func TestCompleteMyTask_Assignee_MarksDoneAndMovesToDoneColumn(t *testing.T) {
 	ctx := context.Background()
@@ -221,23 +206,21 @@ func TestCompleteMyTask_Assignee_MarksDoneAndMovesToDoneColumn(t *testing.T) {
 	assert.True(t, card.IsDone)
 	assert.Equal(t, doneCol, card.ColumnID)
 
-	// The handler broadcasts these; they must be the stored values, not guesses.
+	// The handler broadcasts these — they must be the stored values.
 	assert.Equal(t, doneCol, result.ColumnID)
 	assert.Equal(t, card.Position, result.Position)
 	require.NotNil(t, result.CompletedAt)
 	assert.Equal(t, util.TimestamptzToTimePtr(card.CompletedAt).UTC(), result.CompletedAt.UTC())
 }
 
-// The assignee gate is enforced by the SQL's WHERE assignee_id = $3, not by
-// a Go-level check the caller could bypass — this confirms the DB itself
-// rejects it, not just that the service happens to be called correctly.
+// The assignee gate lives in SQL, not in Go.
 func TestCompleteMyTask_NotTheAssignee_ReturnsOKFalseAndLeavesCardUntouched(t *testing.T) {
 	ctx := context.Background()
 	f := newBoardFixture(t)
 	boardID := f.seed.Board(ctx, f.userID)
 	todoCol := f.seed.Column(ctx, boardID, "TODO", 1)
 	f.seed.Column(ctx, boardID, "DONE", 2)
-	cardID := f.seed.Card(ctx, todoCol) // left unassigned
+	cardID := f.seed.Card(ctx, todoCol)
 
 	someoneElse := f.seed.User(ctx)
 	result, err := f.svc.CompleteMyTask(ctx, cardID, someoneElse)
@@ -249,13 +232,9 @@ func TestCompleteMyTask_NotTheAssignee_ReturnsOKFalseAndLeavesCardUntouched(t *t
 	assert.False(t, card.IsDone, "the card must be untouched, not silently completed")
 }
 
-// ────────────────────────────────────────────────
 // GetMyWork
-// ────────────────────────────────────────────────
 
-// Counts must reflect the full inbox even when Filter narrows the returned
-// card list — this is what lets the frontend show filter-chip totals that
-// don't change as you switch chips.
+// Counts must not change with the filter.
 func TestGetMyWork_CountsCoverFullInbox_RegardlessOfFilter(t *testing.T) {
 	ctx := context.Background()
 	f := newBoardFixture(t)
@@ -286,7 +265,7 @@ func TestGetMyWork_UnassignedCard_ExcludedUnlessIncludeUnassigned(t *testing.T) 
 	f := newBoardFixture(t)
 	boardID := f.seed.Board(ctx, f.userID)
 	columnID := f.seed.Column(ctx, boardID, "TODO", 1)
-	f.seed.Card(ctx, columnID) // unassigned
+	f.seed.Card(ctx, columnID)
 
 	today := service.MyWorkToday(time.Now(), "Asia/Bangkok")
 
@@ -299,13 +278,9 @@ func TestGetMyWork_UnassignedCard_ExcludedUnlessIncludeUnassigned(t *testing.T) 
 	assert.Equal(t, 1, included.Counts.Total, "with IncludeUnassigned, an unassigned card on the caller's own board must count")
 }
 
-// ────────────────────────────────────────────────
 // GetAllBoards
-// ────────────────────────────────────────────────
 
-// GetAllBoards fetches board stats and member rows as two separate queries,
-// then groups members by board id in Go — this checks that grouping doesn't
-// leak one board's members onto another's summary.
+// Members must not leak across boards when grouped in Go.
 func TestGetAllBoards_MembersGroupedToTheRightBoard(t *testing.T) {
 	ctx := context.Background()
 	f := newBoardFixture(t)

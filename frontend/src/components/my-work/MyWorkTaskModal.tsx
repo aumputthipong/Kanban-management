@@ -19,8 +19,6 @@ interface Props {
   onSnooze: (cardId: string, dueDate: string, label: string) => void;
 }
 
-// Quick view for a My Work task. Full editing stays on the board (open-in-board),
-// so this modal needs none of the board's WS/store wiring.
 export function MyWorkTaskModal({ card, boardMeta, onClose, onComplete, onSnooze }: Props) {
   const { detail, setDetail, isLoading } = useCardDetail(card.id);
   const meta = boardMeta.get(card.board_id);
@@ -30,7 +28,7 @@ export function MyWorkTaskModal({ card, boardMeta, onClose, onComplete, onSnooze
     onClose();
   };
 
-  // Self-contained REST toggle (no board store/WS). Optimistic; reverts on failure.
+  // REST only (no board store/WS); optimistic with revert.
   const toggleSubtask = (subtaskId: string, current: boolean) => {
     const flip = (value: boolean) =>
       setDetail((prev) =>

@@ -1,8 +1,5 @@
 //go:build integration
 
-// Integration tests for AuthService. Every method hits *db.Queries directly, so there
-// is no seam to mock — and a mock could not verify that bcrypt round-trips, that
-// UNIQUE(email) backstops the register race, or that ON CONFLICT upsert behaves.
 package service_test
 
 import (
@@ -33,9 +30,7 @@ func newAuthFixture(t *testing.T) *authFixture {
 	}
 }
 
-// ────────────────────────────────────────────────
 // Register
-// ────────────────────────────────────────────────
 
 func TestRegister_Success_PasswordIsHashedNotStoredPlain(t *testing.T) {
 	ctx := context.Background()
@@ -49,9 +44,7 @@ func TestRegister_Success_PasswordIsHashedNotStoredPlain(t *testing.T) {
 	assert.Equal(t, "new@test.local", user.Email)
 	assert.Equal(t, "credentials", user.Provider)
 	require.NotNil(t, user.PasswordHash)
-	// The stored value must be a bcrypt hash, not the raw password — this is
-	// the one thing a mock could never verify, since a mock would just hand
-	// back whatever string the test told it to.
+	// Must be a bcrypt hash — the one thing a mock can't verify.
 	assert.NotEqual(t, "correct horse battery staple", *user.PasswordHash)
 	assert.NoError(t, bcrypt.CompareHashAndPassword([]byte(*user.PasswordHash), []byte("correct horse battery staple")),
 		"the stored hash must actually verify against the original password")
@@ -68,8 +61,7 @@ func TestRegister_DuplicateEmail_ReturnsErrEmailTaken(t *testing.T) {
 	assert.ErrorIs(t, err, service.ErrEmailTaken)
 }
 
-// Every racer passes the GetUserByEmail fast path before the first insert commits, so
-// UNIQUE(email) decides. The losers must see ErrEmailTaken (409), not a raw 500.
+// UNIQUE(email) decides the race; losers must get ErrEmailTaken, not a 500.
 func TestRegister_ConcurrentSameEmail_OneSucceedsRestEmailTaken(t *testing.T) {
 	ctx := context.Background()
 	f := newAuthFixture(t)
@@ -98,9 +90,7 @@ func TestRegister_ConcurrentSameEmail_OneSucceedsRestEmailTaken(t *testing.T) {
 	assert.Equal(t, 1, count)
 }
 
-// ────────────────────────────────────────────────
 // Login
-// ────────────────────────────────────────────────
 
 func TestLogin_CorrectCredentials_Success(t *testing.T) {
 	ctx := context.Background()
@@ -123,10 +113,7 @@ func TestLogin_WrongPassword_ReturnsErrInvalidCreds(t *testing.T) {
 	assert.ErrorIs(t, err, service.ErrInvalidCreds)
 }
 
-// Unknown email must return the exact same sentinel as a wrong password —
-// this is a deliberate security property, not an oversight. If "unknown
-// email" and "wrong password" produced different errors, an attacker could
-// use the login endpoint to enumerate which emails have accounts.
+// Same sentinel as a wrong password, or login enumerates accounts.
 func TestLogin_UnknownEmail_ReturnsSameErrorAsWrongPassword_NoEnumeration(t *testing.T) {
 	ctx := context.Background()
 	f := newAuthFixture(t)
@@ -145,9 +132,7 @@ func TestLogin_OAuthOnlyAccount_ReturnsErrOAuthOnly(t *testing.T) {
 	assert.ErrorIs(t, err, service.ErrOAuthOnly)
 }
 
-// ────────────────────────────────────────────────
 // UpsertOAuthUser
-// ────────────────────────────────────────────────
 
 func TestUpsertOAuthUser_FirstLogin_CreatesUser(t *testing.T) {
 	ctx := context.Background()
@@ -159,9 +144,7 @@ func TestUpsertOAuthUser_FirstLogin_CreatesUser(t *testing.T) {
 	assert.Equal(t, "google", user.Provider)
 }
 
-// The query is INSERT ... ON CONFLICT (email) DO UPDATE, so a returning user must update
-// the same row rather than insert a duplicate — ON CONFLICT is what makes the *second*
-// login succeed instead of erroring on UNIQUE(email).
+// ON CONFLICT (email) must update the same row, not duplicate it.
 func TestUpsertOAuthUser_ReturningUser_UpdatesSameRowNotDuplicate(t *testing.T) {
 	ctx := context.Background()
 	f := newAuthFixture(t)
@@ -182,9 +165,7 @@ func TestUpsertOAuthUser_ReturningUser_UpdatesSameRowNotDuplicate(t *testing.T) 
 	assert.Equal(t, 1, count)
 }
 
-// ────────────────────────────────────────────────
 // GetUserByID
-// ────────────────────────────────────────────────
 
 func TestGetUserByID_Success(t *testing.T) {
 	ctx := context.Background()

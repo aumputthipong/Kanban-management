@@ -25,8 +25,7 @@ export function TagFilterDropdown({ boardId }: TagFilterDropdownProps) {
       .then((r) => (r.ok ? r.json() : []))
       .then((data: Tag[]) => setTags(Array.isArray(data) ? data : []))
       .catch(() => {
-        // Non-critical: the tag filter is an affordance, not core data. On a
-        // failed load the dropdown simply shows no tags.
+        // Non-critical: on failure the dropdown shows no tags.
       });
   }, [boardId]);
 

@@ -5,19 +5,13 @@ import { fetchWsTicket } from "@/lib/wsTicket";
 import { applyWsMessage } from "@/lib/wsDispatch";
 import { useEffect, useRef, useState } from "react";
 
-/** Connection state for the UI. `closed` = gave up retrying; needs a reload. */
 export type WSStatus = "connecting" | "open" | "reconnecting" | "closed";
 
 const RECONNECT_BASE_MS = 1000;
 const RECONNECT_MAX_MS = 30_000;
 const MAX_RECONNECT_ATTEMPTS = 8;
 
-/**
- * Owns one board room's socket, dispatching into useBoardStore/useActivityStore.
- * Reconnects with exponential backoff; each attempt mints a fresh auth ticket
- * (docs/adr/0005-websocket-ticket-auth.md). Receive-only: writes go over REST, so a
- * dropped socket costs live updates and never a write.
- */
+/** Receive-only socket for one board room — docs/adr/0005 covers the ticket auth. */
 export const useWebSocket = (url: string) => {
   const socketRef = useRef<WebSocket | null>(null);
   const attemptRef = useRef(0);
@@ -71,8 +65,7 @@ export const useWebSocket = (url: string) => {
       const isReconnect = attemptRef.current > 0;
       setStatus(isReconnect ? "reconnecting" : "connecting");
 
-      // A fresh ticket per attempt: it expires in seconds, and the backoff
-      // climbs to 30s, so a ticket held across a wait would arrive dead.
+      // Fresh ticket per attempt — it expires in seconds, the backoff reaches 30s.
       let ticket: string;
       try {
         ticket = await fetchWsTicket();
@@ -80,7 +73,6 @@ export const useWebSocket = (url: string) => {
         scheduleReconnect();
         return;
       }
-      // The effect may have been torn down while the ticket was in flight.
       if (cancelled) return;
 
       const socket = new WebSocket(`${url}?ticket=${encodeURIComponent(ticket)}`);
@@ -101,7 +93,7 @@ export const useWebSocket = (url: string) => {
       };
 
       socket.onerror = () => {
-        // Browsers fire onerror then onclose; reconnect there to avoid double-scheduling.
+        // onclose follows onerror and reconnects there.
       };
 
       socket.onclose = () => {

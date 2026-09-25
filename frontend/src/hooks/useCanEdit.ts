@@ -1,10 +1,7 @@
 import { useBoardStore } from "@/store/useBoardStore";
 import type { Card } from "@/types/board";
 
-/**
- * Can the current user edit this card — creator, assignee, or board owner/manager.
- * UI gating only; the backend re-checks and stays the source of truth.
- */
+/** Creator, assignee, or board owner/manager. UI gating only. */
 export function useCanEdit(card: Card): boolean {
   const currentUserId = useBoardStore((s) => s.currentUserId);
   const boardMembers = useBoardStore((s) => s.boardMembers);

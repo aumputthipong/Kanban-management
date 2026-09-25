@@ -19,8 +19,6 @@ export default function BoardLayout({ children, params }: BoardLayoutProps) {
   const { isLoading, error } = useBoardData(boardId);
   const pathname = usePathname();
 
-  // Settings uses a flat surface like its design; the graph-paper grid belongs
-  // to the kanban canvas, not here.
   const isSettings = pathname.includes("/settings");
 
   if (isLoading) {

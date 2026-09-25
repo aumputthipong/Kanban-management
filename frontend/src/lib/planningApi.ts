@@ -1,6 +1,3 @@
-// lib/planningApi.ts — thin wrappers around apiClient for the Planning
-// endpoints. Keeping these in one file (rather than scattered in components)
-// makes it cheap to swap the transport later (e.g. WS sync in Phase 3).
 import { apiClient } from "@/lib/apiClient";
 import type {
   CardSource,
@@ -81,15 +78,11 @@ export const planningApi = {
       { method: "POST", data: {} },
     ),
 
-  // Backlink lookup for the card detail modal's "source" section. Returns
-  // null when the card wasn't promoted from planning — apiClient passes
-  // through the JSON-null body as JS null, so callers branch on `!source`.
+  // null when the card wasn't promoted from planning.
   getCardSource: (cardId: string) =>
     apiClient<CardSource | null>(`/cards/${cardId}/source`),
 
-  // Comment thread per item. List includes soft-deleted rows (with
-  // body=null + deleted_at set) so the thread's position doesn't shift
-  // around as people delete — the UI renders an italic "deleted" placeholder.
+  // Includes soft-deleted rows (body = null) so the thread doesn't shift.
   listComments: (itemId: string) =>
     apiClient<PlanningComment[]>(`/planning/items/${itemId}/comments`),
 

@@ -51,10 +51,9 @@ func (h *TagHandler) CreateBoardTag(w http.ResponseWriter, r *http.Request) erro
 	if err != nil {
 		switch {
 		case errors.Is(err, service.ErrTagNameEmpty), errors.Is(err, service.ErrTagNameTooLong):
-			// Sentinel messages are safe to surface verbatim.
 			return httputil.NewAPIError(http.StatusUnprocessableEntity, err.Error(), err)
 		default:
-			// Don't leak raw DB errors (constraint names, etc.) to the client.
+			// Don't leak raw DB errors.
 			return httputil.NewAPIError(http.StatusInternalServerError, "Failed to create tag", err)
 		}
 	}
@@ -76,7 +75,7 @@ func (h *TagHandler) DeleteBoardTag(w http.ResponseWriter, r *http.Request) erro
 	if err := h.tagService.DeleteTag(r.Context(), boardID, tagID); err != nil {
 		return httputil.NewAPIError(http.StatusInternalServerError, "Failed to delete tag", err)
 	}
-	// card_tags rows cascade in the DB; open boards must drop the tag from their cards too.
+	// card_tags cascade in the DB; open boards must drop the tag too.
 	emitTo(h.broadcaster, boardID, core.WSTagDeleted, map[string]any{"tag_id": tagID})
 	w.WriteHeader(http.StatusNoContent)
 	return nil

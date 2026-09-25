@@ -23,9 +23,7 @@ export function BoardSettingsForm({ boardId, board }: BoardSettingsFormProps) {
   const canManage = useCanManageBoard();
   const canDelete = useCanDeleteBoard();
 
-  // Keep the persistent BoardHeader (rendered by the board layout, which stays
-  // mounted across tabs) in sync with identity edits — title/icon/color — so
-  // the header updates live instead of waiting for a full board reload.
+  // Also update the persistent BoardHeader so it reflects edits live.
   const saveField = (field: string, value: string | number) => {
     if (
       (field === "title" || field === "icon" || field === "color") &&
@@ -40,11 +38,8 @@ export function BoardSettingsForm({ boardId, board }: BoardSettingsFormProps) {
   const [savedVisible, setSavedVisible] = useState(false);
   const savedTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
-  // Owner-only sections appear in the rail only when relevant.
   const railItems = RAIL_ITEMS.filter((i) => i.id !== "sec-danger" || canDelete);
 
-  // Scroll-spy: highlight the rail entry of the topmost visible section. The
-  // observer fires in a callback, so this is safe under React 19's effect rules.
   useEffect(() => {
     const sections = RAIL_ITEMS.filter((i) => i.id !== "sec-danger" || canDelete)
       .map((i) => document.getElementById(i.id))
@@ -79,7 +74,7 @@ export function BoardSettingsForm({ boardId, board }: BoardSettingsFormProps) {
 
   return (
     <div className="max-w-[1080px] mx-auto py-8">
-      {/* page header */}
+      {/* Header */}
       <div className="flex items-start justify-between gap-5 mb-6">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900">ตั้งค่า Project</h1>

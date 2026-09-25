@@ -1,6 +1,4 @@
-// Package service holds the business-logic layer: transactions, permission checks beyond
-// the membership gates, and the mapping between sqlc rows and domain types. Each Service
-// is paired with a Servicer interface so handlers can be tested against internal/service/mock.
+// Each Service has a Servicer interface so handlers can be tested against internal/service/mock.
 package service
 
 import (
@@ -11,9 +9,6 @@ import (
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/dto"
 )
 
-// BoardServicer is the contract used by board / card / my-tasks / member
-// handlers. *BoardService satisfies it implicitly. Mocks for testing live
-// in internal/service/mock.
 type BoardServicer interface {
 	// Board
 	GetAllBoards(ctx context.Context, userID string) ([]BoardSummaryData, error)
@@ -50,8 +45,6 @@ type BoardServicer interface {
 	GetAllUsers(ctx context.Context) ([]db.GetAllUsersRow, error)
 }
 
-// SubtaskServicer is the contract for the subtask handler. CRUD against
-// card_subtasks rows, scoped to a parent card.
 type SubtaskServicer interface {
 	CreateSubtask(ctx context.Context, cardID, title string) (db.CardSubtask, error)
 	GetSubtasksByCardID(ctx context.Context, cardID string) ([]db.CardSubtask, error)
@@ -60,9 +53,7 @@ type SubtaskServicer interface {
 	GetSubtaskByID(ctx context.Context, subtaskID string) (db.CardSubtask, error)
 }
 
-// PlanningServicer is the contract the planning handler uses. Board-scope checks happen
-// in the handler via GetSessionBoardID / GetItemBoardID — the service trusts its caller
-// already ran the permission gate.
+// Board-scope checks happen in the handler; the service trusts its caller.
 type PlanningServicer interface {
 	ListSessionsByBoard(ctx context.Context, boardID string) ([]db.ListPlanningSessionsByBoardRow, error)
 	GetSession(ctx context.Context, sessionID string) (db.PlanningSession, error)
@@ -88,36 +79,23 @@ type PlanningServicer interface {
 	DeleteComment(ctx context.Context, commentID string) error
 }
 
-// ActivityRecorder is the narrow contract handlers need to log audit events.
-// Both the real *ActivityService and test spies implement it. Kept as a
-// separate interface (not part of a wider ActivityServicer) so handlers don't
-// pull in the read-side methods they never touch.
+// Kept narrow so handlers don't pull in the read side.
 type ActivityRecorder interface {
 	Record(ctx context.Context, p RecordParams) (db.Activity, error)
-	// RecordAsync enqueues a best-effort audit insert. Used by REST handlers
-	// where the caller has no use for the resulting row; the WS path keeps
-	// using Record because broadcasts include the row's ID and created_at.
+	// Best-effort. Use Record when a broadcast needs the row.
 	RecordAsync(p RecordParams)
 }
 
-// ActivityLister is the read side of the audit log. Deliberately separate from
-// ActivityRecorder: a handler that only writes activities must not depend on the
-// query, and its mock must not have to grow a stub for it.
 type ActivityLister interface {
 	List(ctx context.Context, boardID string, before *time.Time, limit int32) ([]ActivityItem, error)
 }
 
-// UserSettingsServicer is the contract for per-user workspace preferences.
-// Get auto-materializes a default row on first read so callers never branch
-// on a missing record.
+// Get upserts a default row on first read.
 type UserSettingsServicer interface {
 	Get(ctx context.Context, userID string) (UserSettingsData, error)
 	Update(ctx context.Context, userID string, p UpdateUserSettingsParams) (UserSettingsData, error)
 }
 
-// AuthServicer is the contract for credential and OAuth-based authentication.
-// Token issuance lives in the token package, not here — service only resolves
-// the user identity.
 type AuthServicer interface {
 	Register(ctx context.Context, arg RegisterParams) (db.User, error)
 	Login(ctx context.Context, email, password string) (db.User, error)
@@ -128,15 +106,11 @@ type AuthServicer interface {
 	RevokeRefreshToken(ctx context.Context, rawToken string) error
 }
 
-// DemoServicer is the seam the demo-login path depends on. Separate from
-// AuthServicer: minting a throwaway sandbox is provisioning, not authentication,
-// and every other auth caller would have to stub it.
 type DemoServicer interface {
 	CreateSandbox(ctx context.Context, companionEmail string) (DemoSandbox, error)
 	PurgeExpired(ctx context.Context) (int64, error)
 }
 
-// InviteServicer is the seam the InviteHandler depends on (board invite links).
 type InviteServicer interface {
 	CreateInvite(ctx context.Context, boardID, creatorID string) (InviteLink, error)
 	GetActiveInvite(ctx context.Context, boardID string) (InviteLink, bool, error)
@@ -144,16 +118,13 @@ type InviteServicer interface {
 	AcceptInvite(ctx context.Context, token, userID string) (boardID string, joined bool, err error)
 }
 
-// TagServicer is the seam the TagHandler depends on (per-board card labels).
 type TagServicer interface {
 	GetTagsByBoard(ctx context.Context, boardID string) ([]db.Tag, error)
 	CreateTag(ctx context.Context, boardID, name, color string) (db.Tag, error)
 	DeleteTag(ctx context.Context, boardID, tagID string) error
 }
 
-// BoardCommandServicer is the seam the REST write path depends on. It is the same
-// service the WebSocket handlers use — REST persists and broadcasts, WS only
-// broadcasts. See docs/adr/0003 and issue #197.
+// Shared with the WS handlers — see docs/adr/0003 and #197.
 type BoardCommandServicer interface {
 	VerifyCardInBoard(ctx context.Context, cardID, boardID string) error
 	CreateCardWS(ctx context.Context, columnID, creatorID, title, priority string, position float64, assigneeID, dueDate, description *string, subtaskTitles []string) (db.CreateCardRow, []db.CardSubtask, error)

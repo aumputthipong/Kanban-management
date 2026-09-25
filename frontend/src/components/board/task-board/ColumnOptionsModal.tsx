@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { Check, CircleCheck, Trash2, X } from "lucide-react";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
-// ── colour palette ────────────────────────────────────────────────────────────
+// Palette
 export const COLUMN_COLOR_PALETTE: {
   key: string | null;
   hex: string | null;
@@ -26,35 +26,28 @@ export function getColumnColorHex(key?: string | null): string | null {
   return COLUMN_COLOR_PALETTE.find((c) => c.key === (key ?? null))?.hex ?? null;
 }
 
-// ── D1 "Solid Cap" colour derivations ──────────────────────────────────────────
-// Shared between the column (Column.tsx) and this modal's live preview so the
-// preview mirrors the real thing. `accent` is the column identity colour.
+// Column colours — shared with Column.tsx so the preview matches.
 
-/** Column identity colour: the custom colour, or a neutral/emerald category fallback. */
 export function columnAccentColor(hex: string | null, isDone: boolean): string {
   return hex ?? (isDone ? "#10b981" : "#94a3b8");
 }
 
-/** Solid-cap fill: deepen the identity colour toward ink so white cap text stays
- *  legible across the light palette (raw pastels fail white contrast). */
+/** Darkened toward ink so white cap text stays legible on pastels. */
 export function columnCapColor(accent: string): string {
   return `color-mix(in oklab, ${accent} 68%, #0f172a)`;
 }
 
-/** Column body: a faint wash of the identity hue; `hot` = drag-over highlight. */
 export function columnBodyBg(accent: string, hot = false): string {
   return `color-mix(in oklab, ${accent} ${hot ? 12 : 6}%, white)`;
 }
 
-/** Column body border: a light tint of the identity hue; `hot` = drag-over. */
 export function columnBodyBorder(accent: string, hot = false): string {
   return `color-mix(in oklab, ${accent} ${hot ? 42 : 20}%, white)`;
 }
 
-// ── props ─────────────────────────────────────────────────────────────────────
+// Props
 interface ColumnOptionsModalProps {
   open: boolean;
-  /** "create" hides Delete + the card warning and titles the panel "New column". */
   mode?: "edit" | "create";
   initialTitle: string;
   initialCategory: "TODO" | "DONE";
@@ -65,12 +58,11 @@ interface ColumnOptionsModalProps {
     category: "TODO" | "DONE",
     color: string | null,
   ) => void;
-  /** Omitted in create mode (nothing to delete yet). */
   onDelete?: () => void;
   onClose: () => void;
 }
 
-// ── component ─────────────────────────────────────────────────────────────────
+// Component
 export function ColumnOptionsModal({
   open,
   mode = "edit",
@@ -83,14 +75,12 @@ export function ColumnOptionsModal({
   onClose,
 }: ColumnOptionsModalProps) {
   const isCreate = mode === "create";
-  // State initialises from props once. Caller (Column.tsx) remounts this via
-  // `key={`${columnId}-${open}`}` so each open starts fresh — no in-effect sync.
+  // Column.tsx remounts this per open via `key`, so state starts fresh.
   const [title, setTitle] = useState(initialTitle);
   const [category, setCategory] = useState<"TODO" | "DONE">(initialCategory);
   const [color, setColor] = useState<string | null>(initialColor);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
-  // Escape to close
   useEffect(() => {
     if (!open) return;
     const h = (e: KeyboardEvent) => {
@@ -110,23 +100,22 @@ export function ColumnOptionsModal({
   };
 
   const selectedHex = getColumnColorHex(color);
-  // Mirror the real column's D1 "Solid Cap" formulae so the preview is truthful.
   const accent = columnAccentColor(selectedHex, category === "DONE");
   const capColor = columnCapColor(accent);
   const bodyBg = columnBodyBg(accent);
 
   return createPortal(
     <>
-      {/* backdrop */}
+      {/* Backdrop */}
       <div className="fixed inset-0 z-[9998] bg-black/30" onClick={onClose} />
 
-      {/* panel */}
+      {/* Panel */}
       <div className="fixed inset-0 z-[9999] flex items-center justify-center pointer-events-none">
         <div
           className="pointer-events-auto w-full max-w-sm mx-4 bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden"
           onClick={(e) => e.stopPropagation()}
         >
-          {/* header */}
+          {/* Header */}
           <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-slate-100">
             <h2 className="text-sm font-bold text-slate-800">
               {isCreate ? "New column" : "Column options"}
@@ -140,7 +129,7 @@ export function ColumnOptionsModal({
           </div>
 
           <div className="px-5 py-4 flex flex-col gap-5">
-            {/* ── name ── */}
+            {/* Name */}
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
                 Name
@@ -156,7 +145,7 @@ export function ColumnOptionsModal({
               />
             </div>
 
-            {/* ── category ── */}
+            {/* Category */}
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
                 Category
@@ -180,13 +169,13 @@ export function ColumnOptionsModal({
               </div>
             </div>
 
-            {/* ── color ── identity, with a live header preview ── */}
+            {/* Colour */}
             <div className="flex flex-col gap-2">
               <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
                 Color
               </label>
 
-              {/* Live preview of the actual column — D1 Solid Cap */}
+              {/* Preview */}
               <div className="rounded-lg border border-slate-100 overflow-hidden">
                 <div
                   className="flex items-center gap-2 px-3 h-9"
@@ -207,8 +196,7 @@ export function ColumnOptionsModal({
                 </div>
               </div>
 
-              {/* Compact swatch row — colour only (names live in the tooltip)
-                  to keep the modal short. */}
+              {/* Swatches */}
               <div className="flex flex-wrap gap-2">
                 {COLUMN_COLOR_PALETTE.map(({ key, hex, label }) => {
                   const isSel = color === key;
@@ -244,7 +232,7 @@ export function ColumnOptionsModal({
             </div>
           )}
 
-          {/* footer */}
+          {/* Footer */}
           <div className="flex items-center justify-between px-5 py-4 border-t border-slate-100">
             {isCreate ? (
               <span />

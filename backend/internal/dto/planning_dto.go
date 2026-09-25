@@ -1,9 +1,7 @@
-// PATCH semantics for the Update* DTOs below (omit or null = no change; "" on
-// a required field = 400). See AGENTS.md, "REST API conventions".
+// PATCH semantics: see AGENTS.md "REST API conventions".
 package dto
 
-// PlanningSessionSummary is one row in the sessions list. Counts exclude dropped and
-// promoted items, so the badge shows only what is still actionable.
+// Counts exclude dropped and promoted items.
 type PlanningSessionSummary struct {
 	ID            string  `json:"id"`
 	BoardID       string  `json:"board_id"`
@@ -72,9 +70,7 @@ type UpdatePlanningItemRequest struct {
 	ImplementationNote *string  `json:"implementation_note" validate:"omitempty,max=10000"`
 }
 
-// CardSourceResponse describes which planning session and item a card was promoted
-// from. GET /api/cards/{cardID}/source returns null (not 404) when there is none.
-// pending_questions is capped server-side and excludes dropped and promoted questions.
+// null (not 404) when the card wasn't promoted.
 type CardSourceResponse struct {
 	Session          CardSourceSession    `json:"session"`
 	Item             CardSourceItem       `json:"item"`
@@ -100,9 +96,7 @@ type CardSourceQuestion struct {
 	Title string `json:"title"`
 }
 
-// PlanningCommentResponse is one row in an item's thread. Body is nil once soft-deleted;
-// the UI renders an italic placeholder with the original author so the thread does not
-// shift as comments are removed.
+// Body is nil once soft-deleted.
 type PlanningCommentResponse struct {
 	ID         string  `json:"id"`
 	ItemID     string  `json:"item_id"`

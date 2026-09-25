@@ -2,9 +2,7 @@ package middleware
 
 import "net/http"
 
-// SecurityHeaders sets a baseline of security-related response headers on every
-// reply. HSTS is gated on `production` because Strict-Transport-Security on a
-// non-HTTPS local dev server breaks browser caching for the dev domain.
+// HSTS only in production — it breaks local dev over plain HTTP.
 func SecurityHeaders(production bool) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

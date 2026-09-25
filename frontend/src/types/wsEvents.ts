@@ -1,7 +1,4 @@
-// The `type` tag on a board broadcast. UPPER_SNAKE, and DISTINCT from activity
-// `event_type` strings (dotted lower-case) that travel inside an ACTIVITY_CREATED
-// payload. Mirrors backend/internal/core/wsevent.go; scripts/check-ws-events.mjs
-// fails the build when the two drift.
+// Mirrors backend core/wsevent.go — `make check-ws-events` fails on drift (docs/adr/0007).
 export const WS_EVENT = {
   CardMoved: "CARD_MOVED",
   CardCreated: "CARD_CREATED",

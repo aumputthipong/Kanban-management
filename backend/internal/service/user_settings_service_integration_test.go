@@ -1,9 +1,5 @@
 //go:build integration
 
-// Integration tests for UserSettingsService. Get's first-read-materializes
-// behavior and Update's PATCH semantics both hinge on the UpsertUserSettings
-// query's own COALESCE-against-column-defaults, which only a real Postgres
-// round-trip can confirm.
 package service_test
 
 import (
@@ -53,7 +49,7 @@ func TestUserSettingsGet_SecondRead_ReturnsSameRowNotReset(t *testing.T) {
 func TestUserSettingsUpdate_PartialUpdate_PreservesOtherFields(t *testing.T) {
 	ctx := context.Background()
 	svc, userID := newSettingsFixture(t)
-	_, err := svc.Get(ctx, userID) // materialize defaults first
+	_, err := svc.Get(ctx, userID)
 	require.NoError(t, err)
 
 	showAll := true

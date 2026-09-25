@@ -81,7 +81,7 @@ lint-fe: ## ESLint
 	cd frontend && npm run lint
 
 .PHONY: check-comments
-check-comments: ## Enforce the comment budget (docs/adr/0006)
+check-comments: ## Enforce the comment budget (docs/adr/0011)
 	node scripts/check-comment-budget.mjs
 
 .PHONY: check-ws-events

@@ -3,8 +3,7 @@ import { apiClient, ApiError } from "@/lib/apiClient";
 import { useToastStore } from "@/store/useToastStore";
 import type { Column } from "@/types/board";
 
-// Restores the board to `snapshot` and tells the user the write did not land. 403 is
-// skipped because apiClient has already toasted it.
+// 403 is skipped — apiClient has already toasted it.
 function revertWith(snapshot: Column[], message: string) {
   return (err: unknown) => {
     useBoardStore.getState().setColumns(snapshot);
@@ -20,8 +19,7 @@ export function useColumnActions(boardId: string) {
     if (!current) return;
 
     useBoardStore.getState().updateColumnInStore(columnId, { title });
-    // The endpoint sets title and category outright, so a rename has to resend the
-    // category it already has rather than leave it out.
+    // The endpoint sets title and category together, so resend the category.
     apiClient(`/columns/${columnId}`, {
       method: "PATCH",
       data: { title, category: current.category, color: current.color },
@@ -50,8 +48,7 @@ export function useColumnActions(boardId: string) {
     }).catch(revertWith(snapshot, "แก้ไขคอลัมน์ไม่สำเร็จ"));
   };
 
-  // Create is the one action with nothing to apply optimistically: the server assigns
-  // the id and position, so the column is added once the response carries them.
+  // Not optimistic: the server assigns id and position.
   const handleAddColumn = async (
     title: string,
     category: "TODO" | "DONE" = "TODO",

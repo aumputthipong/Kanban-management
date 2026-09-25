@@ -1,6 +1,4 @@
-// Comment thread for one planning item. Lazy on purpose: nothing loads until the
-// consumer calls load(). ItemRow mounts one instance per visible row — see
-// docs/ARCHITECTURE.md, "Planning section", for why that stays cheap.
+// Lazy: nothing loads until load(). See docs/ARCHITECTURE.md "Planning section".
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useToastStore } from "@/store/useToastStore";
 import { planningApi } from "@/lib/planningApi";
@@ -34,8 +32,7 @@ export function usePlanningComments(itemId: string, currentUserId: string | null
     }
   }, [itemId, showToast]);
 
-  // Refetch on tab focus — collaborative enough that a stale thread confuses, but a
-  // background poll would burn requests on idle tabs.
+  // Refetch on tab focus instead of polling.
   useEffect(() => {
     if (!state.loaded) return;
     const onVisible = () => {

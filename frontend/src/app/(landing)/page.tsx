@@ -1,5 +1,3 @@
-// Hybrid landing — adapted from the design handoff but re-skinned with the
-// product's slate + blue palette so it feels of a piece with the rest of the app.
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight, Calendar, Clock } from "lucide-react";
@@ -14,7 +12,7 @@ export const metadata: Metadata = {
   description: "Real-time Kanban workspace. Drag a card, watch it travel.",
 };
 
-// ─── Atoms ────────────────────────────────────────────────────────────────────
+// Atoms
 
 function Avatar({
   initial,
@@ -146,7 +144,7 @@ function TaskCard({
   );
 }
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
+// Page
 
 const STEPS = [
   {
@@ -166,10 +164,6 @@ const STEPS = [
   },
 ] as const;
 
-// Authenticated visitors don't need the marketing page — bounce them straight
-// to their preferred workspace surface. We probe /me/settings server-side; a
-// 401 (or any failure) means the cookie is missing/expired, so we render the
-// landing page as the unauthenticated fallback.
 async function resolveAuthedRedirect(): Promise<string | null> {
   const store = await cookies();
   if (!store.get("auth_token")) return null;
@@ -190,7 +184,7 @@ export default async function LandingPage() {
 
   return (
     <div className="bg-white text-slate-900 font-sans">
-      {/* HERO */}
+      {/* Hero */}
       <section className="px-6 md:px-12 pt-16 pb-24 max-w-6xl mx-auto">
         <div className="flex items-center justify-between text-xs text-slate-400 mb-8 font-medium">
           <span>A field manual for shipping</span>
@@ -228,7 +222,7 @@ export default async function LandingPage() {
             </p>
           </div>
 
-          {/* Right — two task cards stacked & overlapping */}
+          {/* Right — task cards */}
           <div className="relative h-80 hidden md:flex items-center justify-center">
             <div className="relative w-72 h-72">
               <div className="absolute top-0 right-0 w-60 rotate-3 shadow-2xl shadow-slate-900/20 z-10">
@@ -256,7 +250,7 @@ export default async function LandingPage() {
         </div>
       </section>
 
-      {/* SHOWCASE — Kanban app frame */}
+      {/* Showcase */}
       <section className="bg-slate-50 border-y border-slate-200 px-6 md:px-12 py-20">
         <div className="max-w-6xl mx-auto">
           <div className="flex items-end justify-between mb-10">
@@ -449,7 +443,7 @@ export default async function LandingPage() {
         </div>
       </section>
 
-      {/* STEPS */}
+      {/* Steps */}
       <section className="px-6 md:px-12 py-24">
         <div className="max-w-6xl mx-auto">
           <div className="flex items-end justify-between mb-12">
@@ -532,7 +526,7 @@ export default async function LandingPage() {
         </div>
       </section>
 
-      {/* FOOTER */}
+      {/* Footer */}
       <footer className="bg-slate-900 text-slate-100 px-6 md:px-12 pt-16 pb-10">
         <div className="max-w-2xl mx-auto flex flex-col items-center text-center">
           <h2 className="text-2xl md:text-3xl font-bold tracking-tight">

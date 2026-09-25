@@ -1,4 +1,3 @@
-// Wraps the stash page with the app Sidebar.
 import { Sidebar } from "@/components/layout/Sidebar";
 import { apiClient } from "@/lib/apiClient";
 import { Board } from "@/types/board";
@@ -6,7 +5,6 @@ import { cookies } from "next/headers";
 
 async function getBoards(): Promise<Board[]> {
   try {
-    // In a Server Component, forward the request cookie explicitly for auth.
     const cookieStore = await cookies();
 
     return await apiClient<Board[]>("/boards", {

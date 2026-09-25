@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Clock, Sparkles } from "lucide-react";
 
-/** "อีกไม่ถึงชั่วโมง" once under an hour — a "0 ชั่วโมง" countdown reads like it already expired. */
+/** "อีกไม่ถึงชั่วโมง" under an hour — "0 ชั่วโมง" reads as already expired. */
 function remainingLabel(expiresAt: string): string | null {
   const msLeft = new Date(expiresAt).getTime() - Date.now();
   if (Number.isNaN(msLeft) || msLeft <= 0) return null;
@@ -9,11 +9,6 @@ function remainingLabel(expiresAt: string): string | null {
   return hours < 1 ? "อีกไม่ถึงชั่วโมง" : `อีก ${hours} ชั่วโมง`;
 }
 
-/**
- * Shown only inside a demo session. A visitor dropped on a board with no context does
- * not know which parts are worth touching, so the bar names them — and states the two
- * limits that surprise people later: the sandbox expires, and signing up starts empty.
- */
 export function DemoBanner({ expiresAt }: { expiresAt?: string | null }) {
   const remaining = expiresAt ? remainingLabel(expiresAt) : null;
 

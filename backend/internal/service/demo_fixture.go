@@ -1,4 +1,3 @@
-// internal/service/demo_fixture.go
 package service
 
 import (
@@ -9,13 +8,9 @@ import (
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/db"
 )
 
-// SampleBoardDescription is surfaced in the UI as the demo's "what to try" line.
 const SampleBoardDescription = "Sample board — try dragging cards, opening a card, and the Planning tab. Open two tabs to see realtime sync."
 
-// Credentials for the two accounts `cmd/seed` creates. Published in the README so
-// a visitor can sign in without registering — not secret by design. They live
-// here rather than in cmd/seed because DemoService needs SeedMemberEmail to add
-// the companion member to each sandbox.
+// Published in the README — not secret. DemoService needs SeedMemberEmail.
 const (
 	SeedDemoEmail      = "demo@turtask.app"
 	SeedDemoPassword   = "demodemo123"
@@ -25,18 +20,13 @@ const (
 
 const sampleBoardColor = "#2563EB"
 
-// SampleBoardDeps is the slice of the service layer the fixture needs. Taking it
-// as a struct keeps the fixture usable from both cmd/seed and DemoService without
-// either owning the other's wiring.
 type SampleBoardDeps struct {
 	Queries  *db.Queries
 	Boards   *BoardService
 	Commands *BoardCommandService
 }
 
-// SeedSampleBoard builds the demo "Product Launch" board: four columns, eight
-// cards, two of them Done, and a planning session. memberID, when non-nil, joins
-// as a second member. Shared by cmd/seed and DemoService so the two never drift.
+// Shared by cmd/seed and DemoService so the two never drift.
 func SeedSampleBoard(ctx context.Context, d SampleBoardDeps, ownerID string, memberID *string) (string, error) {
 	desc := SampleBoardDescription
 	color := sampleBoardColor
@@ -53,7 +43,6 @@ func SeedSampleBoard(ctx context.Context, d SampleBoardDeps, ownerID string, mem
 		}
 	}
 
-	// CreateBoard seeds the four default columns; look them up by title.
 	cols, err := d.Boards.GetColumnsByBoardID(ctx, boardID)
 	if err != nil {
 		return "", fmt.Errorf("load columns: %w", err)
@@ -67,7 +56,6 @@ func SeedSampleBoard(ctx context.Context, d SampleBoardDeps, ownerID string, mem
 	day := func(n int) *time.Time { t := now.AddDate(0, 0, n); return &t }
 	sp := func(s string) *string { return &s }
 
-	// position counters per column so cards keep a stable order.
 	pos := map[string]float64{}
 	mk := func(colTitle, title, priority string, due *time.Time, assignee *string) (string, error) {
 		c := col[colTitle]
@@ -87,8 +75,7 @@ func SeedSampleBoard(ctx context.Context, d SampleBoardDeps, ownerID string, mem
 		return row.ID, nil
 	}
 
-	// A nil memberID leaves the member-assigned cards unassigned rather than
-	// piling every card on the owner — an all-mine board reads wrong.
+	// nil memberID leaves those cards unassigned rather than piling them on the owner.
 	cards := []struct {
 		colTitle, title, priority string
 		due                       *time.Time
@@ -107,8 +94,7 @@ func SeedSampleBoard(ctx context.Context, d SampleBoardDeps, ownerID string, mem
 		}
 	}
 
-	// Done cards: create them, then MoveCard into the Done column so the service
-	// stamps is_done + completed_at the same way a real move does.
+	// Move via MoveCard so is_done + completed_at are stamped like a real move.
 	done := col["Done"]
 	for _, title := range []string{"Project scaffolding", "CI pipeline"} {
 		id, err := mk("To Do", title, "medium", nil, &ownerID)

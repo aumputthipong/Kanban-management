@@ -21,11 +21,9 @@ interface Props {
       subtasks: string[];
     },
   ) => void;
-  /** Preselect a column (e.g. opened from a column's "+" button). */
   defaultColumnId?: string;
 }
 
-// Local YYYY-MM-DD for a day offset (matches CardFormFields' quick-date math).
 function offsetDate(days: number): string {
   const d = new Date();
   d.setDate(d.getDate() + days);
@@ -38,8 +36,6 @@ const PRIORITIES = [
   { key: "high", label: "High", text: "text-red-600" },
 ] as const;
 
-// Avatar + name pill for one assignee option. Names stay visible (no hover) so
-// a small team can pick at a glance. Active = filled blue.
 function AssigneeChip({
   active,
   colorId,
@@ -74,9 +70,6 @@ function AssigneeChip({
   );
 }
 
-// "Create with essential context", distinct from the auto-save edit modal. Fast path is
-// title + Enter; subtasks stay collapsed so quick capture never sees them. Fires one
-// CARD_CREATED then closes. Over the usual size threshold on purpose — it is one form.
 export function CreateTaskModal({ onClose, onCreate, defaultColumnId }: Props) {
   const columns = useBoardStore((s) => s.columns);
   const boardMembers = useBoardStore((s) => s.boardMembers);
@@ -91,8 +84,7 @@ export function CreateTaskModal({ onClose, onCreate, defaultColumnId }: Props) {
   const [columnId, setColumnId] = useState(
     () => defaultColumnId ?? todoColumns[0]?.id ?? "",
   );
-  // Default the assignee to the creator — the common case. "Unassigned" (null) is
-  // a deliberate click, never the silent default.
+  // Defaults to the creator; "unassigned" is always a deliberate click.
   const [assigneeId, setAssigneeId] = useState<string | null>(currentUserId);
   const [priority, setPriority] = useState<string | null>(null);
   const [dueDate, setDueDate] = useState("");
@@ -122,12 +114,8 @@ export function CreateTaskModal({ onClose, onCreate, defaultColumnId }: Props) {
   };
 
   const fieldLabel = "text-[11px] font-bold uppercase tracking-wider text-slate-400";
-  // One compact control geometry for every text input/select/textarea so the
-  // modal reads as one consistent set (radius + padding + border) — sized to the
-  // small, tidy Due Date controls rather than chunkier inputs.
   const inputClass =
     "text-sm text-slate-700 placeholder-slate-400 bg-white border border-slate-200 rounded-md px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-400";
-  // Quick-select / toggle chips — the original compact Due Date chip size.
   const chipClass =
     "inline-flex items-center px-2.5 py-1 text-[11px] font-semibold rounded-md border transition-colors";
 
@@ -153,7 +141,7 @@ export function CreateTaskModal({ onClose, onCreate, defaultColumnId }: Props) {
 
           {/* Body */}
           <div className="px-6 py-4 flex flex-col gap-4 overflow-y-auto">
-            {/* Content zone — what the task IS. */}
+            {/* Title */}
             <input
               autoFocus
               value={title}
@@ -173,7 +161,7 @@ export function CreateTaskModal({ onClose, onCreate, defaultColumnId }: Props) {
               className={`w-full ${inputClass} resize-none`}
             />
 
-            {/* Subtasks — collapsed by default so quick capture never sees them. */}
+            {/* Subtasks */}
             <div>
               {subtasks.length === 0 ? (
                 <button
@@ -228,11 +216,9 @@ export function CreateTaskModal({ onClose, onCreate, defaultColumnId }: Props) {
               )}
             </div>
 
-            {/* Meta zone — assignee / due / priority / column, kept compact so it
-                never crowds the content above. */}
+            {/* Meta */}
             <div className="flex flex-col gap-3 rounded-xl border border-slate-100 bg-slate-50/60 px-3 py-3">
-              {/* Assignee — avatar + name for every option (small-team persona:
-                  read who's who at a glance). 3 states: me / a member / unassigned. */}
+              {/* Assignee */}
               <div>
                 <label className={`${fieldLabel} flex items-center gap-1 mb-1.5`}>
                   <User size={11} /> Assignee
@@ -257,8 +243,7 @@ export function CreateTaskModal({ onClose, onCreate, defaultColumnId }: Props) {
                       onClick={() => setAssigneeId(m.user_id)}
                     />
                   ))}
-                  {/* Unassigned = deliberate "needs an owner" — dashed outline sets
-                      it apart from real people, not a silent default. */}
+                  {/* Unassigned */}
                   <button
                     type="button"
                     onClick={() => setAssigneeId(null)}
@@ -314,8 +299,7 @@ export function CreateTaskModal({ onClose, onCreate, defaultColumnId }: Props) {
                 </div>
               </div>
 
-              {/* Priority (compact flag chips, not a full-width bar) + Column,
-                  sharing one row to reclaim vertical space. */}
+              {/* Priority + column */}
               <div className="flex flex-wrap items-end gap-x-5 gap-y-3">
                 <div>
                   <label className={`${fieldLabel} block mb-1.5`}>Priority</label>

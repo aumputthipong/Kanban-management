@@ -1,4 +1,3 @@
-// src/lib/session.ts
 import { cookies } from "next/headers";
 
 export interface SessionUser {
@@ -13,12 +12,11 @@ export async function getSession(): Promise<SessionUser | null> {
   if (!token) return null;
 
   try {
-    // Decode the JWT payload (already verified by Go; no need to re-verify).
+    // Already verified by the backend.
     const payload = JSON.parse(
       Buffer.from(token.value.split(".")[1], "base64url").toString()
     );
 
-    // Check expiry.
     if (payload.exp && Date.now() / 1000 > payload.exp) return null;
 
     return payload as SessionUser;

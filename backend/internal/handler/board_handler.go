@@ -22,9 +22,7 @@ type BoardHandler struct {
 	broadcaster     Broadcaster
 }
 
-// NewBoardHandler wires the board handler. settingsService backs /my-tasks, which reads
-// the caller's timezone and "show all cards" preference. A nil activity keeps mutations
-// working but skips the audit row — acceptable only in unit tests.
+// A nil activity skips the audit row — unit tests only.
 func NewBoardHandler(
 	boardService service.BoardServicer,
 	settingsService service.UserSettingsServicer,
@@ -39,8 +37,6 @@ func NewBoardHandler(
 	}
 }
 
-// GetAllBoards lists every board the caller is a member of.
-//
 // @Summary  List my boards
 // @Tags     boards
 // @Produce  json
@@ -78,8 +74,6 @@ func (h *BoardHandler) GetAllBoards(w http.ResponseWriter, r *http.Request) erro
 	return nil
 }
 
-// GetBoardData returns the columns + cards for one board (full board view).
-//
 // @Summary  Get board contents
 // @Tags     boards
 // @Produce  json
@@ -100,9 +94,7 @@ func (h *BoardHandler) GetBoardData(w http.ResponseWriter, r *http.Request) erro
 		return httputil.NewAPIError(http.StatusInternalServerError, "Failed to fetch board data", err)
 	}
 
-	// Bump "recently opened" sort for this user. Detached from r.Context()
-	// because the request finishes before the write — using r.Context() would
-	// race the cancel. SQL-level throttle (5 min) keeps the write rate sane.
+	// Detached from r.Context(): the write outlives the request.
 	if userID, ok := r.Context().Value(middleware.UserIDKey).(string); ok && userID != "" {
 		go func(boardID, userID string) {
 			defer func() {
@@ -122,8 +114,6 @@ func (h *BoardHandler) GetBoardData(w http.ResponseWriter, r *http.Request) erro
 	return nil
 }
 
-// CreateBoard creates a new board owned by the caller.
-//
 // @Summary  Create board
 // @Tags     boards
 // @Accept   json
@@ -156,8 +146,6 @@ func (h *BoardHandler) CreateBoard(w http.ResponseWriter, r *http.Request) error
 	return nil
 }
 
-// UpdateBoard updates a board's title and/or budget. Manager+ only.
-//
 // @Summary  Update board
 // @Tags     boards
 // @Accept   json
@@ -196,9 +184,6 @@ func (h *BoardHandler) UpdateBoard(w http.ResponseWriter, r *http.Request) error
 	return nil
 }
 
-// StashBoard stashes a board (recoverable soft-delete; sets deleted_at).
-// Owner only.
-//
 // @Summary  Stash board
 // @Tags     boards
 // @Security CookieAuth
@@ -220,8 +205,6 @@ func (h *BoardHandler) StashBoard(w http.ResponseWriter, r *http.Request) error 
 	return nil
 }
 
-// GetStashedBoards lists stashed boards owned by the caller.
-//
 // @Summary  List stashed boards
 // @Tags     stash
 // @Produce  json
@@ -242,8 +225,6 @@ func (h *BoardHandler) GetStashedBoards(w http.ResponseWriter, r *http.Request) 
 	return nil
 }
 
-// HardDelete permanently removes a stashed board. Owner only.
-//
 // @Summary  Permanently delete stashed board
 // @Tags     stash
 // @Security CookieAuth
@@ -265,8 +246,6 @@ func (h *BoardHandler) HardDelete(w http.ResponseWriter, r *http.Request) error 
 	return nil
 }
 
-// RestoreBoard restores a stashed board. Owner only.
-//
 // @Summary  Restore stashed board
 // @Tags     stash
 // @Security CookieAuth

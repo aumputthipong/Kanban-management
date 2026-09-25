@@ -7,7 +7,6 @@ import (
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/dto"
 )
 
-// MockSubtaskService implements service.SubtaskServicer
 type MockSubtaskService struct {
 	CreateSubtaskFn       func(ctx context.Context, cardID, title string) (db.CardSubtask, error)
 	GetSubtasksByCardIDFn func(ctx context.Context, cardID string) ([]db.CardSubtask, error)

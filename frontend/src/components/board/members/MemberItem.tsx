@@ -36,7 +36,6 @@ export function MemberItem({ member, isLoading, onRoleChange, onRemove }: Member
           {member.full_name.charAt(0).toUpperCase()}
         </div>
 
-        {/* name + email on one baseline-aligned line */}
         <div className="flex min-w-0 flex-1 items-baseline gap-2.5">
           <span className="flex shrink-0 items-center gap-2">
             <span className="text-[14px] font-semibold tracking-tight text-slate-900">

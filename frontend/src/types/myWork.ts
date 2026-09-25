@@ -1,6 +1,4 @@
-// Shape of GET /api/my-tasks. `cards` is pre-filtered server-side; `counts` always
-// covers the full inbox so the filter chips render from one request.
-
+// `cards` is filtered server-side; `counts` always covers the full inbox.
 export type MyWorkStatus = "todo" | "in_progress" | "done";
 
 export type MyWorkGroup =
@@ -10,7 +8,6 @@ export type MyWorkGroup =
   | "later"
   | "no_date";
 
-/** Tab of the main My Work note. Overdue is secondary: usually near-empty in real use. */
 export type MyWorkNoteTab = "today" | "overdue";
 
 export type MyWorkFilter ="all" | "overdue" | "today" | "this_week" | "no_date";

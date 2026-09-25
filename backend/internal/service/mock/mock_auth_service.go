@@ -7,15 +7,14 @@ import (
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/service"
 )
 
-// MockAuthService implements service.AuthServicer
 type MockAuthService struct {
-	RegisterFn             func(ctx context.Context, arg service.RegisterParams) (db.User, error)
-	LoginFn                func(ctx context.Context, email, password string) (db.User, error)
-	UpsertOAuthUserFn      func(ctx context.Context, email, fullName, provider, providerID string) (db.User, error)
-	GetUserByIDFn          func(ctx context.Context, userID string) (db.GetUserByIDRow, error)
-	IssueRefreshTokenFn    func(ctx context.Context, userID, userAgent, ip string) (string, error)
-	RotateRefreshTokenFn   func(ctx context.Context, rawToken, userAgent, ip string) (service.RefreshRotationResult, error)
-	RevokeRefreshTokenFn   func(ctx context.Context, rawToken string) error
+	RegisterFn           func(ctx context.Context, arg service.RegisterParams) (db.User, error)
+	LoginFn              func(ctx context.Context, email, password string) (db.User, error)
+	UpsertOAuthUserFn    func(ctx context.Context, email, fullName, provider, providerID string) (db.User, error)
+	GetUserByIDFn        func(ctx context.Context, userID string) (db.GetUserByIDRow, error)
+	IssueRefreshTokenFn  func(ctx context.Context, userID, userAgent, ip string) (string, error)
+	RotateRefreshTokenFn func(ctx context.Context, rawToken, userAgent, ip string) (service.RefreshRotationResult, error)
+	RevokeRefreshTokenFn func(ctx context.Context, rawToken string) error
 }
 
 func (m *MockAuthService) Register(ctx context.Context, arg service.RegisterParams) (db.User, error) {

@@ -10,14 +10,13 @@ func RespondJSON(w http.ResponseWriter, status int, payload interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	if payload != nil {
-		// The status is already sent, so a failure here can only be logged.
+		// The status is already sent; a failure can only be logged.
 		if err := json.NewEncoder(w).Encode(payload); err != nil {
 			slog.Warn("encode JSON response", "status", status, "err", err)
 		}
 	}
 }
 
-// ErrorResponse is the canonical shape returned for any non-2xx HTTP response.
 type ErrorResponse struct {
 	Error string `json:"error"`
 }

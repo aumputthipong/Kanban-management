@@ -15,21 +15,15 @@ import (
 	"github.com/google/uuid"
 )
 
-// validate is a process-wide validator instance. It is safe for concurrent use
-// per the go-playground/validator docs and caches struct reflection metadata.
 var (
 	validate     *validator.Validate
 	validateOnce sync.Once
 )
 
-// Validator returns the shared validator instance, initializing it lazily.
-// Exposed so tests / future custom validators can register against the same
-// instance.
 func Validator() *validator.Validate {
 	validateOnce.Do(func() {
 		validate = validator.New(validator.WithRequiredStructEnabled())
-		// Use the json tag as the field name in error messages so clients see
-		// "title" instead of "Title".
+		// Error messages use the json field name.
 		validate.RegisterTagNameFunc(func(fld reflect.StructField) string {
 			name := strings.SplitN(fld.Tag.Get("json"), ",", 2)[0]
 			if name == "-" {
@@ -41,8 +35,7 @@ func Validator() *validator.Validate {
 	return validate
 }
 
-// DecodeJSON decodes the request body into v. It does NOT validate the result.
-// Prefer DecodeAndValidate for new code.
+// Does not validate — prefer DecodeAndValidate.
 func DecodeJSON(r *http.Request, v interface{}) error {
 	dec := json.NewDecoder(r.Body)
 	dec.DisallowUnknownFields()
@@ -55,9 +48,6 @@ func DecodeJSON(r *http.Request, v interface{}) error {
 	return nil
 }
 
-// DecodeAndValidate decodes the JSON body into v and runs struct validation
-// against `validate:"..."` tags. On failure it returns an *APIError with a 400
-// status and a human-readable message — handlers can return it directly.
 func DecodeAndValidate(r *http.Request, v interface{}) error {
 	if err := DecodeJSON(r, v); err != nil {
 		return NewAPIError(http.StatusBadRequest, "Invalid request body: "+err.Error(), err)
@@ -68,8 +58,6 @@ func DecodeAndValidate(r *http.Request, v interface{}) error {
 	return nil
 }
 
-// formatValidationError converts validator's verbose error into a single
-// client-friendly sentence. Multiple field errors are joined with "; ".
 func formatValidationError(err error) string {
 	var ve validator.ValidationErrors
 	if !errors.As(err, &ve) {
@@ -107,8 +95,7 @@ func tagToMessage(fe validator.FieldError) string {
 	}
 }
 
-// GetUUIDParam validates that the URL param is a well-formed UUID and returns
-// it as a string (sqlc uses string IDs, so uuid.Parse only checks the format).
+// Format check only; sqlc uses string ids.
 func GetUUIDParam(r *http.Request, key string) (string, error) {
 	paramStr := chi.URLParam(r, key)
 	if paramStr == "" {

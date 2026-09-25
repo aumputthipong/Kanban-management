@@ -1,15 +1,12 @@
 import { create } from "zustand";
 
-/**
- * One toast in the top-level `<Toaster>`. `actionLabel` and `onAction` are paired —
- * supply both for an undo affordance, neither for a plain notice.
- */
+/** Supply actionLabel + onAction together for an undo affordance. */
 export interface Toast {
   id: string;
   message: string;
   actionLabel?: string;
   onAction?: () => void;
-  /** Auto-dismiss after this many ms. Pass `0` to keep the toast sticky. */
+  /** 0 = sticky. */
   duration: number;
 }
 
@@ -19,10 +16,6 @@ interface ToastState {
   dismiss: (id: string) => void;
 }
 
-/**
- * Global queue for transient UI feedback. `show()` returns the id so a caller can
- * dismiss programmatically; `duration: 0` keeps a toast sticky.
- */
 export const useToastStore = create<ToastState>((set) => ({
   toasts: [],
   show: ({ duration = 5000, ...rest }) => {

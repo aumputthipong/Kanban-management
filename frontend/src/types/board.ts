@@ -24,9 +24,7 @@ export interface Card {
   completed_subtasks: number; // from COUNT
   subtasks?: Subtask[];
   tags?: Tag[];
-  // Free-text fields populated either by PromoteItem (copied from the source
-  // planning row) or by the card detail modal directly. Null = never set;
-  // empty string = explicitly cleared.
+  // null = never set; "" = explicitly cleared.
   acceptance_criteria?: string | null;
   implementation_note?: string | null;
 }
@@ -52,9 +50,7 @@ export interface Board {
   icon?: string;
   created_at: string;
   updated_at: string;
-  /** When the current user last opened this board's kanban view. Null for
-   * memberships that pre-date the tracking column — UI falls back to
-   * created_at in that case to stay stable against other members' edits. */
+  /** Null for memberships older than the tracking column. */
   last_accessed_at?: string | null;
   total_cards: number;
   done_cards: number;
@@ -96,8 +92,7 @@ export interface CardUpdateForm {
   priority: string;
   estimated_hours: string;
   tags: Tag[];
-  // Stored as "" in form state (textareas hate undefined) and sent as "" when cleared.
-  // Backend COALESCE handles unchanged-omit, so a title edit cannot wipe promoted AC.
+  // "" in form state (textareas hate undefined), sent as "" when cleared.
   acceptance_criteria: string;
   implementation_note: string;
 }

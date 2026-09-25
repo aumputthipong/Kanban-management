@@ -1,8 +1,5 @@
 "use client";
 
-// The row's secondary actions behind a single overflow menu, so the row reads as one
-// primary action plus a quiet "more". Items carry Thai labels — bare icons needed a
-// hover to decode. Batch send lives in select-mode from the toolbar, not here.
 import { useEffect, useRef, useState } from "react";
 import {
   Ban,
@@ -50,7 +47,7 @@ export function ItemActionMenu({
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement | null>(null);
 
-  // Dismiss on outside mousedown, before the click lands, so closing does not edit the row.
+  // mousedown, not click — closing must not edit the row.
   useEffect(() => {
     if (!open) return;
     const onMouseDown = (e: MouseEvent) => {
@@ -93,9 +90,7 @@ export function ItemActionMenu({
             เปลี่ยนชื่อ
           </MenuItem>
 
-          {/* Change type — moved out of the row chip into the menu so every row
-              action lives here. Hidden on promoted items (retype is blocked
-              once an item has a board card). */}
+          {/* Change type (hidden once promoted) */}
           {!promoted && (
             <div className="px-3 py-1.5">
               <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400">

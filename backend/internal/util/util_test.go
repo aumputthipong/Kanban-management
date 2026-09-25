@@ -9,9 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// ────────────────────────────────────────────────
 // ParseTime
-// ────────────────────────────────────────────────
 
 func TestParseTime(t *testing.T) {
 	t.Run("RFC3339 format", func(t *testing.T) {
@@ -38,9 +36,7 @@ func TestParseTime(t *testing.T) {
 	})
 }
 
-// ────────────────────────────────────────────────
 // StringToTimePtr
-// ────────────────────────────────────────────────
 
 func TestStringToTimePtr(t *testing.T) {
 	t.Run("valid RFC3339 string returns pointer", func(t *testing.T) {
@@ -60,9 +56,7 @@ func TestStringToTimePtr(t *testing.T) {
 	})
 }
 
-// ────────────────────────────────────────────────
 // PtrStringToTimePtr
-// ────────────────────────────────────────────────
 
 func TestPtrStringToTimePtr(t *testing.T) {
 	t.Run("nil input returns nil", func(t *testing.T) {
@@ -78,9 +72,7 @@ func TestPtrStringToTimePtr(t *testing.T) {
 	})
 }
 
-// ────────────────────────────────────────────────
 // StringToPtr
-// ────────────────────────────────────────────────
 
 func TestStringToPtr(t *testing.T) {
 	t.Run("non-empty string returns pointer", func(t *testing.T) {
@@ -95,9 +87,7 @@ func TestStringToPtr(t *testing.T) {
 	})
 }
 
-// ────────────────────────────────────────────────
 // FloatToPgNumeric / PtrFloatToPgNumeric
-// ────────────────────────────────────────────────
 
 func TestFloatToPgNumeric(t *testing.T) {
 	t.Run("non-zero value is valid", func(t *testing.T) {
@@ -124,9 +114,7 @@ func TestPtrFloatToPgNumeric(t *testing.T) {
 	})
 }
 
-// ────────────────────────────────────────────────
 // PgNumericToFloat64Ptr
-// ────────────────────────────────────────────────
 
 func TestPgNumericToFloat64Ptr(t *testing.T) {
 	t.Run("invalid numeric returns nil", func(t *testing.T) {
@@ -140,7 +128,6 @@ func TestPgNumericToFloat64Ptr(t *testing.T) {
 	})
 
 	t.Run("valid numeric with no exponent roundtrips correctly", func(t *testing.T) {
-		// Build via FloatToPgNumeric then convert back.
 		n := FloatToPgNumeric(42.0)
 		result := PgNumericToFloat64Ptr(n)
 		require.NotNil(t, result)
@@ -148,9 +135,7 @@ func TestPgNumericToFloat64Ptr(t *testing.T) {
 	})
 }
 
-// ────────────────────────────────────────────────
 // TimestamptzToTimePtr
-// ────────────────────────────────────────────────
 
 func TestTimestamptzToTimePtr(t *testing.T) {
 	t.Run("invalid timestamptz returns nil", func(t *testing.T) {
@@ -166,9 +151,7 @@ func TestTimestamptzToTimePtr(t *testing.T) {
 	})
 }
 
-// ────────────────────────────────────────────────
 // TimeToTimestamptz
-// ────────────────────────────────────────────────
 
 func TestTimeToTimestamptz(t *testing.T) {
 	t.Run("nil time returns invalid timestamptz", func(t *testing.T) {

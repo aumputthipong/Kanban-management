@@ -44,9 +44,7 @@ export const TaskCard = memo(function TaskCard({
 }: CardProps) {
   const [isDetailOpen, setIsDetailOpen] = useState(false);
 
-  // Deep-link highlight: when this card is the navigation target (e.g. opened
-  // from My Work's open-in-board), scroll it into view and hold a brief ring so
-  // the user can spot it, then clear the one-shot signal.
+  // Deep-link target: scroll into view, ring briefly, then clear.
   const isHighlighted = useCardHighlightStore((s) => s.targetId === card.id);
   const clearHighlight = useCardHighlightStore((s) => s.setTarget);
   useEffect(() => {
@@ -120,7 +118,7 @@ export const TaskCard = memo(function TaskCard({
               </div>
             ) : null}
 
-            {/* Done = check icon + state-done tint (design.md: never strikethrough) */}
+            {/* Done = check icon, never strikethrough (design.md) */}
             <div className="flex items-start gap-1.5">
               {card.is_done && (
                 <span className="mt-px shrink-0 w-[18px] h-[18px] rounded-full bg-emerald-600 text-white flex items-center justify-center">
@@ -164,7 +162,7 @@ export const TaskCard = memo(function TaskCard({
           </div>
         )}
 
-        {/* Footer — due date, estimated hours, assignee */}
+        {/* Footer */}
         <div className="flex items-center justify-between pl-2 pt-1">
           <div className="flex items-center gap-2">
             <span className="flex items-center gap-1 text-[10px] text-slate-400">

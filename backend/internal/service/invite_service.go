@@ -13,18 +13,14 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// Accept-path outcomes the handler maps to HTTP codes.
 var (
 	ErrInviteInvalid = errors.New("invite link is invalid or revoked")
 	ErrInviteExpired = errors.New("invite link has expired")
 )
 
-// How long a freshly minted invite link stays valid.
 const inviteValidity = 7 * 24 * time.Hour
 
-// InviteService owns shareable board invite links. Kept separate from
-// BoardService so neither grows unwieldy; it needs the pool because regenerating
-// a link (revoke-old + create-new) is a single transaction.
+// Needs the pool: regenerating a link is revoke + create in one transaction.
 type InviteService struct {
 	pool    *pgxpool.Pool
 	queries *db.Queries
@@ -34,15 +30,12 @@ func NewInviteService(pool *pgxpool.Pool, queries *db.Queries) *InviteService {
 	return &InviteService{pool: pool, queries: queries}
 }
 
-// InviteLink is the usable link surfaced to the inviter — the opaque token (the
-// frontend builds the full URL) plus when it stops working.
 type InviteLink struct {
 	Token     string
 	ExpiresAt time.Time
 }
 
-// CreateInvite (re)generates the board's link: revokes any active link then
-// mints a fresh one, atomically, so a board has at most one live link.
+// Revoke + create atomically, so a board has at most one live link.
 func (s *InviteService) CreateInvite(ctx context.Context, boardID, creatorID string) (InviteLink, error) {
 	token, err := generateInviteToken()
 	if err != nil {
@@ -74,8 +67,6 @@ func (s *InviteService) CreateInvite(ctx context.Context, boardID, creatorID str
 	return InviteLink{Token: row.Token, ExpiresAt: row.ExpiresAt}, nil
 }
 
-// GetActiveInvite returns the board's current usable link, or ok=false when
-// there's none (never created / expired / revoked).
 func (s *InviteService) GetActiveInvite(ctx context.Context, boardID string) (InviteLink, bool, error) {
 	row, err := s.queries.GetActiveBoardInvite(ctx, boardID)
 	if err != nil {
@@ -87,14 +78,11 @@ func (s *InviteService) GetActiveInvite(ctx context.Context, boardID string) (In
 	return InviteLink{Token: row.Token, ExpiresAt: row.ExpiresAt}, true, nil
 }
 
-// RevokeInvites turns off every active invite link for the board.
 func (s *InviteService) RevokeInvites(ctx context.Context, boardID string) error {
 	return s.queries.RevokeActiveBoardInvites(ctx, boardID)
 }
 
-// AcceptInvite validates a token and joins the caller to the board as a member.
-// Idempotent — an existing member gets the board id back with joined=false. Returns
-// ErrInviteInvalid (unknown / revoked) or ErrInviteExpired.
+// Idempotent: an existing member gets joined=false.
 func (s *InviteService) AcceptInvite(ctx context.Context, token, userID string) (string, bool, error) {
 	inv, err := s.queries.GetBoardInviteByToken(ctx, token)
 	if err != nil {
@@ -110,7 +98,7 @@ func (s *InviteService) AcceptInvite(ctx context.Context, token, userID string) 
 		return "", false, ErrInviteExpired
 	}
 
-	// ON CONFLICT keeps a double-clicked join idempotent; a read-then-insert 500s the loser.
+	// ON CONFLICT keeps a double-clicked join idempotent.
 	_, err = s.queries.JoinBoardMember(ctx, db.JoinBoardMemberParams{
 		BoardID: inv.BoardID,
 		UserID:  userID,
@@ -125,7 +113,7 @@ func (s *InviteService) AcceptInvite(ctx context.Context, token, userID string) 
 	return inv.BoardID, true, nil
 }
 
-// generateInviteToken returns an opaque, URL-safe random token (192 bits).
+// 192 bits, URL-safe.
 func generateInviteToken() (string, error) {
 	b := make([]byte, 24)
 	if _, err := rand.Read(b); err != nil {

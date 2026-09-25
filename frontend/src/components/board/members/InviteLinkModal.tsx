@@ -8,9 +8,6 @@ import { inviteApi, type InviteLink } from "@/lib/inviteApi";
 import { useToastStore } from "@/store/useToastStore";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 
-// Opening this guarantees a ready-to-share link: it reuses the board's active one or
-// quietly mints a replacement, so the manager never thinks about lifecycle. The link
-// stays hidden until opened (less leak on screen-share); "New link" invalidates it.
 export function InviteLinkModal({
   boardId,
   onClose,

@@ -33,11 +33,6 @@ interface MemberGroupProps {
   onRemove: (userId: string) => void;
 }
 
-/**
- * Renders a compact group-header strip + its member rows as siblings (no own
- * card). All groups share one outer card in BoardMembersSection — the hairline
- * borders create one continuous, space-efficient list.
- */
 export function MemberGroup({
   role,
   members,

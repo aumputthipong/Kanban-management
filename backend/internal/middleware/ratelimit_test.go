@@ -9,8 +9,6 @@ import (
 	"github.com/go-chi/httprate"
 )
 
-// limitOne wraps a 1-per-minute limiter in the resolver, mirroring how setupRoutes
-// stacks them. Each call gets its own limiter, so buckets never leak between tests.
 func limitOne(trustedProxies int) http.Handler {
 	ok := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) })
 	return ClientIPResolver(trustedProxies)(httprate.LimitBy(1, time.Minute, keyByClientIP)(ok))
@@ -41,8 +39,7 @@ func TestRateLimit_BehindProxy_DifferentClientsGetOwnBuckets(t *testing.T) {
 	}
 }
 
-// A client that sends its own X-Forwarded-For must not win a fresh bucket: the proxy
-// appends the real address, and only that rightmost entry is trusted.
+// Only the rightmost (proxy-appended) XFF entry is trusted.
 func TestRateLimit_ForgedXFF_CannotEscapeItsBucket(t *testing.T) {
 	h := limitOne(1)
 
@@ -54,8 +51,7 @@ func TestRateLimit_ForgedXFF_CannotEscapeItsBucket(t *testing.T) {
 	}
 }
 
-// With no proxy configured the socket address is the key — and it must stay per-caller.
-// An empty key would put every caller in one bucket, which is the bug this replaced.
+// An empty key would put every caller in one bucket.
 func TestRateLimit_NoProxy_KeysOnRemoteAddr(t *testing.T) {
 	h := limitOne(0)
 
@@ -70,8 +66,6 @@ func TestRateLimit_NoProxy_KeysOnRemoteAddr(t *testing.T) {
 	}
 }
 
-// Configured for a proxy but reached directly: the XFF chain is too short, the resolver
-// fails closed, and the fallback must still separate callers rather than share one bucket.
 func TestRateLimit_ProxyConfiguredButHeaderMissing_FallsBackPerCaller(t *testing.T) {
 	h := limitOne(1)
 
@@ -89,7 +83,7 @@ func TestRateLimit_IPv6ClientsBucketByPrefix(t *testing.T) {
 	if got := send(h, "10.0.0.7:1234", "2001:db8:1::1"); got != http.StatusOK {
 		t.Fatalf("first request: got %d, want 200", got)
 	}
-	// Same /64: a client rotating addresses inside its own prefix must not reset the count.
+	// Same /64: rotating addresses inside a prefix must not reset the count.
 	if got := send(h, "10.0.0.7:1234", "2001:db8:1::99"); got != http.StatusTooManyRequests {
 		t.Errorf("address rotation within one /64 bought a new bucket: got %d, want 429", got)
 	}

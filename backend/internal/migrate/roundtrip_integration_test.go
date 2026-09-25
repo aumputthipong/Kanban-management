@@ -16,9 +16,7 @@ import (
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/testutil"
 )
 
-// `make test` only ever runs the schema forward, so a broken or out-of-order DOWN
-// migration stays invisible until a real rollback. This walks every migration all the
-// way down and back up against a real Postgres, failing if any step errors.
+// make test only runs forward, so a broken DOWN migration stays invisible until a real rollback.
 func TestMigrations_DownUpRoundTrip(t *testing.T) {
 	pool := testutil.NewTestDB(t)
 
@@ -30,14 +28,11 @@ func TestMigrations_DownUpRoundTrip(t *testing.T) {
 	require.NoError(t, m.Up(), "re-applying up after a full down must succeed")
 }
 
-// toFileURL mirrors migrate.fileSourceURL, which is unexported. filepath.ToSlash is
-// load-bearing on Windows — see that function's doc for why.
+// ToSlash is load-bearing on Windows — see migrate.fileSourceURL.
 func toFileURL(path string) string {
 	return "file://" + filepath.ToSlash(path)
 }
 
-// toPgx5 swaps the postgres:// scheme for the pgx5:// scheme golang-migrate's
-// pgx/v5 driver expects (mirrors migrate.normalizeDBURL, which is unexported).
 func toPgx5(dsn string) string {
 	for _, p := range []string{"postgres://", "postgresql://"} {
 		if strings.HasPrefix(dsn, p) {
@@ -47,8 +42,6 @@ func toPgx5(dsn string) string {
 	return dsn
 }
 
-// migrationsDir resolves backend/database/migrations from this file's location
-// (backend/internal/migrate/), independent of the test's working directory.
 func migrationsDir() string {
 	_, file, _, ok := runtime.Caller(0)
 	if !ok {

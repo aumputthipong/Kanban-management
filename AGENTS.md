@@ -14,6 +14,7 @@ Working agreement สำหรับ AI coding agents ที่เข้าม�
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — layered design, permission matrix, WS hub, ที่จงใจไม่ทำ
 - [`docs/DATABASE.md`](docs/DATABASE.md) — ERD, table notes, migration rules
 - [`docs/DEPLOY.md`](docs/DEPLOY.md) — runbook
+- [`docs/CODE-NOTES.md`](docs/CODE-NOTES.md) — *why* the code looks the way it does (rationale that used to live in comments)
 - [`frontend/design.md`](frontend/design.md) — **design system tokens** (อ่านก่อนแตะ UI ทุกครั้ง)
 
 ---
@@ -214,45 +215,33 @@ The **Team** tab (`overview/TeamTabContent` → `TeamOwnershipList`) answers **"
 
 ## Comment & doc conventions
 
-Code comments are **English** and explain what the code cannot — not a translation of the next line. (User-facing copy still follows the Thai/English UI rule above; this is about code comments only.)
+**Default: no comment.** A clear name is the explanation. Comments are English, short, and rare — see [ADR 0011](docs/adr/0011-minimal-comments.md).
 
-The problem we are solving is **frequency, not length**. A 4-line block that appears twenty times reads as "pay attention here". The same block two hundred times becomes wallpaper, and people learn to skip comments — including the one that would have stopped a bad change. Fewer comments make the remaining ones work.
+### What a comment may be
 
-### Budget
-
-| | Limit |
-|---|---|
-| Any comment block | **≤ 3 content lines** |
-| Block documenting a trap (see below) | **≤ 4 content lines** |
-| File / package header | **≤ 4 content lines** |
-| Blocks of 4 lines, per file | **at most 1** — if a file needs three warnings, the file is doing too much |
-| Swagger annotations (`@Summary`, `@Router`, …) | **exempt** — machine-readable, they generate `backend/docs` |
-
-**Counting:** content lines only. `/**`, `*/` and bare `*` are free. If the content fits on one line, write a one-line `/** … */` rather than a three-line block.
-
-Anything longer than the budget does not get shortened by deleting information — it **moves**, and the code keeps a one-line pointer.
-
-### The four kinds
-
-| Kind | Example | What to do |
+| Kind | Example | Rule |
 |---|---|---|
-| **API doc** — the contract for callers | godoc / JSDoc on an exported symbol | **Keep.** 1–2 lines stating *what*. No bullet lists, no step-by-step narration |
-| **Trap** — changing this breaks something non-obviously | "404 not 403 is anti-enumeration", "WS handlers must be idempotent", "ref not state or it re-fires" | **Keep it at the line where someone would make the mistake.** Never move a trap to docs — the reader is not in the docs, they are in the code |
-| **Design rationale** — why this way and not another | why no Redis, PATCH semantics, position-gap strategy | **Move** to `docs/adr/` or the relevant `docs/*.md`. Leave `// … see docs/adr/000N` |
-| **Narration** — restates the code | `// loop over cards` | **Delete.** If it explains what a name means, rename the thing instead |
+| **Section label** | `// Auth`, `{/* Header */}`, `// Handlers` | 1–3 words, only where a long file/JSX tree benefits from signposts |
+| **One-line API doc** | `/** Scrolls the page to the features section. */` | Only when the name + types don't already say it. Never on every export |
+| **Trap** | `// 404 not 403: anti-enumeration (docs/adr/0004)` | One line at the spot where the mistake would be made, pointing to docs for the why |
+| **Tool directive** | `//go:build`, `// eslint-disable-next-line x -- why`, `//nolint`, Swagger `// @Router` | Exempt |
 
-The test: *would a teammate as competent as me fail to guess this?* If they would guess it, delete it.
+**Swagger annotations are not comments.** The `// @Summary` … `// @Router` block above each handler is input for `swag` (`make swag` → `backend/docs`, served as Swagger UI). Deleting one silently drops that endpoint from the API docs. Keep them, and don't add a godoc line above them that repeats `@Summary`.
+
+Everything else — design rationale, history ("the old X did Y"), step-by-step narration, restating the next line — does **not** go in code:
+
+- Rationale / history → [`docs/CODE-NOTES.md`](docs/CODE-NOTES.md) (per-area notes) or an ADR for a real decision.
+- Narration → delete. If a comment explains what a name means, rename the thing instead.
+
+### Budget (enforced by `make check-comments`)
+
+- Any comment block: **≤ 2 content lines**. No exceptions besides tool directives and Swagger.
+- Godoc/JSDoc is **not required** on exported symbols — write one only when it adds something the signature can't.
 
 ### Never
 
-- Duplicating a rule that already lives in AGENTS.md or `docs/` — two copies drift, and the stale one actively misleads (this has already happened once, see [ADR 0006](docs/adr/0006-comment-budget.md))
-- Emoji, changelog markers (`[เพิ่มใหม่]`), commented-out code, "Best Practice:" narration
-
-### Density as a check, not a target
-
-Backend ≤ 13%, frontend ≤ 8%, measured as comment lines over non-blank lines. Use it to notice drift — never chase the number. A percentage cannot tell a trap from wallpaper, which is why the budget above is about block size and placement instead.
-
-The two thresholds differ because Go asks for a doc comment on every exported symbol, which puts a structural floor under a package that exports a lot. Trimming to meet a TypeScript-shaped number would mean deleting the godoc this same section asks you to keep.
+- Duplicating a rule that already lives in AGENTS.md or `docs/` — copies drift and the stale one misleads.
+- Emoji, changelog markers (`[เพิ่มใหม่]`), commented-out code, "Note:" / "Best Practice:" narration, paragraphs explaining a UI choice.
 
 ## Testing & verification
 

@@ -10,12 +10,9 @@ interface Props {
   onPrev: () => void;
   onNext: () => void;
   onToday: () => void;
-  /** Jump the calendar to a chosen month/year (from the title picker). */
   onSelectDate: (date: Date) => void;
 }
 
-// The calendar only renders a month grid. Day/Week/Agenda view switching was
-// never implemented, so there is no view selector here — just month navigation.
 export function CalendarHeader({
   currentDate,
   today,
@@ -28,8 +25,7 @@ export function CalendarHeader({
 
   return (
     <div className="mb-4 flex flex-wrap items-center gap-2">
-      {/* Month navigator — prev / picker / next / Today all in one cluster so
-          changing month is obvious and lives in a single place. */}
+      {/* Month navigator */}
       <button
         type="button"
         onClick={onPrev}

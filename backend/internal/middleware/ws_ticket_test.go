@@ -11,9 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestMain seeds JWT_SECRET before any test signs or parses a token. secret()
-// calls os.Exit on an empty value, which would kill the whole test binary
-// instead of failing one case. Must be >= token.MinSecretBytes.
+// secret() exits on an empty JWT_SECRET, killing the whole test binary.
 func TestMain(m *testing.M) {
 	if os.Getenv("JWT_SECRET") == "" {
 		if err := os.Setenv("JWT_SECRET", "test-secret-do-not-use-in-prod-0123456789"); err != nil {
@@ -23,9 +21,6 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-// serveWSTicket runs RequireWSTicket over a request carrying the given raw
-// ticket value ("" omits the query param), reporting whether the wrapped
-// handler ran and which user ID reached it.
 func serveWSTicket(rawTicket string) (rec *httptest.ResponseRecorder, called bool, gotUserID string) {
 	url := "/ws/" + testBoardID
 	if rawTicket != "" {
@@ -68,8 +63,7 @@ func TestRequireWSTicket_MalformedTicket_Returns401(t *testing.T) {
 	assert.False(t, called)
 }
 
-// A session access token must not open the WS handshake — the ticket path is
-// deliberately not a second way to present a long-lived credential.
+// A session token must not open the WS handshake.
 func TestRequireWSTicket_AccessToken_Returns401(t *testing.T) {
 	access, err := token.Generate(testUserID, "user@example.com")
 	require.NoError(t, err)
@@ -80,8 +74,7 @@ func TestRequireWSTicket_AccessToken_Returns401(t *testing.T) {
 	assert.False(t, called)
 }
 
-// The cookie path must not accept a WS ticket either: RequireAuth reads the
-// same secret, so only the audience check keeps the two apart.
+// Same secret — only the audience check keeps the two apart.
 func TestRequireAuth_WSTicketAsBearer_Returns401(t *testing.T) {
 	ticket, err := token.GenerateWSTicket(testUserID)
 	require.NoError(t, err)

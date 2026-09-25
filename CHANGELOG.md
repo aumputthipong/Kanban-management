@@ -10,6 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Repository polish: `CHANGELOG.md`, `CONTRIBUTING.md`, top-level `Makefile`.
+- `docs/CODE-NOTES.md` — per-area rationale moved out of code comments.
+
+### Changed
+
+- Comment convention: default to no comment ([ADR 0011](docs/adr/0011-minimal-comments.md), supersedes 0006). `make check-comments` caps blocks at 2 lines; ~2,000 narration lines removed across frontend and backend.
 
 ### Removed
 

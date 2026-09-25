@@ -1,13 +1,9 @@
 package core
 
-// WSEvent is the `type` tag on a board broadcast. It lives in core, not in the
-// websocket package, so a handler can name an event without importing the hub —
-// that import is what the Broadcaster interface exists to avoid.
+// WSEvent lives in core so handlers can name an event without importing the hub.
 type WSEvent string
 
-// The events the REST write path broadcasts. Every value here must have a
-// matching entry in frontend/src/types/wsEvents.ts; scripts/check-ws-events.mjs
-// fails the build when the two drift.
+// Mirrored in frontend/src/types/wsEvents.ts — `make check-ws-events` fails on drift.
 const (
 	WSCardCreated         WSEvent = "CARD_CREATED"
 	WSCardMoved           WSEvent = "CARD_MOVED"

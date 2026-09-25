@@ -6,7 +6,6 @@ import { X } from "lucide-react";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
 
 interface Props {
-  /** Small context line above the title (project / column). */
   context: React.ReactNode;
   title: string;
   onClose: () => void;
@@ -14,7 +13,6 @@ interface Props {
   children: React.ReactNode;
 }
 
-/** Shell for the read-only task quick view (My Work, Calendar): accent bar, header, scroll body, footer. */
 export function TaskQuickModal({ context, title, onClose, footer, children }: Props) {
   const titleId = useId();
   useEscapeKey(true, onClose);

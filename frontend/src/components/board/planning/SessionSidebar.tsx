@@ -17,11 +17,7 @@ interface Props {
   promotedItems: PlanningItem[];
 }
 
-// Right rail: a summary panel (total + per-type breakdown) above the list of titles
-// already promoted. The breakdown repeats the chip counts on purpose — a labelled
-// legend reads as a summary, not a filter control.
 export function SessionSidebar({ stats, promotedItems }: Props) {
-  // Matches the "All" filter: live plus promoted. Paused items get their own line.
   const total = stats.REQ + stats.DEC + stats.Q + stats.promoted;
 
   return (

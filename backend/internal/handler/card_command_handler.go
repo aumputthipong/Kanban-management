@@ -10,9 +10,6 @@ import (
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/service"
 )
 
-// MoveCard moves a card to a column and position. is_done and completed_at are derived
-// from the target column's category, never taken from the request.
-//
 // @Summary  Move card
 // @Tags     cards
 // @Accept   json
@@ -37,8 +34,7 @@ func (h *BoardCommandHandler) MoveCard(w http.ResponseWriter, r *http.Request) e
 	if apiErr != nil {
 		return apiErr
 	}
-	// The target column must be on the same board, or a member of board A could move a
-	// card into board B by supplying one of its column ids.
+	// Otherwise a member of board A could move a card into board B.
 	if err := h.boardCmd.VerifyColumnInBoard(r.Context(), req.ColumnID, boardID); err != nil {
 		return httputil.NewAPIError(http.StatusNotFound, "Not found", nil)
 	}
@@ -64,8 +60,6 @@ func (h *BoardCommandHandler) MoveCard(w http.ResponseWriter, r *http.Request) e
 	return nil
 }
 
-// DeleteCard removes a card from its board.
-//
 // @Summary  Delete card
 // @Tags     cards
 // @Produce  json
@@ -99,9 +93,6 @@ func (h *BoardCommandHandler) DeleteCard(w http.ResponseWriter, r *http.Request)
 	return nil
 }
 
-// ToggleCardDone marks a card done or not done, moving it into the board's DONE column
-// or back out. Broadcasts CARD_MOVED so clients reuse a single handler.
-//
 // @Summary  Toggle card done
 // @Tags     cards
 // @Accept   json
@@ -148,10 +139,6 @@ func (h *BoardCommandHandler) ToggleCardDone(w http.ResponseWriter, r *http.Requ
 	return nil
 }
 
-// CreateCard creates a card, optionally with a description and subtasks, in one
-// transaction. Position 0 appends. It calls the same service the WS path does, so
-// both produce identical rows.
-//
 // @Summary  Create card
 // @Tags     cards
 // @Accept   json
@@ -218,8 +205,7 @@ func (h *BoardCommandHandler) CreateCard(w http.ResponseWriter, r *http.Request)
 		"total_subtasks":     len(subPayload),
 		"completed_subtasks": 0,
 	})
-	// Respond with the snake_case DTO the rest of the API uses. The raw sqlc row
-	// marshals as PascalCase, which no client reads.
+	// Snake_case DTO — the raw sqlc row marshals as PascalCase.
 	httputil.RespondJSON(w, http.StatusCreated, dto.CardResponse{
 		ID:                 card.ID,
 		ColumnID:           card.ColumnID,

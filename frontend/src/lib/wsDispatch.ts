@@ -3,24 +3,18 @@ import { useActivityStore } from "@/store/useActivityStore";
 import { WS_EVENT } from "@/types/wsEvents";
 import type { BoardMember } from "@/types/board";
 
-/**
- * Wire-format envelope for every inbound message. `payload` is `unknown` to force
- * handlers to narrow; its shape per `type` is set by the REST handlers that emit it.
- */
 export interface WebSocketMessage {
   type: string;
   payload: unknown;
 }
 
-// Card broadcasts carry assignee_id but never assignee_name, and the store spreads the
-// payload over its copy — so the name must be resolved here, never defaulted to null.
+// Broadcasts carry assignee_id only — resolve the name here, never default to null.
 function resolveAssigneeName(assigneeId: string | null | undefined): string | null {
   if (!assigneeId) return null;
   const { boardMembers } = useBoardStore.getState();
   return boardMembers.find((m) => m.user_id === assigneeId)?.full_name ?? null;
 }
 
-/** Applies one parsed broadcast to the stores. Unknown types are ignored. */
 export function applyWsMessage({ type, payload }: WebSocketMessage): void {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- shape is per-type, set by the Go emitters
   const p = payload as any;
@@ -42,7 +36,7 @@ export function applyWsMessage({ type, payload }: WebSocketMessage): void {
       return;
     }
     case WS_EVENT.CardSubtasksUpdated:
-      // Full list, not a delta: re-applying it (including over our own optimistic edit) is safe.
+      // Full list, not a delta — safe to re-apply over our own optimistic edit.
       board.setSubtasksToCard(p.card_id, p.subtasks);
       return;
     case WS_EVENT.TagDeleted:
@@ -65,7 +59,6 @@ export function applyWsMessage({ type, payload }: WebSocketMessage): void {
     case WS_EVENT.BoardMembersUpdated: {
       const members: BoardMember[] = p.members;
       board.setBoardMembers(members);
-      // The server evicts this socket right after; the provider takes the user off the board.
       if (board.currentUserId && !members.some((m) => m.user_id === board.currentUserId)) {
         board.setRemovedFromBoard(true);
       }

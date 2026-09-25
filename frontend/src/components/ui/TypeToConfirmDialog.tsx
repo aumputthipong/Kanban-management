@@ -8,9 +8,7 @@ interface TypeToConfirmDialogProps {
   open: boolean;
   title: string;
   description?: React.ReactNode;
-  /** The exact string the user must type to enable the confirm button. */
   confirmPhrase: string;
-  /** Label above the input, e.g. "พิมพ์ชื่อบอร์ดเพื่อยืนยัน". */
   inputLabel: React.ReactNode;
   confirmLabel?: string;
   cancelLabel?: string;
@@ -19,11 +17,6 @@ interface TypeToConfirmDialogProps {
   onCancel: () => void;
 }
 
-/**
- * GitHub-style "type to confirm" dialog for irreversible actions. The confirm
- * button stays disabled until the user types `confirmPhrase` exactly — guards
- * against accidental permanent deletes. Always destructive styling.
- */
 export function TypeToConfirmDialog({
   open,
   title,
@@ -40,16 +33,12 @@ export function TypeToConfirmDialog({
   const [wasOpen, setWasOpen] = useState(open);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Reset the typed value when the dialog transitions closed→open. This is the
-  // setState-during-render pattern (React 19 forbids synchronous setState in an
-  // effect body) — track the previous `open`, compare in render, reset before
-  // returning JSX.
+  // Reset on closed→open during render (setState-during-render pattern).
   if (open !== wasOpen) {
     setWasOpen(open);
     if (open) setValue("");
   }
 
-  // Focus the input after the portal mounts (DOM side-effect, no setState).
   useEffect(() => {
     if (open) {
       const t = setTimeout(() => inputRef.current?.focus(), 50);

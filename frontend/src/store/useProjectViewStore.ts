@@ -8,10 +8,7 @@ interface ProjectViewState {
   setViewMode: (mode: ProjectViewMode) => void;
 }
 
-// Persists the project-list layout choice (grid vs list) in localStorage,
-// mirroring useSidebarStore — same persist middleware, its own key. The
-// value rehydrates after mount, so the first paint uses the default and then
-// snaps to the remembered choice (identical behaviour to the sidebar).
+// Rehydrates after mount, so the first paint uses the default.
 export const useProjectViewStore = create<ProjectViewState>()(
   persist(
     (set) => ({

@@ -6,7 +6,6 @@ const members: BoardMember[] = [
   { id: "m-1", role: "member", user_id: "user-alice", email: "a@x.io", full_name: "Alice" },
 ];
 
-// A stale modal: every field holds a value, so any leak into the body would show.
 const form: CardUpdateForm = {
   title: "Old title",
   description: "Old description",

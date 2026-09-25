@@ -5,8 +5,7 @@ import { useToastStore } from "@/store/useToastStore";
 import { buildCardFieldUpdate, type CardField } from "@/lib/cardPatch";
 import type { Card, CardUpdateForm, Column } from "@/types/board";
 
-// Restores the board to `snapshot` and tells the user the write did not land. 403 is
-// skipped because apiClient has already toasted it.
+// 403 is skipped — apiClient has already toasted it.
 function revertWith(snapshot: Column[], message: string) {
   return (err: unknown) => {
     useBoardStore.getState().setColumns(snapshot);
@@ -20,16 +19,12 @@ export function useCardActions() {
   const handleToggleDone = (card: Card) => {
     const snapshot = useBoardStore.getState().columns;
     const isDone = !card.is_done;
-    // Tick the box immediately; the move into (or out of) the DONE column arrives
-    // with the broadcast, which this client receives like any other.
+    // The DONE-column move arrives with the broadcast.
     useBoardStore.getState().updateCard({ ...card, is_done: isDone });
     apiClient(`/cards/${card.id}/done`, { method: "PATCH", data: { is_done: isDone } })
       .catch(revertWith(snapshot, "อัปเดตสถานะไม่สำเร็จ"));
   };
 
-  // opts lets the Create Task modal seed assignee/priority/due/description/subtasks
-  // in one shot; omitting it sends the original quick-add payload. Subtasks are titles
-  // only — the backend creates them alongside the card in one transaction.
   const handleAddCard = (
     columnId: string,
     title: string,
@@ -47,8 +42,7 @@ export function useCardActions() {
     const lastCard = sorted[sorted.length - 1];
     const newPosition = lastCard ? lastCard.position + POSITION_GAP : POSITION_GAP;
 
-    // Nothing is applied optimistically: the server assigns the id, and a card
-    // without one cannot be edited or dragged. The response carries it.
+    // Not optimistic: a card has no id until the server responds.
     apiClient<{ id: string }>("/cards", {
       method: "POST",
       data: {
@@ -125,11 +119,10 @@ export function useCardActions() {
     const { boardMembers, columns, updateCard } = useBoardStore.getState();
     const current = columns.flatMap((c) => c.cards).find((c) => c.id === cardId);
     const { body, patch } = buildCardFieldUpdate(form, field, boardMembers);
-    // Patch onto the store's copy, not the form: other fields may be newer from a broadcast.
+    // Patch the store's copy, not the form — other fields may be newer.
     if (current) updateCard({ ...current, ...patch });
 
-    // apiClient, not raw fetch: raw fetch only rejects on network errors, so a 4xx
-    // used to vanish silently. Toast anything apiClient has not already toasted.
+    // apiClient, not raw fetch: raw fetch silently resolves on 4xx.
     apiClient(`/cards/${cardId}`, { method: "PATCH", data: body }).catch((err) => {
       if (err instanceof ApiError && err.status === 403) return; // apiClient already toasted
       useToastStore.getState().show({

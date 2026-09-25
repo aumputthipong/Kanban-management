@@ -1,8 +1,5 @@
 "use client";
 
-// Single-select chip row above the items list: all, one per type, and a "paused"
-// bucket for dropped items. Counts come from the parent. Deliberately simpler than
-// CalendarFilters — a session is a small flat list where one slice at a time reads better.
 import type { ReactNode } from "react";
 import type { PlanningItemType } from "@/types/planning";
 
@@ -22,8 +19,6 @@ const FILTER_LABELS: Record<SessionFilter, string> = {
   dropped: "พักไว้ก่อน",
 };
 
-// Per-filter active colour. Type filters reuse each row chip's palette; "dropped"
-// stays muted because paused items are deliberately less prominent.
 const FILTER_ACTIVE_CLASS: Record<SessionFilter, string> = {
   all: "border-indigo-300 bg-indigo-50 text-indigo-800",
   req: "border-red-300 bg-red-50 text-red-800",
@@ -38,7 +33,6 @@ interface Props {
   active: SessionFilter;
   counts: Record<SessionFilter, number>;
   onChange: (next: SessionFilter) => void;
-  /** Right-aligned slot on the chip row — the select-mode controls live here. */
   trailing?: ReactNode;
 }
 
@@ -81,13 +75,11 @@ export function SessionFilterChips({ active, counts, onChange, trailing }: Props
   );
 }
 
-// Single source of truth for what each chip surfaces; kept beside the labels.
 export function applySessionFilter<T extends { type: PlanningItemType; status: string }>(
   items: T[],
   filter: SessionFilter,
 ): T[] {
   if (filter === "dropped") return items.filter((it) => it.status === "dropped");
-  // Every non-dropped bucket excludes dropped items — those have their own chip.
   const visible = items.filter((it) => it.status !== "dropped");
   if (filter === "all") return visible;
   return visible.filter((it) => it.type === TYPE_BY_FILTER[filter]);

@@ -6,7 +6,6 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { SectionCard } from "./SettingsParts";
 
 interface DangerSectionProps {
-  /** Real, recoverable removal — DELETE /boards/:id (soft delete → คลังบอร์ด/stash). */
   onArchive: () => void;
   isArchiving: boolean;
 }
@@ -33,11 +32,6 @@ function DangerRow({
   );
 }
 
-/**
- * "เก็บเข้าคลัง" maps to the real stash (recoverable from คลังบอร์ด). It's the
- * only board-level destructive action we expose — transfer-ownership and
- * permanent delete were dropped as out of scope for now.
- */
 export function DangerSection({ onArchive, isArchiving }: DangerSectionProps) {
   const [confirmArchive, setConfirmArchive] = useState(false);
 
@@ -50,7 +44,7 @@ export function DangerSection({ onArchive, isArchiving }: DangerSectionProps) {
         title="Danger Zone"
         description="การกระทำต่อไปนี้ส่งผลกับทั้ง Project โปรดดำเนินการอย่างระมัดระวัง"
       >
-        {/* Stash — REAL (recoverable soft-delete → คลังบอร์ด) */}
+        {/* Stash */}
         <DangerRow
           title="เก็บ Project เข้า Stash"
           help="ซ่อน Project จากรายการที่ใช้งาน — กู้คืนได้ทุกเมื่อจาก Stash ข้อมูลทั้งหมดยังอยู่ครบ"

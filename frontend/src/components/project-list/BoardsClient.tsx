@@ -24,9 +24,7 @@ const SORT_LABELS: Record<SortOption, string> = {
 };
 
 function sortBoards(boards: Board[], sortBy: SortOption): Board[] {
-  // "recent" preserves backend order (per-user last_accessed_at, fallback
-  // to created_at). Re-sorting on the client by updated_at would clobber
-  // the per-user signal and let other members' edits shuffle the list.
+  // Keep backend order (per-user last_accessed_at) — don't re-sort by updated_at.
   if (sortBy === "recent") return boards;
   return [...boards].sort((a, b) => {
     switch (sortBy) {
@@ -78,12 +76,9 @@ function GroupLabel({
 export function BoardsClient({ boards }: BoardsClientProps) {
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<SortOption>("recent");
-  // Layout choice persists in localStorage (see useProjectViewStore) so it
-  // survives reloads, the same way the sidebar collapse state does.
   const viewMode = useProjectViewStore((s) => s.viewMode);
   const setViewMode = useProjectViewStore((s) => s.setViewMode);
-  // Stable "now" reference per page session — passed to ProjectCard so the
-  // freshness check stays pure. Lazy initial fn = called once at mount only.
+  // Captured once so ProjectCard stays pure.
   const [now] = useState(() => Date.now());
 
   const filtered = useMemo(() => {
@@ -94,8 +89,6 @@ export function BoardsClient({ boards }: BoardsClientProps) {
     return sortBoards(matching, sortBy);
   }, [boards, search, sortBy]);
 
-  // "Started" vs "not started" mirrors the design's two groups. A board with
-  // zero cards renders in the muted "not started" group.
   const started = filtered.filter((b) => b.total_cards > 0);
   const notStarted = filtered.filter((b) => b.total_cards === 0);
 
@@ -177,7 +170,7 @@ export function BoardsClient({ boards }: BoardsClientProps) {
         </div>
       )}
 
-      {/* Grouped sections — headers hidden when a group is empty */}
+      {/* Groups */}
       {started.length > 0 && (
         <section className="mb-7">
           <GroupLabel

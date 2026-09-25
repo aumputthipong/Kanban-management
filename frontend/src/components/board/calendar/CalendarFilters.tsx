@@ -25,13 +25,6 @@ const STATUS_OPTIONS: { key: PillState; label: string }[] = [
   { key: "overdue", label: "Overdue" },
 ];
 
-/**
- * Filter chip row above the calendar grid.
- *
- * Status + "My tasks" are local to this view (state lives in ProjectCalendar).
- * Priority / Tag / Assignee piggy-back on the existing board store filters so
- * the chips stay in sync if a user switches between Board and Calendar.
- */
 export function CalendarFilters({
   statusFilter,
   onToggleStatus,

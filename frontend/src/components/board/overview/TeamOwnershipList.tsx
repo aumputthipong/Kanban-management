@@ -6,12 +6,8 @@ import { useBoardOwnership } from "@/hooks/useBoardOwnership";
 import { getColumnColorHex } from "@/components/board/task-board/ColumnOptionsModal";
 import { MemberOwnershipRow } from "./MemberOwnershipRow";
 
-// Neutral dot for a column with no explicit colour set (Default).
 const DOT_FALLBACK = "#cbd5e1";
-// "Goldilocks band" — show per-column detail only when it's actually useful:
-//  - numeric cells: 2..MAX columns (1 column duplicates the total; >MAX overflows)
-//  - mini bar: >=2 columns (a single segment conveys nothing)
-//  - 0 / 1 column: just the roster + total.
+// Per-column cells only for 2..MAX columns; the bar needs >= 2.
 const MAX_NUMERIC_COLUMNS = 5;
 
 interface TeamOwnershipListProps {

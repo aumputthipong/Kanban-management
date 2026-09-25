@@ -2,8 +2,6 @@ import { describe, it, expect } from "vitest";
 import { applySessionFilter } from "../SessionFilterChips";
 import type { PlanningItemType } from "@/types/planning";
 
-// Minimal shape that applySessionFilter inspects. Keeps tests free of the
-// full PlanningItem field set so the predicates stay the focus.
 type T = { type: PlanningItemType; status: string };
 
 const items: T[] = [
@@ -18,9 +16,7 @@ const items: T[] = [
 
 describe("applySessionFilter", () => {
   it("all surfaces every non-dropped item (live, selected, promoted)", () => {
-    // The "all" chip is meant to show "what's still in play" — promoted
-    // counts because the card lives on the board, and selected/live are
-    // obviously active. Only paused (dropped) items are hidden.
+    // Promoted still counts as "in play" — only dropped items are hidden.
     const out = applySessionFilter(items, "all");
     expect(out).toHaveLength(5);
     expect(out.every((it) => it.status !== "dropped")).toBe(true);

@@ -16,11 +16,6 @@ interface CreateProjectModalProps {
   onClose: () => void;
 }
 
-/**
- * Create-project modal: name, description, and appearance, so a board is born with its
- * identity in a single POST /boards. Reuses BoardAppearancePicker so what you pick here
- * matches what board settings edits later.
- */
 export function CreateProjectModal({ onClose }: CreateProjectModalProps) {
   const router = useRouter();
   const [title, setTitle] = useState("");
@@ -36,7 +31,6 @@ export function CreateProjectModal({ onClose }: CreateProjectModalProps) {
     onClose();
   };
 
-  // Escape to close + focus the name field on open.
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === "Escape" && !isCreating) onClose();

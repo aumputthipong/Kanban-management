@@ -6,7 +6,6 @@ export function useBoardSettings(boardId: string) {
   const router = useRouter();
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Update one field at a time.
   const updateField = async (fieldKey: string, value: string | number) => {
     const res = await fetch(`${API_URL}/boards/${boardId}`, {
       method: "PATCH",
@@ -19,7 +18,6 @@ export function useBoardSettings(boardId: string) {
     router.refresh();
   };
 
-  // Delete the board.
   const deleteBoard = async () => {
     setIsDeleting(true);
     try {

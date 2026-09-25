@@ -38,9 +38,7 @@ interface Props {
   boardId: string;
 }
 
-// Hard cap on pills per cell — anything past this collapses into "+N more"
-// so all cells render the same height regardless of load. design.md rule:
-// "Don't grow calendar cells to fit content."
+// Extra pills collapse into "+N more" — cells never grow (design.md).
 const MAX_PILLS_PER_CELL = 3;
 
 export function ProjectCalendar({ boardId }: Props) {
@@ -48,8 +46,6 @@ export function ProjectCalendar({ boardId }: Props) {
   const [statusFilter, setStatusFilter] = useState<PillState[]>([]);
   const [myTasksOnly, setMyTasksOnly] = useState(false);
   const [moreCellDate, setMoreCellDate] = useState<Date | null>(null);
-  // Clicking a task opens a read-only detail modal; "open task" promotes it to
-  // the full editable card modal.
   const [selectedCard, setSelectedCard] = useState<Card | null>(null);
   const [editCard, setEditCard] = useState<Card | null>(null);
   const openCard = (c: Card) => {
@@ -64,8 +60,6 @@ export function ProjectCalendar({ boardId }: Props) {
   const filterPriorities = useBoardStore((s) => s.filterPriorities);
   const filterTagIds = useBoardStore((s) => s.filterTagIds);
 
-  // Flatten cards across columns, then apply all active filters.
-  // Filters compose with AND semantics — every active chip narrows the set.
   const allDueCards = useMemo(() => {
     return columns
       .flatMap((c) => c.cards)
@@ -99,7 +93,6 @@ export function ProjectCalendar({ boardId }: Props) {
     statusFilter,
   ]);
 
-  // Bucket filtered cards by ISO date for O(1) lookup during grid render.
   const cardsByDate = useMemo(() => {
     const map = new Map<string, Card[]>();
     for (const card of allDueCards) {
@@ -183,7 +176,6 @@ export function ProjectCalendar({ boardId }: Props) {
                 return (
                   <div
                     key={day.toISOString()}
-                    // Fixed height so every cell is the same regardless of pill count.
                     className={`relative flex h-32 flex-col gap-1 border-r border-slate-200 p-1.5 last:border-r-0 ${
                       isToday
                         ? "bg-indigo-50/60"
@@ -260,8 +252,7 @@ export function ProjectCalendar({ boardId }: Props) {
   );
 }
 
-// Wrapper that owns the board-action hooks for the editable card modal — kept
-// out of ProjectCalendar's body so its hooks only run while an edit is open.
+// Separate component so the board-action hooks only run while editing.
 function EditCardModal({
   card,
   boardId,

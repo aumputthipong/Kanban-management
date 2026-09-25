@@ -33,7 +33,6 @@ interface ItemRowProps {
   index: number;
   item: PlanningItem;
   focused: boolean;
-  /** Rows show a leading checkbox and a click toggles selection instead of editing. */
   selectMode: boolean;
   isSelected: boolean;
   onToggleSelect: () => void;
@@ -48,9 +47,6 @@ interface ItemRowProps {
   onDown: () => void;
 }
 
-// One row of the capture surface. The type chip opens a 3-option popover: the old
-// cycle-on-click was discoverable only by accident and made REQ to DEC a two-click
-// trip, so do not go back to it. Keyboard surface is limited to the edit input.
 export function ItemRow({
   index,
   item,
@@ -72,12 +68,9 @@ export function ItemRow({
   const [expanded, setExpanded] = useState(false);
   const [commentsExpanded, setCommentsExpanded] = useState(false);
   const currentUserId = useBoardStore((s) => s.currentUserId);
-  // Lazy — nothing fetches until the user opens the thread.
   const comments = usePlanningComments(item.id, currentUserId || null);
 
   const [draft, setDraft] = useState(item.title);
-  // Mirror a parent title change into the draft during render, not in an effect —
-  // see AGENTS.md, "Data fetching & loading states".
   const [syncedTitle, setSyncedTitle] = useState(item.title);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
@@ -101,7 +94,6 @@ export function ItemRow({
     if (trimmed !== item.title) onChangeTitle(trimmed);
   };
 
-  // Enter commits, Escape cancels, arrows navigate; every other action is click-only.
   const onKey = (e: KeyboardEvent<HTMLElement>) => {
     if (e.key === "Enter") {
       e.preventDefault();
@@ -132,7 +124,6 @@ export function ItemRow({
   const hasNote = (item.implementation_note ?? "").trim().length > 0;
   const hasDetails = hasNote;
 
-  // One-glance "where is this item now". No "waiting on <person>" — no such data.
   const statusMeta = promoted
     ? { Icon: CheckCircle2, label: "บน Board แล้ว", cls: "text-emerald-600" }
     : dropped
@@ -162,7 +153,6 @@ export function ItemRow({
         } ${selectMode && !promoted ? "cursor-pointer" : ""}`}
       >
         {selectMode ? (
-          // Promoted rows cannot be re-sent, so their checkbox is disabled.
           <span className="flex w-6 shrink-0 justify-center pt-0.5" aria-hidden>
             {promoted ? (
               <Square size={16} className="text-slate-200" />
@@ -179,7 +169,7 @@ export function ItemRow({
         )}
 
         <div className="min-w-0 flex-1">
-          {/* Line 1 — type chip, title, detail badges */}
+          {/* Line 1 */}
           <div className="flex items-center gap-2">
             <ItemTypeChip type={item.type} />
             {editing && !selectMode ? (
@@ -192,7 +182,6 @@ export function ItemRow({
                 className="min-w-0 flex-1 rounded-md border border-indigo-300 bg-white px-2 py-1 text-sm text-slate-800 shadow-sm outline-none focus:ring-2 focus:ring-indigo-400"
               />
             ) : (
-              // Display-only — renaming lives in the row menu, not a click on the title.
               <span
                 className={`min-w-0 flex-1 truncate text-sm font-medium ${
                   dropped
@@ -205,8 +194,7 @@ export function ItemRow({
                 {item.title}
               </span>
             )}
-            {/* Indicator badges — visible at full opacity so a glance reveals
-                which rows have detail attached without having to expand them. */}
+            {/* Indicator badges */}
             {!expanded && hasNote && (
               <span
                 className="inline-flex shrink-0 items-center gap-0.5 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-600"
@@ -217,8 +205,7 @@ export function ItemRow({
             )}
           </div>
 
-          {/* Line 2 — status, or an explicit "you're editing" hint while the
-              title is being renamed so the edit state is unmistakable. */}
+          {/* Line 2 */}
           {editing ? (
             <div className="mt-1 flex items-center gap-1.5 text-[11px] font-medium text-indigo-500">
               <Pencil size={11} />
@@ -234,12 +221,10 @@ export function ItemRow({
           )}
         </div>
 
-        {/* Right action cluster — hidden in select-mode, where the row's only
-            job is to be ticked. */}
+        {/* Actions */}
         {!selectMode && (
         <div className="flex shrink-0 items-center gap-1 pt-0.5">
-          {/* Direct promote — primary action on a live row (the picture's
-              "→ ส่งขึ้น Board"). Promoted/paused rows hide it. */}
+          {/* Promote */}
           {!promoted && !dropped && (
             <button
               type="button"
@@ -253,12 +238,7 @@ export function ItemRow({
               <ArrowRight size={13} /> ส่งขึ้น Board
             </button>
           )}
-          {/* Comment count badge — click toggles the thread expansion. The
-              count comes from the hook's local list (includes optimistic
-              additions, excludes soft-deleted) so it stays in sync with what
-              the thread actually shows. Initial value is "—" until first
-              load; clicking triggers the fetch so an unopened row never
-              burns a request. */}
+          {/* Comments */}
           <button
             type="button"
             onClick={(e) => {

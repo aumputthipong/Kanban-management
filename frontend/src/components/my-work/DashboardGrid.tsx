@@ -8,14 +8,11 @@ import type { BoardMeta } from "./boardMeta";
 import { Skeleton } from "@/components/ui/Skeleton";
 import type { MyWorkCard, MyWorkCounts, MyWorkNoteTab } from "@/types/myWork";
 
-// The two cells of the page grid in my-work/page.tsx: one white container on the
-// left, the full-height rail on the right.
 const MAIN_CELL = "min-h-0 flex flex-col px-6 py-6 lg:px-8 lg:col-start-1 lg:row-start-1";
 const RAIL_CELL =
   "min-h-0 bg-white border-t border-slate-200 px-5 py-6 lg:border-t-0 lg:border-l lg:overflow-y-auto dash-scroll lg:col-start-2 lg:row-start-1";
 
 interface DashboardGridProps {
-  /** Greeting + stats, rendered at the top of the main container. */
   header: React.ReactNode;
   cards: MyWorkCard[];
   counts: MyWorkCounts;

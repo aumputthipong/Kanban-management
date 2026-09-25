@@ -9,10 +9,8 @@ import type { Card } from "@/types/board";
 
 interface Props {
   card: Card;
-  /** Resolved column title for the context line. */
   columnName?: string;
   onClose: () => void;
-  /** Open the full (editable) card — "go to task". */
   onOpenTask: () => void;
 }
 
@@ -23,9 +21,6 @@ const STATE_DOT: Record<PillState, string> = {
   overdue: "bg-red-600",
 };
 
-// View-only quick view for a calendar task, same shell as the My Work modal. Editing
-// stays on the full card ("เปิด task"); the board card renders instantly, AC / dev note /
-// subtask list are enriched via GET /cards/:id.
 export function CalendarTaskModal({ card, columnName, onClose, onOpenTask }: Props) {
   const { detail, isLoading } = useCardDetail(card.id);
   const boardTitle = useBoardStore((s) => s.boardMeta?.title);

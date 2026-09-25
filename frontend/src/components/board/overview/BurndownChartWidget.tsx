@@ -26,11 +26,7 @@ interface BurndownPoint {
   actual: number | null;
 }
 
-/**
- * Rolling-window burn-down. actual[i] counts cards that existed at end of day i and
- * were not yet done; ideal is linear from actual[0] to 0. Future days are null so the
- * line stops at today.
- */
+/** actual[i] = cards open at end of day i; ideal falls linearly to 0; future days are null. */
 function buildBurndownData(cards: Card[], days: number): BurndownPoint[] {
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -39,7 +35,6 @@ function buildBurndownData(cards: Card[], days: number): BurndownPoint[] {
   for (let i = 0; i < days; i++) {
     const d = new Date(today);
     d.setDate(today.getDate() - (days - 1 - i));
-    // end-of-day (exclusive upper bound for "exists by end of day i")
     const dayEnd = new Date(d);
     dayEnd.setHours(23, 59, 59, 999);
     points.push({
@@ -50,7 +45,6 @@ function buildBurndownData(cards: Card[], days: number): BurndownPoint[] {
     });
   }
 
-  // Precompute parsed card dates
   const parsed = cards.map((c) => ({
     createdAt: c.created_at ? new Date(c.created_at) : null,
     completedAt: c.completed_at ? new Date(c.completed_at) : null,
@@ -61,10 +55,9 @@ function buildBurndownData(cards: Card[], days: number): BurndownPoint[] {
     if (isFuture) return null;
     let remaining = 0;
     for (const c of parsed) {
-      // Existed by end of day? If no created_at, assume yes (legacy rows).
+      // No created_at (legacy rows): assume it existed.
       const existed = !c.createdAt || c.createdAt.getTime() <= dayEnd.getTime();
       if (!existed) continue;
-      // Still open at end of day?
       const stillOpen =
         !c.isDone ||
         !c.completedAt ||

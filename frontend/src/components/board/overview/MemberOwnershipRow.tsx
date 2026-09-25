@@ -9,18 +9,14 @@ import { getColumnColorHex } from "@/components/board/task-board/ColumnOptionsMo
 import { avatarColor, initials } from "./activityFormat";
 import { HeldCardRow } from "./HeldCardRow";
 
-// Colour for a column with no explicit colour set (Default) — neutral slate.
 const BAR_FALLBACK = "#cbd5e1";
-// Dashed placeholder bar for members holding nothing.
 const EMPTY_BAR =
   "repeating-linear-gradient(90deg,#EDF0F5,#EDF0F5 6px,transparent 6px,transparent 12px)";
 
 interface MemberOwnershipRowProps {
   member: MemberOwnership;
   columns: OwnershipColumn[];
-  /** Per-column number cells (only in the 2..MAX "sweet spot"). */
   numericMode: boolean;
-  /** Mini distribution bar (>=2 columns; a single segment conveys nothing). */
   showBar: boolean;
   onSelectCard: (card: Card) => void;
 }
@@ -45,7 +41,7 @@ export function MemberOwnershipRow({ member, columns, numericMode, showBar, onSe
         onClick={idle ? undefined : () => setExpanded((v) => !v)}
         aria-expanded={idle ? undefined : expanded}
       >
-        {/* member + mini workload bar */}
+        {/* Member + bar */}
         <td className="py-3 pl-4 pr-3">
           <div className="flex items-center gap-2.5">
             <ChevronRight
@@ -100,7 +96,7 @@ export function MemberOwnershipRow({ member, columns, numericMode, showBar, onSe
           </div>
         </td>
 
-        {/* per-column counts — only in the 2..MAX sweet spot */}
+        {/* Per-column counts */}
         {numericMode &&
           columns.map((col) => {
             const count = member.countByColumn[col.id] ?? 0;
@@ -117,7 +113,7 @@ export function MemberOwnershipRow({ member, columns, numericMode, showBar, onSe
             );
           })}
 
-        {/* total */}
+        {/* Total */}
         <td className="py-3 pl-3 pr-4 text-right">
           {idle ? (
             <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700">

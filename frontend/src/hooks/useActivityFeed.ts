@@ -3,11 +3,6 @@ import { useEffect } from "react";
 import { API_URL } from "@/lib/constants";
 import { useActivityStore } from "@/store/useActivityStore";
 
-/**
- * Loads the initial activity feed into `useActivityStore` and returns its live values.
- * Does not poll — later entries arrive over ACTIVITY_CREATED. Switching boards resets
- * the store so a stale feed never leaks into the new view.
- */
 export function useActivityFeed(boardId: string | undefined, limit = 30) {
   const activities = useActivityStore((s) => s.activities);
   const loading = useActivityStore((s) => s.loading);

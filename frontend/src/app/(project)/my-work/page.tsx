@@ -30,11 +30,8 @@ const EMPTY_COUNTS: MyWorkCounts = {
 const EMPTY_BOARD_META: Map<string, BoardMeta> = new Map();
 
 function PageShell({ children }: { children: React.ReactNode }) {
-  // Below lg everything stacks and the page scrolls; at lg it is a fixed-height
-  // grid (main container left, full-height rail right) that scrolls per cell.
   return (
-    // bg-slate-50 = design.md `background`; the app-wide --background is white, which
-    // would leave the white container with nothing to lift off.
+    // bg-slate-50 = design.md `background`; the global --background is white.
     <div className="h-full bg-slate-50 overflow-y-auto lg:overflow-hidden lg:grid lg:grid-cols-[minmax(0,1fr)_21rem] lg:grid-rows-[minmax(0,1fr)]">
       {children}
     </div>
@@ -42,7 +39,6 @@ function PageShell({ children }: { children: React.ReactNode }) {
 }
 
 export default function MyWorkPage() {
-  // board_id -> glyph/accent. Cheap second read; avoids extending the my-tasks API.
   const [boardMeta, setBoardMeta] = useState<Map<string, BoardMeta> | null>(null);
   const [selectedCard, setSelectedCard] = useState<MyWorkCard | null>(null);
   const [tab, setTab] = useState<MyWorkNoteTab>("today");
@@ -67,7 +63,6 @@ export default function MyWorkPage() {
         ),
       )
       .catch(() => {
-        // Project headers fall back to the default glyph and accent.
         setBoardMeta(new Map());
       });
     return () => controller.abort();
@@ -80,7 +75,7 @@ export default function MyWorkPage() {
         if (me?.full_name) setFullName(me.full_name);
       })
       .catch(() => {
-        /* greeting falls back to "คุณ" — non-critical */
+        /* non-critical: greeting falls back to "คุณ" */
       });
     return () => controller.abort();
   }, []);

@@ -1,9 +1,5 @@
-/**
- * Date helpers for cards, activities and dashboards. All deltas are against
- * today-at-midnight local, so a card due today reads "Today" whatever the clock says.
- */
+// All deltas are against today-at-midnight local time.
 
-/** "Overdue by N days" — assumes the due date is in the past. */
 export const getOverdueText = (dueDateStr: string) => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -18,17 +14,15 @@ export const getOverdueText = (dueDateStr: string) => {
   return `Overdue by ${diffDays} days`;
 };
 
-/** Long Thai date — e.g. "1 เมษายน 2569". Used as the canonical "absolute" form. */
 export const formatThaiDate = (dateStr: string) => {
   const date = new Date(dateStr);
   return date.toLocaleDateString("th-TH", {
     year: "numeric",
-    month: "long", // use "short" for an abbreviated month
+    month: "long",
     day: "numeric",
   });
 };
 
-/** "Due today" / "Due tomorrow" / "In N days" — assumes due date is in the future. */
 export const getDaysRemainingText = (dueDateStr: string) => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -44,7 +38,6 @@ export const getDaysRemainingText = (dueDateStr: string) => {
   return `In ${diffDays} days`;
 };
 
-// YYYY-MM-DD key in local time — safe for grouping by calendar day.
 export const dateKey = (d: Date): string => {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
@@ -52,7 +45,6 @@ export const dateKey = (d: Date): string => {
   return `${y}-${m}-${day}`;
 };
 
-// "Today" / "Tomorrow" / "Wed, Apr 30" — for sub-group headers.
 export const formatDayLabel = (date: Date, today: Date): string => {
   const t = new Date(today);
   t.setHours(0, 0, 0, 0);
@@ -68,8 +60,6 @@ export const formatDayLabel = (date: Date, today: Date): string => {
   });
 };
 
-// Compact relative label suitable for dense list rows (My Tasks).
-// Falls back to formatThaiDate if more than 7 days out.
 export const formatRelativeDueDate = (dueDateStr: string): string => {
   const today = new Date();
   today.setHours(0, 0, 0, 0);

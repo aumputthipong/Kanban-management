@@ -44,7 +44,6 @@ describe("PriorityFilterDropdown", () => {
     await userEvent.click(screen.getByText("High"));
     await userEvent.click(screen.getByText("Medium"));
 
-    // badge shows the selected count
     expect(screen.getByText("2")).toBeInTheDocument();
     expect(useBoardStore.getState().filterPriorities).toHaveLength(2);
   });
@@ -53,7 +52,7 @@ describe("PriorityFilterDropdown", () => {
     render(<PriorityFilterDropdown />);
     await userEvent.click(screen.getByText("Priority"));
     await userEvent.click(screen.getByText("High"));
-    await userEvent.click(screen.getByText("High")); // toggle off
+    await userEvent.click(screen.getByText("High"));
 
     expect(useBoardStore.getState().filterPriorities).not.toContain("high");
   });
@@ -73,7 +72,6 @@ describe("PriorityFilterDropdown", () => {
     await userEvent.click(screen.getByText("Clear filter"));
 
     expect(useBoardStore.getState().filterPriorities).toHaveLength(0);
-    // dropdown closes after clear
     expect(screen.queryByText("High")).not.toBeInTheDocument();
   });
 });

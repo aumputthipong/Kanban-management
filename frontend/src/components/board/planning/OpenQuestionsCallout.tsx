@@ -9,9 +9,6 @@ interface Props {
   onJump: (itemId: string) => void;
 }
 
-// Pinned summary of the session's open questions so they do not get buried. Read-only
-// by design — the data model has no "answered" status or "waiting on X" field yet, so
-// this only chases visibility; clicking a row jumps to the item. Collapsible, count stays.
 export function OpenQuestionsCallout({ questions, onJump }: Props) {
   const [open, setOpen] = useState(true);
 

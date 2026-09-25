@@ -8,10 +8,6 @@ import { inviteApi } from "@/lib/inviteApi";
 import { ApiError } from "@/lib/apiClient";
 import { useToastStore } from "@/store/useToastStore";
 
-// Invite accept page. Opening /invite/<token> tries to join the board the token
-// points at. If the visitor isn't logged in, apiClient's 401 bounce sends them
-// to /login?redirect=/invite/<token>, so after auth they land back here and the
-// join completes. On an invalid / expired link we show a friendly dead-end.
 export default function InviteAcceptPage() {
   const params = useParams();
   const router = useRouter();

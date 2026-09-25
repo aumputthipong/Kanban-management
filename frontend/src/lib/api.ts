@@ -1,4 +1,3 @@
-// src/lib/api.ts
 import { cookies } from "next/headers";
 import { API_URL } from "@/lib/constants";
 
@@ -36,7 +35,7 @@ export async function clientFetch<T>(
 ): Promise<T> {
   const res = await fetch(`${API_URL}${path}`, {
     ...options,
-    credentials: "include", // attach the cookie automatically
+    credentials: "include",
     headers: {
       "Content-Type": "application/json",
       ...options.headers as Record<string, string>,

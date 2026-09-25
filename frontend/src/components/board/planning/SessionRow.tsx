@@ -12,10 +12,6 @@ import {
 import type { PlanningSessionSummary } from "@/types/planning";
 import { formatRelativeFromNow } from "./planningFormat";
 
-// Each row answers, at a glance: what state is this session in (open
-// questions / all sent / fresh / in-play), what's inside (type tally), and
-// how much already went to the Board (progress). All derived from the
-// summary counts — no extra fetch.
 type SessionState = "followup" | "done" | "fresh" | "active";
 
 const STATE_THEME: Record<
@@ -46,8 +42,6 @@ const STATE_THEME: Record<
 
 function sessionStat(s: PlanningSessionSummary) {
   const live = s.req_count + s.dec_count + s.q_count;
-  // "to send" universe excludes the paused (dropped) pile — those have their
-  // own bucket and aren't pending promotion.
   const total = live + s.promoted_count;
   const pct = total > 0 ? Math.round((s.promoted_count / total) * 100) : 0;
   let state: SessionState;
@@ -58,9 +52,7 @@ function sessionStat(s: PlanningSessionSummary) {
   return { live, total, pct, state };
 }
 
-// A session is "not yet named" while it still carries the date-based title from
-// defaultSessionTitle, so the row can nudge for a real name. The legacy Thai prefix is
-// still matched so notes created before the rename stay auto-titled.
+// Also matches the legacy Thai prefix for notes created before the rename.
 function isAutoTitle(title: string) {
   return /^(Note|บันทึก)\s+\d/.test(title.trim());
 }
@@ -81,7 +73,7 @@ export function SessionRow({
 
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(session.title);
-  // Escape sets this so the unmount-triggered onBlur doesn't also commit.
+  // Set on Escape so the unmount blur doesn't also commit.
   const escapingRef = useRef(false);
 
   const startEdit = (e: React.MouseEvent) => {
@@ -151,9 +143,7 @@ export function SessionRow({
             >
               {session.title}
             </p>
-            {/* Rename affordance — always shown as "ตั้งชื่อ" while the session
-                still carries its auto date-title; a quiet hover pencil once it
-                has a real name. */}
+            {/* Rename */}
             <button
               type="button"
               onClick={startEdit}
@@ -176,9 +166,7 @@ export function SessionRow({
         </div>
       </div>
 
-      {/* Fixed-height status + progress slots so every row's right column is the
-          same height — rows without a progress bar no longer come up short and
-          the list reads as one even stack. */}
+      {/* Status + progress (fixed height) */}
       <div className="flex w-40 shrink-0 flex-col items-end justify-center gap-2">
         <div className="flex h-6 items-center">
           {state === "followup" ? (
@@ -228,8 +216,6 @@ export function SessionRow({
   );
 }
 
-// Type tally — coloured dots + counts for the live REQ/DEC/Q items, matching
-// the chip palette used inside a session.
 function Tally({ session }: { session: PlanningSessionSummary }) {
   const parts: [string, number, string][] = [
     ["REQ", session.req_count, "bg-red-500"],

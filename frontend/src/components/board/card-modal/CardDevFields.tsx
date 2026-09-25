@@ -1,9 +1,5 @@
 "use client";
 
-// Optional dev fields (Acceptance Criteria + Dev Note) for the task modal. Empty by
-// default they collapse into ghost "+ Add" buttons, expanding into a labelled textarea when
-// the user opts in or the card already has a value. Read-only viewers never see ghosts.
-
 import { memo, useState } from "react";
 import { Check, Code2, Plus, X } from "lucide-react";
 import type { FormState } from "./CardDetailModal";
@@ -30,8 +26,7 @@ function CardDevFieldsImpl({
   onCommit,
   canEdit,
 }: CardDevFieldsProps) {
-  // Seed "open" from existing content so a filled field stays expanded and does not
-  // collapse mid-edit. The modal remounts per card (key={card.id}), so these start fresh.
+  // Filled fields start open so they don't collapse mid-edit.
   const [openAC, setOpenAC] = useState(acceptanceValue.trim().length > 0);
   const [openNote, setOpenNote] = useState(noteValue.trim().length > 0);
 
@@ -44,7 +39,6 @@ function CardDevFieldsImpl({
   if (canEdit && !showNote)
     ghosts.push({ key: "note", label: "Dev note", onAdd: () => setOpenNote(true) });
 
-  // Nothing to render at all (read-only card with no dev content).
   if (!showAC && !showNote && ghosts.length === 0) return null;
 
   return (

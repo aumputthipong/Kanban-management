@@ -11,8 +11,7 @@ import type {
   MyWorkResponse,
 } from "@/types/myWork";
 
-// Delayed commit ("Undo Send"): completing moves the card into a DONE column,
-// which has no clean server-side reversal — better to never send it than to undo.
+// Delayed commit: a DONE move has no clean server-side undo.
 const COMPLETE_UNDO_MS = 5000;
 
 const GROUP_TO_COUNT: Record<MyWorkGroup, keyof Omit<MyWorkCounts, "total">> = {
@@ -23,7 +22,6 @@ const GROUP_TO_COUNT: Record<MyWorkGroup, keyof Omit<MyWorkCounts, "total">> = {
   no_date: "no_date",
 };
 
-// Truncate so the toast message and its "back" action still fit on one line.
 function shortTitle(title: string, max = 40): string {
   const t = title.trim();
   return t.length > max ? `${t.slice(0, max).trimEnd()}…` : t;
@@ -36,8 +34,6 @@ interface UseMyWorkActionsArgs {
   setError: Dispatch<SetStateAction<string | null>>;
 }
 
-// Owns the two mutating flows of the My Work inbox — mark-done (delayed commit +
-// undo) and snooze (optimistic drop + refetch + undo) — plus the done-today counter.
 export function useMyWorkActions({
   data,
   setData,
@@ -46,21 +42,19 @@ export function useMyWorkActions({
 }: UseMyWorkActionsArgs) {
   const showToast = useToastStore((s) => s.show);
 
-  // Session-local: the API has no "done today", so this resets on reload.
+  // Session-local: the API has no "done today".
   const [doneToday, setDoneToday] = useState(0);
-  // Ticked but not yet sent: holds the card (to restore on undo) and its timer.
   const pendingCompletions = useRef<
     Map<string, { card: MyWorkCard; timer: ReturnType<typeof setTimeout> }>
   >(new Map());
 
-  // Drop mid-undo cards from a fetched list so a refetch cannot resurrect them.
+  // Hide mid-undo cards so a refetch can't resurrect them.
   const filterPending = useCallback((cards: MyWorkCard[]) => {
     const pending = pendingCompletions.current;
     return pending.size > 0 ? cards.filter((c) => !pending.has(c.id)) : cards;
   }, []);
 
-  // Adjust counts optimistically rather than refetching — a refetch would resurrect
-  // other still-pending completions.
+  // Not a refetch — it would resurrect other pending completions.
   const adjustCounts = useCallback(
     (group: MyWorkGroup, delta: number) => {
       setCounts((c) =>
@@ -88,7 +82,7 @@ export function useMyWorkActions({
   const commitComplete = useCallback(
     async (cardId: string) => {
       const entry = pendingCompletions.current.get(cardId);
-      if (!entry) return; // undone before the timer fired
+      if (!entry) return;
       pendingCompletions.current.delete(cardId);
       try {
         await completeMyTask(cardId);
@@ -103,7 +97,7 @@ export function useMyWorkActions({
   const undoComplete = useCallback(
     (cardId: string) => {
       const entry = pendingCompletions.current.get(cardId);
-      if (!entry) return; // already committed
+      if (!entry) return;
       clearTimeout(entry.timer);
       pendingCompletions.current.delete(cardId);
       restorePending(entry.card);
@@ -117,7 +111,6 @@ export function useMyWorkActions({
       const card = data.cards.find((c) => c.id === cardId);
       if (!card) return;
 
-      // Nothing is sent yet — the timer below commits it.
       setData({ ...data, cards: data.cards.filter((c) => c.id !== cardId) });
       adjustCounts(card.group, -1);
       if (card.group === "today") setDoneToday((n) => n + 1);
@@ -135,7 +128,6 @@ export function useMyWorkActions({
     [data, adjustCounts, setData, showToast, commitComplete, undoComplete],
   );
 
-  // Commit anything still in its undo window on unmount, rather than dropping it.
   useEffect(() => {
     const pending = pendingCompletions.current;
     return () => {
@@ -147,8 +139,7 @@ export function useMyWorkActions({
     };
   }, []);
 
-  // Reverts a snooze. "" restores a card that had no date: the backend treats an
-  // empty due_date as a clear.
+  // "" clears the date on the backend — restores a card that had none.
   const undoSnooze = useCallback(
     async (cardId: string, originalDueDate: string) => {
       try {
@@ -167,9 +158,7 @@ export function useMyWorkActions({
     async (cardId: string, dueDate: string, label: string) => {
       if (!data) return;
       const prev = data;
-      // Capture the original date before the drop — the refetch replaces `data`.
       const original = prev.cards.find((c) => c.id === cardId)?.due_date ?? "";
-      // Optimistic drop; the refetch below repopulates it into its new bucket.
       setData({ ...prev, cards: prev.cards.filter((c) => c.id !== cardId) });
       try {
         await snoozeCardDueDate(cardId, dueDate);

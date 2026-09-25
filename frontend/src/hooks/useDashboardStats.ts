@@ -3,15 +3,10 @@ import { useBoardStore } from "@/store/useBoardStore";
 import type { Card } from "@/types/board";
 
 interface ExtendedCard extends Card {
-  /** Optional — older cards may not carry updated_at; only used for stale detection. */
   updated_at?: string;
 }
 
-/**
- * Aggregates the loaded board into the Project Overview numbers: totals,
- * progress, urgency buckets, per-assignee workload, per-column counts.
- * Pure, inside a useMemo keyed on `columns` — never add I/O here.
- */
+/** Pure, inside a useMemo keyed on `columns` — never add I/O here. */
 export function useDashboardStats() {
   const columns = useBoardStore((s) => s.columns);
 
@@ -43,7 +38,6 @@ export function useDashboardStats() {
     const weekEnd = new Date(today);
     weekEnd.setDate(today.getDate() + 7);
 
-    // Assume the last column is Done.
     const doneColumnId = columns.length > 0 ? columns[columns.length - 1].id : null;
 
     let doneCount = 0;
@@ -60,8 +54,6 @@ export function useDashboardStats() {
       columnMeta[col.id] = { title: col.title, category: col.category, position: col.position };
     });
 
-    // Feeds the "Bottleneck detected" insight only — the per-member ownership view
-    // derives its own counts (see useBoardOwnership).
     const assigneeCount: Record<string, { name: string; active: number }> = {};
 
     allCards.forEach((card) => {
@@ -98,7 +90,6 @@ export function useDashboardStats() {
         }
       }
 
-      // Stale: not moved in over 7 days.
       if (card.updated_at && !isDone) {
         const updatedAt = new Date(card.updated_at);
         const daysDiff = (today.getTime() - updatedAt.getTime()) / (1000 * 3600 * 24);
@@ -108,17 +99,14 @@ export function useDashboardStats() {
 
     const progress = Math.round((doneCount / totalCards) * 100);
 
-    // Build the zero-config insight strings.
     const insights: string[] = [];
 
-    // On-track vs at-risk.
     if (progress >= 60) {
       insights.push(`Project is on track with a high completion rate (${progress}% done).`);
     } else if (overdueCards.length > totalCards * 0.2) {
       insights.push(`Project is at risk: ${overdueCards.length} tasks are currently overdue.`);
     }
 
-    // Workload bottleneck.
     const activeTasks = totalCards - doneCount;
     if (activeTasks > 0) {
       let maxAssignee = { name: "", count: 0 };
@@ -134,12 +122,10 @@ export function useDashboardStats() {
       }
     }
 
-    // Stale tasks.
     if (staleCount > 0) {
       insights.push(`Hidden bottleneck: ${staleCount} tasks haven't seen any movement in over 7 days.`);
     }
 
-    // Per-column counts for the bottleneck analysis.
     const columnStats = columns.map((col) => ({
       id: col.id,
       title: col.title,

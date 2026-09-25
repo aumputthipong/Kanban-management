@@ -36,10 +36,6 @@ const PRESETS: { label: string; prompt: string }[] = [
   },
 ];
 
-// Exports the session as a prompt-shaped markdown document. The body is
-// auto-generated from items (read-only); the "Task" footer is editable and
-// persisted in localStorage so the user's last preset/wording carries over
-// between sessions — meeting-to-meeting most users want the same framing.
 export function ExportDialog({ session, items, onClose }: Props) {
   const [task, setTask] = useState<string>(() => {
     if (typeof window === "undefined") return PRESETS[0].prompt;

@@ -8,9 +8,7 @@ import { classifyPillState, type PillState } from "./pillState";
 
 interface TaskPillProps {
   card: Card;
-  /** Open the task's detail modal. */
   onSelect: (card: Card) => void;
-  /** when true the pill renders flat into a popover/day list (no extra wrap). */
   inPopover?: boolean;
 }
 
@@ -22,7 +20,6 @@ const PRIORITY_BAR: Record<NonNullable<Card["priority"]> | "none", string> = {
   none: "bg-slate-300",
 };
 
-// Per-state background + text classes. Reference design.md state-*-bg/fg.
 const STATE_STYLE: Record<PillState, { bg: string; text: string; ring: string }> = {
   todo: { bg: "bg-white", text: "text-slate-800", ring: "ring-slate-200" },
   inProgress: { bg: "bg-blue-100", text: "text-blue-900", ring: "ring-blue-200" },
@@ -76,10 +73,9 @@ export function TaskPill({ card, onSelect, inPopover = false }: TaskPillProps) {
         onSelect(card);
       }}
       title={card.title}
-      // 24px tall (size.pill-h) — overflow handled by parent (max 3 + "+N more")
       className={`group relative flex h-6 w-full items-center gap-1.5 overflow-hidden rounded ring-1 ${styles.ring} ${styles.bg} pl-0 pr-1.5 text-left transition-colors hover:bg-indigo-50 ${state === "overdue" ? "font-semibold" : "font-medium"} ${inPopover ? "" : ""}`}
     >
-      {/* Priority bar — 3px wide, full height (size.priority-bar-w) */}
+      {/* Priority bar */}
       <span
         aria-hidden
         className={`block h-full w-[3px] shrink-0 ${PRIORITY_BAR[priorityKey]}`}
@@ -99,7 +95,7 @@ export function TaskPill({ card, onSelect, inPopover = false }: TaskPillProps) {
         </span>
       )}
 
-      {/* Tag dots — 5px (size.tag-dot) */}
+      {/* Tag dots */}
       {card.tags && card.tags.length > 0 && (
         <span className="flex shrink-0 items-center gap-0.5">
           {card.tags.slice(0, 3).map((tag) => (
@@ -113,7 +109,7 @@ export function TaskPill({ card, onSelect, inPopover = false }: TaskPillProps) {
         </span>
       )}
 
-      {/* Avatar — 18px (size.avatar-sm) */}
+      {/* Avatar */}
       {card.assignee_name && card.assignee_id ? (
         <span
           className={`flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full text-[9px] font-bold text-white ${getAvatarColor(card.assignee_id)}`}
@@ -122,7 +118,7 @@ export function TaskPill({ card, onSelect, inPopover = false }: TaskPillProps) {
         </span>
       ) : null}
 
-      {/* In-progress progress bar at the bottom of the pill */}
+      {/* Progress bar */}
       {showProgressBar && (
         <span
           aria-hidden

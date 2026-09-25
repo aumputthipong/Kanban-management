@@ -4,9 +4,6 @@ import { useState } from "react";
 import { Link2, ChevronRight } from "lucide-react";
 import { InviteLinkModal } from "./InviteLinkModal";
 
-// A quiet row in the members panel that opens the invite-link modal on click —
-// the link itself isn't shown inline, so it can't leak from a glance at the
-// screen. The modal ensures a ready link, so this is purely "open → copy".
 export function InviteLinkButton({ boardId }: { boardId: string }) {
   const [open, setOpen] = useState(false);
 

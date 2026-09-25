@@ -7,12 +7,7 @@ interface MeResponse {
   user_id?: string;
 }
 
-/**
- * Bootstraps a board view by hydrating `useBoardStore` in three parallel fetches.
- * Call once at the board page root — later updates arrive over WebSocket, not refetches.
- * Returns `{ isLoading, error }`; error is the sentinel "NOT_FOUND" for a 404 so the
- * page can distinguish a missing board from a generic failure.
- */
+/** Hydrates useBoardStore once; later updates arrive over WS. error is "NOT_FOUND" on 404. */
 export function useBoardData(boardId: string) {
   const setColumns = useBoardStore((s) => s.setColumns);
   const setCurrentUser = useBoardStore((s) => s.setCurrentUser);
@@ -53,8 +48,7 @@ export function useBoardData(boardId: string) {
         if (meRes.status === "fulfilled" && meRes.value?.user_id) {
           setCurrentUser(meRes.value.user_id);
         }
-        // GET /boards/:id is columns-only — title/icon/color come from the list
-        // endpoint. Leaving boardMeta null makes the header fall back to its default.
+        // GET /boards/:id is columns-only; title/icon/color come from the list endpoint.
         if (listRes.status === "fulfilled" && Array.isArray(listRes.value)) {
           const meta = listRes.value.find((b) => b.id === boardId);
           setBoardMeta(

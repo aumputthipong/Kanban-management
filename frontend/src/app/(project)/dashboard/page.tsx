@@ -7,16 +7,14 @@ import { redirect } from "next/navigation";
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 
 export default async function DashboardPage() {
-  // apiFetch throws on 401, which for a logged-out visitor arriving from the
-  // landing CTA rendered the error boundary instead of the login page.
+  // apiFetch throws on 401 — redirect instead of hitting the error boundary.
   let boards: Board[];
   try {
     boards = await apiFetch<Board[]>("/boards", { cache: "no-store" });
   } catch {
     redirect("/login?redirect=/dashboard");
   }
-  // Server component, runs once per request — Date.now() is fine here. The
-  // react-hooks/purity rule is targeted at client component render bodies.
+  // Server component: Date.now() runs once per request.
   // eslint-disable-next-line react-hooks/purity
   const now = Date.now();
   const activeCount = boards.filter(

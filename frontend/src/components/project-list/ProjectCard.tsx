@@ -10,12 +10,9 @@ const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 interface ProjectCardProps {
   board: Board;
   viewMode: "grid" | "list";
-  /** Reference "now" for the activity check, supplied by the parent so the
-   * card stays a pure function of its props. */
   now: number;
 }
 
-/** Stacked member avatars, used by both layouts. */
 function Avatars({
   board,
   size,
@@ -69,9 +66,7 @@ export function ProjectCard({ board, viewMode, now }: ProjectCardProps) {
       ? Math.round((board.done_cards / board.total_cards) * 100)
       : 0;
 
-  // "Recency" follows what the user actually did with the board: opening it
-  // is the signal. Fall back to the board's edit timestamp only when the
-  // membership pre-dates last_accessed_at tracking.
+  // Recency = when the user last opened it; updated_at only for older memberships.
   const recencyTimestamp = board.last_accessed_at ?? board.updated_at;
   const isActive = now - new Date(recencyTimestamp).getTime() < SEVEN_DAYS_MS;
   const recencyVerb = board.last_accessed_at ? "เปิด" : "อัปเดต";
@@ -85,9 +80,7 @@ export function ProjectCard({ board, viewMode, now }: ProjectCardProps) {
   if (viewMode === "list") {
     return (
       <Link href={`/board/${board.id}/tasks`}>
-        {/* Avatars + status are fixed-width tracks (not auto) so their varying
-            content width can't shift the 160px progress column — every row's
-            progress bar then starts at the same x. */}
+        {/* Fixed-width tracks keep every progress bar at the same x. */}
         <div className="relative bg-white pl-6 pr-5 py-3.5 rounded-lg border border-slate-200 hover:border-blue-300 hover:shadow-sm transition-all duration-200 grid grid-cols-[auto_1fr_160px_76px_76px] items-center gap-5 group overflow-hidden">
           <span
             className="absolute left-0 top-0 bottom-0 w-[3px]"
@@ -133,7 +126,7 @@ export function ProjectCard({ board, viewMode, now }: ProjectCardProps) {
     );
   }
 
-  // grid view
+  // Grid view
   return (
     <Link href={`/board/${board.id}/tasks`}>
       <div className="group relative bg-white p-4 pt-5 rounded-xl shadow-sm border border-slate-200 hover:shadow-md hover:border-blue-300 transition-all duration-200 cursor-pointer flex flex-col h-full overflow-hidden">
@@ -142,7 +135,7 @@ export function ProjectCard({ board, viewMode, now }: ProjectCardProps) {
           style={{ background: accent }}
         />
 
-        {/* header */}
+        {/* Header */}
         <div className="flex items-start gap-3">
           <div
             className="h-[38px] w-[38px] rounded-lg flex items-center justify-center text-white shrink-0"
@@ -165,14 +158,14 @@ export function ProjectCard({ board, viewMode, now }: ProjectCardProps) {
           </div>
         </div>
 
-        {/* description */}
+        {/* Description */}
         <p
           className={`text-[12.5px] leading-relaxed mt-3 line-clamp-2 ${hasDesc ? "text-slate-500" : "text-slate-300 italic line-clamp-1"}`}
         >
           {hasDesc ? board.description : "ยังไม่มีคำอธิบาย Project"}
         </p>
 
-        {/* progress */}
+        {/* Progress */}
         <div className="mt-4">
           <div className="flex justify-between items-baseline mb-1.5">
             <span className="text-[11px] font-bold tracking-wider text-slate-400 uppercase">
@@ -194,7 +187,7 @@ export function ProjectCard({ board, viewMode, now }: ProjectCardProps) {
           </p>
         </div>
 
-        {/* footer */}
+        {/* Footer */}
         <div className="flex items-center justify-between mt-auto pt-3.5 border-t border-slate-100">
           <Avatars board={board} size="sm" />
           <span className="inline-flex items-center gap-1.5 text-[12.5px] font-semibold text-slate-600">

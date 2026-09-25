@@ -1,8 +1,5 @@
 "use client";
 
-// Display-only REQ/DEC/Q chip. Changing the type moved into the row's overflow menu so
-// every row action lives in one place — do not re-add a click handler here. The full
-// Thai meaning stays on hover via TYPE_TOOLTIP.
 import type { PlanningItemType } from "@/types/planning";
 import { TYPE_CHIP, TYPE_ICON, TYPE_TOOLTIP } from "./planningTypeMeta";
 

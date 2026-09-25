@@ -9,16 +9,12 @@ import {
   calcPositionFromColumns,
 } from "@/utils/boardPosition";
 
-/**
- * @dnd-kit board drag handlers: optimistic cross-column preview on dragOver,
- * final position + CARD_MOVED broadcast on dragEnd. Reconcile contract and
- * position math: docs/ARCHITECTURE.md, "Optimistic UI pattern".
- */
+// Reconcile contract + position math: docs/ARCHITECTURE.md "Optimistic UI pattern".
 export function useDragActions() {
-  // Action only — selecting board state here re-renders the card modal on every mutation.
+  // Action only — selecting board state here re-renders the card modal.
   const moveCard = useBoardStore((s) => s.moveCard);
 
-  // ref, not state — a re-render per pointer move would re-fire the dragOver move.
+  // ref, not state — a re-render would re-fire the dragOver move.
   const dragOverColumnRef = useRef<string | null>(null);
 
   const handleDragStart = () => {
@@ -69,8 +65,6 @@ export function useDragActions() {
     if (!resolved) return;
     const { overColumnId, overCardId } = resolved;
 
-    // Past the midpoint = place after; covers same-column downward moves and
-    // cross-column drops onto a bottom card.
     let placeAfter = false;
     const activeTranslated = active.rect.current.translated;
     if (overCardId && over.rect && activeTranslated) {
@@ -87,8 +81,7 @@ export function useDragActions() {
       placeAfter,
     );
 
-    // Snapshot before the commit, not before the dragOver preview: the preview has
-    // already moved the card, and reverting to pre-drag state would fight the pointer.
+    // Snapshot after the dragOver preview, or a revert fights the pointer.
     const snapshot = useBoardStore.getState().columns;
     moveCard(activeCardId, overColumnId, newPosition);
 

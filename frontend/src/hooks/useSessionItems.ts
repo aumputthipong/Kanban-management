@@ -1,6 +1,4 @@
-// Owns the planning session's items state and every mutation the capture surface
-// needs. All mutations are optimistic and fire-and-forget with a toast on failure:
-// during a meeting, capture velocity beats confirming trivial writes.
+// Mutations are optimistic fire-and-forget — see docs/CODE-NOTES.md "Planning".
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useToastStore } from "@/store/useToastStore";
@@ -42,7 +40,6 @@ export function useSessionItems(
   const [savedAt, setSavedAt] = useState<string>("");
   const showToast = useToastStore((s) => s.show);
 
-  // Bounce to the session list on 4xx — usually a deleted session or a stale link.
   useEffect(() => {
     let cancelled = false;
     planningApi
@@ -63,7 +60,7 @@ export function useSessionItems(
     };
   }, [sessionId, boardId, router, showToast]);
 
-  // Same NOT IN exclusion as the backend session-summary aggregate, or counts drift.
+  // Same NOT IN exclusion as the backend summary, or counts drift.
   const stats = useMemo<SessionStats>(() => {
     const s: SessionStats = { REQ: 0, DEC: 0, Q: 0, dropped: 0, promoted: 0, selected: 0 };
     for (const it of items) {
@@ -106,7 +103,6 @@ export function useSessionItems(
     async (title: string, type: PlanningItemType) => {
       const trimmed = title.trim();
       if (!trimmed) return;
-      // The API returns the real id; swap in place so later edits target the real row.
       const tempId = `__pending_${Math.random().toString(36).slice(2)}`;
       const placeholder: PlanningItem = {
         id: tempId,
@@ -146,8 +142,7 @@ export function useSessionItems(
   const changeType = useCallback(
     (item: PlanningItem, t: PlanningItemType) => {
       if (item.type === t) return;
-      // The one PATCH the backend can reject (promoted items are frozen), so revert
-      // by hand or the chip stays on a type that never landed.
+      // The one PATCH the backend can reject (promoted items are frozen) — revert by hand.
       const previous = item.type;
       setItems((prev) => prev.map((it) => (it.id === item.id ? { ...it, type: t } : it)));
       setSavedAt(new Date().toISOString());
@@ -183,7 +178,6 @@ export function useSessionItems(
     [showToast],
   );
 
-  // Per-row promote — same endpoint as the batch path, without the select two-step.
   const promoteOne = useCallback(
     async (item: PlanningItem) => {
       try {
@@ -202,8 +196,6 @@ export function useSessionItems(
     [showToast],
   );
 
-  // Bulk-promote by explicit ids from select mode. Already-promoted ids are skipped
-  // so a stale selection cannot double-promote.
   const promoteMany = useCallback(
     async (ids: string[]) => {
       const idSet = new Set(ids);
@@ -211,7 +203,7 @@ export function useSessionItems(
         (it) => idSet.has(it.id) && it.status !== "promoted",
       );
       if (targets.length === 0) return;
-      // Promote sequentially to keep board card positions stable.
+      // Sequential to keep board card positions stable.
       for (const it of targets) {
         try {
           const res = await planningApi.promoteItem(it.id);

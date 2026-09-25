@@ -9,14 +9,11 @@ import { useBoardStore } from "@/store/useBoardStore";
 
 interface AssigneeDropdownProps {
   members: BoardMember[];
-  /** Selected user id; "" = Unassigned. */
   value: string;
-  /** Fires with the chosen user id ("" to unassign). Caller commits. */
   onSelect: (userId: string) => void;
 }
 
-/** First grapheme of a name, emoji-safe (charAt would split surrogate pairs —
- *  names can lead with an emoji per the team's naming habits). */
+/** First grapheme, emoji-safe (charAt splits surrogate pairs). */
 function initial(name: string): string {
   return (Array.from(name.trim())[0] ?? "?").toUpperCase();
 }
@@ -32,10 +29,7 @@ function Avatar({ userId, name, size }: { userId: string; name: string; size: 5 
   );
 }
 
-// The right rail is a fixed 224px column, so a native <select> truncates long
-// Thai names + email. This dropdown keeps a rail-width trigger but opens a
-// wider portal panel (right-aligned to the trigger, growing leftward) where
-// each member shows avatar + full name + email without cramping.
+// Wider than the 224px rail so long Thai names and emails fit.
 const PANEL_W = 288;
 
 export function AssigneeDropdown({ members, value, onSelect }: AssigneeDropdownProps) {
@@ -44,8 +38,6 @@ export function AssigneeDropdown({ members, value, onSelect }: AssigneeDropdownP
   const btnRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // "Me" gets pinned to the top + a badge so users find themselves first when
-  // self-assigning. currentUserId is hydrated on board load (useBoardData).
   const currentUserId = useBoardStore((s) => s.currentUserId);
   const me = members.find((m) => m.user_id === currentUserId);
   const others = members.filter((m) => m.user_id !== currentUserId);
@@ -187,9 +179,6 @@ function MemberRow({
   );
 }
 
-/** "ฉัน" marker for the current user — a chip, not prose, so the accent read
- *  is allowed; kept distinct from the blue selected-row wash by the stronger
- *  blue-100 fill. */
 function MeBadge() {
   return (
     <span className="shrink-0 text-[10px] font-semibold leading-none px-1.5 py-0.5 rounded bg-blue-100 text-blue-700">

@@ -16,16 +16,9 @@ interface Props {
   onTypeChange: (t: PlanningItemType) => void;
   onCommit: () => void;
   onJumpToList: () => void;
-  // Parent owns the input ref so it can refocus from outside the component
-  // (e.g. after promoting selected items). Passing the ref down rather than
-  // exposing an imperative handle keeps the API flat — see SessionCaptureView
-  // for the parent-side ownership.
   inputRef: RefObject<HTMLInputElement | null>;
 }
 
-// Capture row: segmented type picker plus the input. Picking a type refocuses the
-// input so the user stays in flow. Enter (commit) and ArrowDown (jump into the list)
-// are handled by the parent, which decides what those mean.
 export function CaptureInput({
   draft,
   onDraftChange,

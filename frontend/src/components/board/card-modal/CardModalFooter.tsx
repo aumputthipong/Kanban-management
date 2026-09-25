@@ -11,8 +11,6 @@ interface CardModalFooterProps {
   onClose: () => void;
 }
 
-// No "Save" button — fields auto-save per-field (see useCardForm). The footer
-// only carries the destructive action (Delete, confirm-gated) and Close.
 export function CardModalFooter({
   canEdit,
   cardTitle,

@@ -28,9 +28,7 @@ import {
 import { useCanManageBoard } from "@/hooks/useBoardRole";
 import { UNASSIGNED_FILTER } from "@/store/useBoardStore";
 
-// DONE-column collapse state is remembered per board+column in localStorage and
-// defaults to collapsed — finished work stays out of the way, but the strip is still a
-// live drop target. Read lazily; these mount client-side only, so no hydration risk.
+// DONE columns default to collapsed; the choice is saved per board + column.
 const collapseKey = (boardId: string, columnId: string) =>
   `turtask:col-collapsed:${boardId}:${columnId}`;
 
@@ -116,7 +114,7 @@ export const KanbanColumn = memo(function KanbanColumn({
     try {
       window.localStorage.setItem(collapseKey(boardId, id), next ? "1" : "0");
     } catch {
-      /* localStorage unavailable (private mode) — collapse stays per-session */
+      /* localStorage unavailable (private mode) */
     }
   };
 
@@ -139,12 +137,9 @@ export const KanbanColumn = memo(function KanbanColumn({
   );
 
   const colorHex = getColumnColorHex(color);
-  // Column identity colour — the custom colour, or a neutral/emerald category
-  // fallback so every column still reads at a glance without a custom colour.
   const accentColor = columnAccentColor(colorHex, isDone);
 
-  // D1 "Solid Cap": a filled identity-colour cap over a faint wash of the same
-  // hue. Formulae live in ColumnOptionsModal so the options preview stays truthful.
+  // Cap/body formulas live in ColumnOptionsModal so its preview matches.
   const capColor = columnCapColor(accentColor);
   const bodyStyle = {
     backgroundColor: columnBodyBg(accentColor, isOver),
@@ -153,8 +148,7 @@ export const KanbanColumn = memo(function KanbanColumn({
 
   const showCollapsed = isDone && collapsed;
 
-  // ── Collapsed DONE strip — still a live drop target (close a card by
-  //    dragging it onto the strip). The droppable ref stays mounted here. ──
+  // Collapsed DONE strip — still a drop target.
   if (showCollapsed) {
     return (
       <>
@@ -231,7 +225,7 @@ export const KanbanColumn = memo(function KanbanColumn({
         ref={setNodeRef}
         className="w-72 shrink-0 flex flex-col snap-start rounded-2xl transition-all duration-200"
       >
-        {/* Solid Cap — filled identity-colour header, white text (D1) */}
+        {/* Cap */}
         <div
           className="sticky top-0 z-10 flex items-center gap-2 h-12 pl-4 pr-2 rounded-t-2xl"
           style={{ backgroundColor: capColor }}
@@ -248,7 +242,6 @@ export const KanbanColumn = memo(function KanbanColumn({
               {cards.length}
             </span>
 
-            {/* DONE columns close cards by dragging — no inline add button */}
             {!isDone && (
               <button
                 onClick={() => setTopAddOpen(true)}
@@ -281,7 +274,7 @@ export const KanbanColumn = memo(function KanbanColumn({
           </div>
         </div>
 
-        {/* Body — faint wash of the identity colour, 1px hued border (D1) */}
+        {/* Body */}
         <SortableContext
           items={cards.map((c) => c.id)}
           strategy={verticalListSortingStrategy}
@@ -311,8 +304,6 @@ export const KanbanColumn = memo(function KanbanColumn({
         </SortableContext>
       </div>
 
-      {/* Column "+" opens the full create modal preset to this column (drops the
-          old title-only inline form for a consistent create UX). */}
       {topAddOpen && (
         <CreateTaskModal
           defaultColumnId={id}
@@ -321,9 +312,7 @@ export const KanbanColumn = memo(function KanbanColumn({
         />
       )}
 
-      {/* `key` remounts the modal whenever a different column opens it, so
-          internal state initialises fresh from the new initialTitle/Category/Color
-          props instead of being sync'd inside an effect. */}
+      {/* `key` remounts per column so state starts fresh. */}
       <ColumnOptionsModal
         key={`${id}-${optionsOpen}`}
         open={optionsOpen}

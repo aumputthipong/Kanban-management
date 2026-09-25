@@ -15,11 +15,7 @@ const STYLES: Record<Variant, string> = {
     "w-full justify-center border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 px-4 py-2.5 rounded-lg",
 };
 
-/**
- * Starts a throwaway demo session and lands the visitor on their own sandbox board.
- * Styled as a secondary action on purpose — design.md allows one `button-primary`
- * per view, and on both hosts here that slot is already taken.
- */
+// Secondary style on purpose: both hosts already have their one button-primary.
 export function TryDemoButton({
   variant = "hero",
   label = "Try demo",
@@ -35,13 +31,11 @@ export function TryDemoButton({
     setIsStarting(true);
     try {
       const session = await apiClient<DemoSession>("/auth/demo", { method: "POST" });
-      // /board/[boardId] has no page of its own — /tasks is the board, as the
-      // sidebar and project cards link it.
+      // /board/[boardId] has no page; /tasks is the board.
       router.push(`/board/${session.board_id}/tasks`);
       router.refresh();
     } catch {
-      // apiClient toasts 403/5xx itself; this covers the rate-limit case, which
-      // is the one a visitor can actually hit.
+      // apiClient toasts 403/5xx itself; this covers the rate limit.
       showToast({ message: "เปิดโหมดทดลองไม่สำเร็จ ลองใหม่อีกครั้งในอีกสักครู่" });
       setIsStarting(false);
     }

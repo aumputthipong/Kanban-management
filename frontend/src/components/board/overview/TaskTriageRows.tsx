@@ -4,8 +4,7 @@ import { AlarmClock, Calendar } from "lucide-react";
 import type { Card } from "@/types/board";
 import { getAvatarColor } from "@/utils/avatar";
 
-// Priority signal lives ONLY on the 3px left rail (design.md rule). Colours
-// mirror the existing UrgentTaskRow stripe so a card looks the same everywhere.
+// Priority shows only on the 3px left rail (design.md).
 const RAIL: Record<"high" | "medium" | "low" | "none", string> = {
   high: "bg-rose-400",
   medium: "bg-amber-400",
@@ -19,7 +18,6 @@ const PRIORITY_DOT: Record<"high" | "medium" | "low", string> = {
   low: "bg-emerald-500",
 };
 
-/** Whole-day distance between a due date and today-at-midnight (local). */
 export function daysOverdue(dueDateStr: string): number {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -28,8 +26,6 @@ export function daysOverdue(dueDateStr: string): number {
   return Math.max(0, Math.ceil((today.getTime() - due.getTime()) / 86400000));
 }
 
-// Severity reads from ORDER + ink darkness, never a colour wash — only the
-// single critical hero keeps red.
 function severityInk(days: number): string {
   if (days >= 20) return "text-slate-900";
   if (days >= 8) return "text-slate-600";
@@ -73,10 +69,6 @@ function StatusMeta({ columnTitle, card }: { columnTitle: string; card: Card }) 
   );
 }
 
-/**
- * The single most-overdue card — the only place red survives in the Tasks
- * triage view. Renders as one big clickable banner.
- */
 export function CriticalHero({
   card,
   columnTitle,
@@ -145,7 +137,6 @@ export function CriticalHero({
   );
 }
 
-/** A ranked overdue row — neutral days gutter, priority on the rail only. */
 export function RankedRow({
   card,
   columnTitle,
@@ -178,7 +169,6 @@ export function RankedRow({
   );
 }
 
-/** An upcoming (not-yet-overdue) row — the days gutter goes blue, not red. */
 export function UpcomingRow({
   card,
   columnTitle,
@@ -211,7 +201,6 @@ export function UpcomingRow({
   );
 }
 
-/** Collapsed one-line "nothing due" bucket. */
 export function CollapsedEmpty({ label }: { label: string }) {
   return (
     <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded border border-dashed border-slate-200 bg-slate-50 text-xs font-semibold text-slate-400">

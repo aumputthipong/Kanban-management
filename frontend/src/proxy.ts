@@ -10,12 +10,10 @@ export function proxy(request: NextRequest) {
   const isProtected = PROTECTED.some((r) => pathname.startsWith(r));
   const isAuthPage  = AUTH_PAGES.some((r) => pathname.startsWith(r));
 
-  // No token but hitting a protected route → redirect to login.
   if (isProtected && !token) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  // Has a token but hitting login/register → redirect to dashboard.
   if (isAuthPage && token) {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }

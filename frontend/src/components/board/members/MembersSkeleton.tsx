@@ -1,6 +1,5 @@
 import { Skeleton } from "@/components/ui/Skeleton";
 
-/** Search + filter-chip row, sits inside the combined controls panel. */
 export function MemberToolbarSkeleton() {
   return (
     <div className="flex flex-wrap items-center gap-3">
@@ -14,7 +13,6 @@ export function MemberToolbarSkeleton() {
   );
 }
 
-/** Unified member list: compact group-header strips + rows, one card. */
 export function MemberGroupsSkeleton() {
   return (
     <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">

@@ -47,7 +47,6 @@ export function CardDetailModal({
   onAddSubtask,
   canEdit,
 }: CardDetailModalProps) {
-  // Per-field auto-save; the modal stays open until the user closes it.
   const onCommit = useCallback(
     (next: FormState, field: keyof FormState) => onUpdated(card.id, next, field),
     [onUpdated, card.id],
@@ -74,9 +73,7 @@ export function CardDetailModal({
 
   return createPortal(
     <>
-      {/* Solid scrim (no backdrop-blur): blurring the whole board behind the
-          modal is a per-frame GPU composite cost that makes interaction feel
-          janky even when JS/INP is fast. A plain scrim separates layers for free. */}
+      {/* No backdrop-blur: it costs a GPU composite every frame. */}
       <div
         className="fixed inset-0 z-9998 bg-slate-900/45"
         onClick={onClose}
@@ -117,7 +114,7 @@ export function CardDetailModal({
                 canEdit={canEdit}
                 onAddSubtask={onAddSubtask}
               />
-              {/* Optional dev fields — collapsed behind "+ Add" by default */}
+              {/* Dev fields */}
               <CardDevFields
                 acceptanceValue={form.acceptance_criteria}
                 onAcceptanceChange={handleChange("acceptance_criteria")}

@@ -1,8 +1,4 @@
-/**
- * Sentry browser integration — lazy, env-gated, no-op without a DSN. The SDK costs
- * ~30 KB, so without NEXT_PUBLIC_SENTRY_DSN it is never imported and the first
- * captureException call is what initialises it.
- */
+// Lazy + env-gated: the SDK is only imported when NEXT_PUBLIC_SENTRY_DSN is set.
 
 import { logger } from "@/lib/logger";
 
@@ -35,9 +31,7 @@ function load(): Promise<SentryModule | null> {
   return cached;
 }
 
-/**
- * Report an unexpected error. No-op without a DSN, safe from any boundary, never throws.
- */
+/** No-op without a DSN; never throws. */
 export function captureException(err: unknown, context?: Record<string, unknown>): void {
   if (!dsn) return;
   load().then((Sentry) => {
@@ -53,5 +47,4 @@ export function captureException(err: unknown, context?: Record<string, unknown>
   });
 }
 
-/** Whether Sentry will actually ship events — for conditional "report this" UI. */
 export const sentryEnabled = Boolean(dsn);

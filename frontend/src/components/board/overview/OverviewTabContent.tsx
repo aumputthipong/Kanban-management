@@ -6,8 +6,7 @@ import dynamic from "next/dynamic";
 import { Skeleton } from "@/components/ui/Skeleton";
 import type { Card } from "@/types/board";
 
-// recharts is ~400KB. The overview tab is the only place we use it, so split
-// it out of the main bundle and render a lightweight placeholder while it loads.
+// recharts is ~400KB; keep it out of the main bundle.
 const PieChartWidget = dynamic(() => import("./PieChartWidget"), {
   ssr: false,
   loading: () => <Skeleton className="h-64 rounded-xl" />,
@@ -39,7 +38,6 @@ interface OverviewTabContentProps {
   onOpenTab?: (tab: BoardTab) => void;
 }
 
-/** Maps an insight string to its actionable presentation (tone + CTA target). */
 function classifyInsight(text: string): {
   tone: "risk" | "info";
   cta?: { label: string; tab: BoardTab };
@@ -78,7 +76,7 @@ export function OverviewTabContent({
 
   return (
     <div className="flex flex-col gap-5">
-      {/* Stats strip — stack at md, 3-col at lg+ */}
+      {/* Stats */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
           <div className="p-2.5 bg-emerald-50 rounded-lg">
@@ -108,9 +106,7 @@ export function OverviewTabContent({
           </div>
         </div>
 
-        {/* Overdue — the most urgent number, promoted and actionable. Surface
-            stays neutral like its siblings; the rose signal is confined to the
-            small icon tile + the count (a badge-scale element). */}
+        {/* Overdue */}
         {overdueCount > 0 ? (
           <button
             type="button"
@@ -147,7 +143,7 @@ export function OverviewTabContent({
         <BurndownChartWidget cards={allCards} />
       </div>
 
-      {/* Smart Insights — now actionable cards */}
+      {/* Insights */}
       {insights.length > 0 && (
         <div className="bg-white border border-slate-200 rounded-xl p-4">
           <div className="flex items-center gap-2 mb-3">

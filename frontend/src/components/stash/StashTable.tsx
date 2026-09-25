@@ -17,7 +17,6 @@ export function StashTable({ boards: initialBoards }: StashTableProps) {
   const router = useRouter();
   const [boards, setBoards] = useState(initialBoards);
   const [loadingId, setLoadingId] = useState<string | null>(null);
-  // Only one dialog is open at a time; the target board drives its content.
   const [restoreTarget, setRestoreTarget] = useState<StashedBoard | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<StashedBoard | null>(null);
 
@@ -71,7 +70,7 @@ export function StashTable({ boards: initialBoards }: StashTableProps) {
               key={board.id}
               className="flex items-center gap-4 px-5 py-4 hover:bg-slate-50 transition-colors"
             >
-              {/* identity — mirrors the project-list card name block */}
+              {/* Identity */}
               <div
                 className="h-[38px] w-[38px] rounded-lg flex items-center justify-center text-white shrink-0"
                 style={{ background: accent }}
@@ -89,7 +88,7 @@ export function StashTable({ boards: initialBoards }: StashTableProps) {
                 </div>
               </div>
 
-              {/* stashed-at */}
+              {/* Stashed at */}
               <div className="hidden sm:block text-xs text-slate-500 shrink-0 text-right">
                 <div className="text-slate-400">เก็บเข้าคลังเมื่อ</div>
                 <div className="font-semibold text-slate-600 mt-0.5">
@@ -101,7 +100,7 @@ export function StashTable({ boards: initialBoards }: StashTableProps) {
                 </div>
               </div>
 
-              {/* actions */}
+              {/* Actions */}
               <div className="flex items-center gap-2 shrink-0">
                 <button
                   onClick={() => setRestoreTarget(board)}
@@ -131,7 +130,7 @@ export function StashTable({ boards: initialBoards }: StashTableProps) {
         })}
       </div>
 
-      {/* Restore — simple confirm */}
+      {/* Restore */}
       <ConfirmDialog
         open={restoreTarget !== null}
         title="กู้คืน Project นี้?"
@@ -146,7 +145,7 @@ export function StashTable({ boards: initialBoards }: StashTableProps) {
         onCancel={() => setRestoreTarget(null)}
       />
 
-      {/* Permanent delete — GitHub-style type-to-confirm */}
+      {/* Permanent delete */}
       <TypeToConfirmDialog
         open={deleteTarget !== null}
         title="ลบ Project นี้ถาวร?"

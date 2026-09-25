@@ -5,27 +5,18 @@ import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { format, isSameMonth } from "date-fns";
 
 interface Props {
-  /** The month currently shown by the calendar. */
   currentDate: Date;
   today: Date;
-  /** Jump the calendar to the first day of the picked month. */
   onSelect: (date: Date) => void;
 }
 
-// Short month labels (Jan…Dec) — derived once from date-fns so they follow the
-// app locale instead of being hardcoded English strings.
 const MONTHS = Array.from({ length: 12 }, (_, i) => format(new Date(2000, i, 1), "MMM"));
 
-// Click the "MMMM yyyy" title to open a compact picker: a year stepper over a
-// 12-month grid. Jumping to a far month/year takes one or two clicks instead of
-// paging one month at a time.
 export function MonthYearPicker({ currentDate, today, onSelect }: Props) {
   const [open, setOpen] = useState(false);
-  // Year shown in the grid — browse years without committing a selection yet.
   const [viewYear, setViewYear] = useState(currentDate.getFullYear());
   const ref = useRef<HTMLDivElement | null>(null);
 
-  // Re-sync the browsed year to the calendar each time the popover opens.
   const openPicker = () => {
     setViewYear(currentDate.getFullYear());
     setOpen(true);

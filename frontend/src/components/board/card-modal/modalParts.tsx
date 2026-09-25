@@ -2,8 +2,6 @@
 
 import { Check } from "lucide-react";
 
-/** Shared visual primitives for the task modals (board detail + My Work quick view). */
-
 export function FieldLabel({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return (
     <span className={`text-xs font-medium tracking-wide text-slate-600 ${className}`}>
@@ -40,7 +38,6 @@ export function MetaChip({ children, strong = false }: { children: React.ReactNo
   );
 }
 
-/** "done / total" badge + 2px bar; turns success-green once every subtask is ticked. */
 export function SubtaskProgress({ done, total, showPercent = false }: { done: number; total: number; showPercent?: boolean }) {
   const pct = total === 0 ? 0 : Math.round((done / total) * 100);
   const complete = total > 0 && done === total;
@@ -60,7 +57,7 @@ export function SubtaskProgress({ done, total, showPercent = false }: { done: nu
         )}
       </div>
       {total > 0 && (
-        // No width transition: animating width re-lays out every frame and lags behind rapid ticks.
+        // No width transition: it re-lays out every frame.
         <div className="h-0.5 mb-3 rounded-full bg-slate-200 overflow-hidden">
           <div
             className={`h-full ${complete ? "bg-emerald-700" : "bg-blue-700"}`}
@@ -72,7 +69,6 @@ export function SubtaskProgress({ done, total, showPercent = false }: { done: nu
   );
 }
 
-/** Row shell for one subtask: outlined when open, done-green fill when ticked (never strikethrough). */
 export function subtaskRowClass(isDone: boolean): string {
   return `group flex items-center gap-2.5 px-2.5 py-1.5 rounded-md border text-sm transition-colors ${
     isDone ? "bg-emerald-100 border-transparent text-slate-900" : "bg-white border-slate-200 text-slate-900"

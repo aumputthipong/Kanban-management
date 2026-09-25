@@ -20,7 +20,6 @@ interface SettingsRailProps {
   onJump: (id: string) => void;
 }
 
-/** Sticky section navigator. `active` is driven by scroll-spy in the parent. */
 export function SettingsRail({ active, items, onJump }: SettingsRailProps) {
   return (
     <nav className="sticky top-0 flex flex-col gap-0.5">

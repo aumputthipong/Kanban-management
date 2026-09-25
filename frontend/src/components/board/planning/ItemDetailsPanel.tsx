@@ -1,8 +1,5 @@
 "use client";
 
-// The expanded section under an ItemRow: one optional free-text note, saved on blur.
-// It used to carry acceptance_criteria and implementation_note; during capture those
-// were rarely filled, so they now live on the card instead. Do not re-add them here.
 import { useState } from "react";
 
 interface Props {
@@ -24,8 +21,7 @@ export function ItemDetailsPanel({ note, onChangeNote }: Props) {
   );
 }
 
-// One textarea with a local draft, committing on blur only when the value actually
-// changed — so an API echo-back re-render cannot trigger a duplicate save.
+// Commits on blur only when changed, so an API echo can't save twice.
 function AutoSaveTextarea({
   label,
   placeholder,
@@ -40,7 +36,6 @@ function AutoSaveTextarea({
   minRows: number;
 }) {
   const [draft, setDraft] = useState(value);
-  // Mirror a parent change into the draft during render, not in an effect (AGENTS.md).
   const [syncedValue, setSyncedValue] = useState(value);
   if (syncedValue !== value) {
     setSyncedValue(value);

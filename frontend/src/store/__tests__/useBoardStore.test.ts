@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { useBoardStore } from "@/store/useBoardStore";
 import type { Card, Column } from "@/types/board";
 
-// ─── helpers ──────────────────────────────────────────────────────────────────
+// Helpers
 
 function makeCard(overrides: Partial<Card> = {}): Card {
   return {
@@ -38,7 +38,6 @@ function makeColumn(overrides: Partial<Column> = {}): Column {
   };
 }
 
-// reset the store before each test so state doesn't leak between them
 beforeEach(() => {
   useBoardStore.setState({
     columns: [],
@@ -50,7 +49,7 @@ beforeEach(() => {
   });
 });
 
-// ─── Filter: Assignee ──────────────────────────────────────────────────────────
+// Filter: assignee
 
 describe("setFilterAssigneeId", () => {
   it("sets a user ID", () => {
@@ -65,7 +64,7 @@ describe("setFilterAssigneeId", () => {
   });
 });
 
-// ─── Filter: Priority ─────────────────────────────────────────────────────────
+// Filter: priority
 
 describe("toggleFilterPriority", () => {
   it("adds a priority when not present", () => {
@@ -97,7 +96,7 @@ describe("clearFilterPriorities", () => {
   });
 });
 
-// ─── Card: add ────────────────────────────────────────────────────────────────
+// Card: add
 
 describe("addCardToStore", () => {
   it("adds a card to the correct column", () => {
@@ -132,7 +131,7 @@ describe("addCardToStore", () => {
   });
 });
 
-// ─── Card: remove ─────────────────────────────────────────────────────────────
+// Card: remove
 
 describe("removeCardFromStore", () => {
   it("removes the card with matching ID", () => {
@@ -159,7 +158,7 @@ describe("removeCardFromStore", () => {
   });
 });
 
-// ─── Card: move ───────────────────────────────────────────────────────────────
+// Card: move
 
 describe("moveCard", () => {
   it("moves a card from one column to another", () => {
@@ -183,7 +182,6 @@ describe("moveCard", () => {
     const col2 = makeColumn({ id: "col-2", cards: [card2] });
     useBoardStore.setState({ columns: [col1, col2] });
 
-    // move card-1 to col-2 at position 200 (should land last)
     useBoardStore.getState().moveCard("card-1", "col-2", 200);
 
     const sorted = useBoardStore.getState().columns[1].cards;
@@ -198,7 +196,7 @@ describe("moveCard", () => {
   });
 });
 
-// ─── Column: updateColumnInStore ──────────────────────────────────────────────
+// Column: update
 
 describe("updateColumnInStore", () => {
   it("updates title", () => {
@@ -229,7 +227,7 @@ describe("updateColumnInStore", () => {
   });
 });
 
-// ─── Column: add / rename / remove ───────────────────────────────────────────
+// Column: add / rename / remove
 
 describe("addColumnToStore", () => {
   it("adds a new column sorted by position", () => {

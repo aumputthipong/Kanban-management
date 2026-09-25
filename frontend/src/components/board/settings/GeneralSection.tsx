@@ -18,19 +18,12 @@ interface GeneralSectionProps {
   initialColor: string;
   initialIcon: string;
   canManage: boolean;
-  /** Real save — PATCH /boards/:id { [field]: value }. Resolves on success. */
   onSaveField: (field: BoardField, value: string) => Promise<void>;
   onSaved: () => void;
 }
 
 const DESC_MAX = 160;
 
-/**
- * Name, description, and the icon/colour identity — all backed by the boards
- * table now. Name + description commit via a save button (dirty-gated); colour
- * and icon save optimistically the instant they are picked and revert if the
- * request fails.
- */
 export function GeneralSection({
   initialTitle,
   initialDescription,
@@ -86,7 +79,6 @@ export function GeneralSection({
     }
   };
 
-  // Optimistic: reflect the pick immediately, revert if the PATCH fails.
   const pickColor = async (next: string) => {
     const prev = color;
     setColor(next);

@@ -1,4 +1,3 @@
-// MemberFilterBar.tsx
 import { useBoardStore, UNASSIGNED_FILTER } from "@/store/useBoardStore";
 import { useState, useRef, useEffect } from "react";
 import { UserX } from "lucide-react";
@@ -17,7 +16,6 @@ export function MemberFilterBar() {
     setFilterAssigneeId(filterAssigneeId === userId ? null : userId);
   };
 
-  // Close the dropdown on outside click.
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (
@@ -67,7 +65,7 @@ export function MemberFilterBar() {
 
   return (
     <div className="flex items-center gap-2">
-      {/* My Tasks pill — 1-click filter ของตัวเอง */}
+      {/* My tasks */}
       {currentUserId && (
         <button
           onClick={() =>
@@ -92,7 +90,7 @@ export function MemberFilterBar() {
 
       <div className="w-px h-5 bg-slate-200 mx-1" />
 
-      {/* ปุ่ม All */}
+      {/* All */}
       <button
         onClick={() => setFilterAssigneeId(null)}
         className={`cursor-pointer px-3 h-7 text-xs font-medium rounded-full border transition-colors ${
@@ -104,9 +102,7 @@ export function MemberFilterBar() {
         All
       </button>
 
-      {/* Unassigned — surfaces "งานที่ยังไม่มีเจ้าของ" (an open question that
-          needs an owner). Dashed outline + UserX mirrors the create modal so the
-          "no one" state reads the same everywhere. */}
+      {/* Unassigned */}
       <button
         onClick={() =>
           setFilterAssigneeId(isUnassignedActive ? null : UNASSIGNED_FILTER)
@@ -146,7 +142,7 @@ export function MemberFilterBar() {
           );
         })}
 
-        {/* Overflow button + Dropdown */}
+        {/* Overflow */}
         {hiddenMembers.length > 0 && (
           <div className="relative" ref={dropdownRef}>
             <button

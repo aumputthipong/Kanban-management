@@ -9,7 +9,6 @@ interface SubtaskItemProps {
   onToggle: (cardId: string, subtaskId: string, currentStatus: boolean) => void;
   onUpdateTitle: (cardId: string, subtaskId: string, newTitle: string) => void;
   onDelete: (cardId: string, subtaskId: string) => void;
-  /** Mirrors the backend rule: only people who can edit the card can change its subtasks. */
   canEdit: boolean;
 }
 

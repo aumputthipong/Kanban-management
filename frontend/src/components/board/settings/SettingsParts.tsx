@@ -3,14 +3,7 @@
 import { ReactNode } from "react";
 import { ChevronDown, FlaskConical } from "lucide-react";
 
-/**
- * Shared building blocks for board settings. Visual language follows the
- * frontend/design.md tokens; no new accent colours are introduced here.
- */
-
-/**
- * Marks a control with no backend yet — local state for the demo, persists nothing.
- */
+/** Marks a control with no backend yet — it persists nothing. */
 export function MockBadge({ className = "" }: { className?: string }) {
   return (
     <span
@@ -28,14 +21,12 @@ interface SectionCardProps {
   icon: ReactNode;
   title: string;
   description: string;
-  /** Renders a MockBadge next to the title when true. */
   mock?: boolean;
   danger?: boolean;
   children: ReactNode;
   footer?: ReactNode;
 }
 
-/** A titled settings card. `scroll-mt-20` keeps the sticky-rail jump aligned. */
 export function SectionCard({
   id,
   icon,
@@ -94,11 +85,9 @@ interface SettingRowProps {
   label: ReactNode;
   help?: ReactNode;
   control: ReactNode;
-  /** Stacks control below the label (full-width controls like textarea). */
   stacked?: boolean;
 }
 
-/** One label/help + control line inside a SectionCard. */
 export function SettingRow({ label, help, control, stacked = false }: SettingRowProps) {
   if (stacked) {
     return (
@@ -135,7 +124,6 @@ export function SettingRow({ label, help, control, stacked = false }: SettingRow
   );
 }
 
-/** iOS-style toggle. Controlled. */
 export function Toggle({
   checked,
   onChange,
@@ -172,7 +160,6 @@ interface SegmentedProps<T extends string> {
   disabled?: boolean;
 }
 
-/** Pill segmented control. Controlled. */
 export function Segmented<T extends string>({
   value,
   options,
@@ -203,7 +190,6 @@ export function Segmented<T extends string>({
   );
 }
 
-/** Styled native select with chevron. */
 export function SelectField({
   value,
   options,

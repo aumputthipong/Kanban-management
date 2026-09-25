@@ -9,14 +9,10 @@ interface Props {
   cards: MyWorkCard[];
   boardMeta: Map<string, BoardMeta>;
   onOpenCard: (card: MyWorkCard) => void;
-  /** Project glyph tile in the group header instead of a colour dot. */
   withIcon?: boolean;
-  /** Row renderer; defaults to the light rail row. */
   renderCard?: (card: MyWorkCard) => React.ReactNode;
 }
 
-// Groups cards per project: a light box with the project header and its tasks
-// indented under a guide line. The caller owns card order; within a project it is kept.
 export function ProjectGroupedList({ cards, boardMeta, onOpenCard, withIcon = false, renderCard }: Props) {
   const groups: { boardId: string; name: string; cards: MyWorkCard[] }[] = [];
   const indexById = new Map<string, number>();
@@ -29,7 +25,6 @@ export function ProjectGroupedList({ cards, boardMeta, onOpenCard, withIcon = fa
     }
     groups[idx].cards.push(c);
   }
-  // Busiest project first, then alphabetical — stable across re-renders.
   groups.sort((a, b) => b.cards.length - a.cards.length || a.name.localeCompare(b.name));
 
   const row = renderCard ?? ((c: MyWorkCard) => <CompactRow key={c.id} card={c} rail onOpenCard={onOpenCard} />);

@@ -15,11 +15,7 @@ export type CardPatchBody = {
   changed_fields: string[];
 };
 
-/**
- * Builds the PATCH body and optimistic store patch for ONE committed field. Sending
- * more lets a stale modal overwrite someone else's edit; `null` cannot clear, so
- * clears go as "" or 0 (docs/adr/0009-card-patch-sends-changed-fields.md).
- */
+/** One field only — `null` can't clear, so clears go as "" or 0 (docs/adr/0009). */
 export function buildCardFieldUpdate(
   form: CardUpdateForm,
   field: CardField,

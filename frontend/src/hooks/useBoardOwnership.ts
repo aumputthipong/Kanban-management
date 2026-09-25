@@ -2,17 +2,11 @@ import { useMemo } from "react";
 import { useBoardStore } from "@/store/useBoardStore";
 import type { Card } from "@/types/board";
 
-/**
- * Per-member ownership of the loaded board, derived from the Zustand store — no
- * endpoint, so it updates for free via optimistic mutations and WS broadcasts. Held =
- * assigned and not done, counted only within non-DONE columns. See AGENTS.md,
- * "Ownership View Pattern".
- */
+// Derived from the store, no endpoint — see AGENTS.md "Ownership View Pattern".
 export interface OwnershipColumn {
   id: string;
   title: string;
   position: number;
-  /** Column colour key (from the board's column settings); null = Default. */
   color: string | null;
 }
 
@@ -20,9 +14,7 @@ export interface MemberOwnership {
   userId: string;
   name: string;
   totalHeld: number;
-  /** columnId → count of held cards in that column. */
   countByColumn: Record<string, number>;
-  /** The held cards themselves, ordered by due date (Phase 2 expand). */
   cards: Card[];
 }
 
@@ -48,7 +40,6 @@ export function useBoardOwnership(): BoardOwnership {
       .map((c) => ({ id: c.id, title: c.title, position: c.position, color: c.color ?? null }));
 
     const byUser = new Map<string, MemberOwnership>();
-    // Seed every board member so idle people still appear (totalHeld = 0).
     boardMembers.filter(Boolean).forEach((m) => {
       byUser.set(m.user_id, {
         userId: m.user_id,
@@ -60,12 +51,12 @@ export function useBoardOwnership(): BoardOwnership {
     });
 
     columns.forEach((col) => {
-      if (col.category === "DONE") return; // done columns aren't "held"
+      if (col.category === "DONE") return;
       col.cards.forEach((card) => {
-        if (card.is_done || !card.assignee_id) return; // active + assigned only
+        if (card.is_done || !card.assignee_id) return;
         let entry = byUser.get(card.assignee_id);
         if (!entry) {
-          // Assignee no longer a board member (e.g. left) — keep them visible.
+          // Assignee has left the board — keep them visible.
           entry = {
             userId: card.assignee_id,
             name: card.assignee_name ?? "ไม่ทราบชื่อ",

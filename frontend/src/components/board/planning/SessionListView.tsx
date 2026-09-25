@@ -13,9 +13,6 @@ interface Props {
   boardId: string;
 }
 
-// Sessions list — chronological with a "this week / this month / older"
-// rough grouping. Counts read live from each row so they stay accurate
-// after the user moves items in/out of dropped or promoted.
 export function SessionListView({ boardId }: Props) {
   const router = useRouter();
   const [sessions, setSessions] = useState<PlanningSessionSummary[] | null>(null);
@@ -51,8 +48,6 @@ export function SessionListView({ boardId }: Props) {
     }
   }, [boardId, creating, router, showToast]);
 
-  // Inline rename — optimistic, reverts the single row's title on failure.
-  // Owned here because this component holds the sessions list state.
   const handleRename = async (id: string, title: string) => {
     const prevTitle = sessions?.find((s) => s.id === id)?.title ?? "";
     if (title === prevTitle) return;
@@ -73,7 +68,6 @@ export function SessionListView({ boardId }: Props) {
     return <ListSkeleton />;
   }
 
-  // Aggregate stats across all sessions for the header line.
   const openQuestions = sessions.reduce((sum, s) => sum + s.q_count, 0);
   const promoted = sessions.reduce((sum, s) => sum + s.promoted_count, 0);
 
@@ -213,8 +207,7 @@ function ListSkeleton() {
   );
 }
 
-// "Note <date>" — SessionRow.isAutoTitle treats this prefix as "not yet
-// named", so keep the two in sync if the format changes.
+// Keep in sync with SessionRow.isAutoTitle.
 function defaultSessionTitle() {
   const d = new Date();
   return `Note ${d.toLocaleDateString("en-GB", {
@@ -224,8 +217,6 @@ function defaultSessionTitle() {
   })}`;
 }
 
-// Group by "this week / earlier this month / older". Sessions list is small
-// (handful per project) so this naive scan beats sorting once + bucketing.
 function groupSessions(sessions: PlanningSessionSummary[]) {
   const now = new Date();
   const weekAgo = new Date(now);

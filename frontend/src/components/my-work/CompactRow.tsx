@@ -6,13 +6,9 @@ import type { MyWorkCard, MyWorkStatus } from "@/types/myWork";
 
 interface CompactRowProps {
   card: MyWorkCard;
-  /** Open the task detail modal — where done / snooze live. */
   onOpenCard: (card: MyWorkCard) => void;
-  /** Project accent for the inline project dot (list variant). */
   projectColor?: string;
-  /** Renders the tick-off checkbox (list variant). */
   onComplete?: (cardId: string) => void;
-  /** Light tree row for the side rail: title + one right-aligned due/status text. */
   rail?: boolean;
 }
 
@@ -53,7 +49,6 @@ function railMeta(card: MyWorkCard): { text: string; className: string } {
   return { text: card.column_name, className: tone };
 }
 
-// Readable label + a small `priority.*` disc (design.md allows the disc inside a priority chip).
 const PRIORITY: Record<NonNullable<MyWorkCard["priority"]>, { label: string; disc: string }> = {
   high: { label: "High", disc: "bg-red-600" },
   medium: { label: "Medium", disc: "bg-amber-500" },
@@ -92,7 +87,7 @@ export function CompactRow({ card, onOpenCard, projectColor, onComplete, rail = 
 
   const total = card.total_subtasks ?? 0;
   const done = card.completed_subtasks ?? 0;
-  // Every row in the Today note is due today, so the label would only repeat the heading.
+  // Rows under Today are all due today — the label would repeat the heading.
   const showDue = card.due_date != null && card.group !== "today";
   const priority = card.priority ? PRIORITY[card.priority] : null;
 
@@ -117,7 +112,6 @@ export function CompactRow({ card, onOpenCard, projectColor, onComplete, rail = 
       <div className="min-w-0 flex-1">
         <div className="truncate text-sm font-semibold text-slate-900">{card.title}</div>
         <div className="mt-0.5 flex items-center gap-3 min-w-0 text-xs text-slate-500">
-          {/* Omitted inside a project group, whose header already names the project. */}
           {projectColor && (
             <span className="inline-flex items-center gap-1.5 min-w-0">
               <span aria-hidden className="w-2 h-2 rounded-full shrink-0" style={{ background: projectColor }} />
@@ -150,7 +144,6 @@ export function CompactRow({ card, onOpenCard, projectColor, onComplete, rail = 
           {dueText(card)}
         </span>
       )}
-      {/* Fixed-width columns keep priority and estimate aligned down the list for scanning. */}
       <span className="w-20 shrink-0">
         {priority && (
           <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 px-2 py-0.5 text-xs font-medium text-slate-700">

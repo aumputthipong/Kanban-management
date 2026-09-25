@@ -4,7 +4,7 @@ import { useDashboardStats } from "@/hooks/useDashboardStats";
 import { useBoardStore } from "@/store/useBoardStore";
 import type { Card, Column } from "@/types/board";
 
-// ─── helpers ──────────────────────────────────────────────────────────────────
+// Helpers
 
 function makeCard(overrides: Partial<Card> & { updated_at?: string } = {}): Card & { updated_at?: string } {
   return {
@@ -40,9 +40,8 @@ function makeColumn(overrides: Partial<Column> = {}): Column {
   };
 }
 
-// ─── setup ────────────────────────────────────────────────────────────────────
+// Setup
 
-// lock time at 2026-04-09 (Wednesday)
 const FROZEN_DATE = new Date("2026-04-09T00:00:00.000Z");
 
 beforeEach(() => {
@@ -62,7 +61,7 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-// ─── empty state ──────────────────────────────────────────────────────────────
+// Empty state
 
 describe("empty board", () => {
   it("returns zero values when there are no cards", () => {
@@ -85,7 +84,7 @@ describe("empty board", () => {
   });
 });
 
-// ─── progress ─────────────────────────────────────────────────────────────────
+// Progress
 
 describe("progress calculation", () => {
   it("is 0% when no cards are done", () => {
@@ -93,7 +92,6 @@ describe("progress calculation", () => {
     useBoardStore.setState({ columns: [col] });
 
     const { result } = renderHook(() => useDashboardStats());
-    // no column is the "last" done column that matches column_id
     expect(result.current.progress).toBeDefined();
   });
 
@@ -109,7 +107,6 @@ describe("progress calculation", () => {
       ],
     });
     const todoCol = makeColumn({ id: "col-todo", cards: [] });
-    // the hook treats the last column as the done column
     useBoardStore.setState({ columns: [todoCol, doneCol] });
 
     const { result } = renderHook(() => useDashboardStats());
@@ -131,15 +128,13 @@ describe("progress calculation", () => {
     useBoardStore.setState({ columns: [todoCol, doneCol] });
 
     const { result } = renderHook(() => useDashboardStats());
-    expect(result.current.progress).toBe(50); // 1/2 = 50%
+    expect(result.current.progress).toBe(50);
   });
 });
 
-// ─── overdue cards ────────────────────────────────────────────────────────────
+// Overdue
 
-// ── shared column setup used by overdue/dueSoon tests ──
-// The hook uses the last column as doneColumnId, so doneCol must always be the
-// last column to avoid counting cards in todoCol as done.
+// doneCol must be last — the hook treats the last column as done.
 const doneCol = makeColumn({
   id: "col-done",
   title: "Done",
@@ -150,7 +145,6 @@ const doneCol = makeColumn({
 
 describe("overdueCards", () => {
   it("counts cards with past due dates as overdue", () => {
-    // yesterday relative to FROZEN_DATE (2026-04-09)
     const pastDue = makeCard({
       id: "overdue",
       column_id: "col-todo",
@@ -199,11 +193,10 @@ describe("overdueCards", () => {
   });
 });
 
-// ─── due soon cards ───────────────────────────────────────────────────────────
+// Due soon
 
 describe("dueSoonCards", () => {
   it("counts cards due within 3 days as due soon", () => {
-    // frozen date = 2026-04-09; +2 days = 2026-04-11 (within threeDaysFromNow)
     const soonCard = makeCard({
       id: "soon",
       column_id: "col-todo",
@@ -232,7 +225,7 @@ describe("dueSoonCards", () => {
   });
 });
 
-// ─── totalHours ───────────────────────────────────────────────────────────────
+// Total hours
 
 describe("totalHours", () => {
   it("sums estimated hours across all cards", () => {

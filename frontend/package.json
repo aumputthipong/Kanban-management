@@ -22,7 +22,7 @@
     "@mui/icons-material": "^9.4.0",
     "@mui/material": "^9.1.2",
     "@mui/material-nextjs": "^9.4.0",
-    "@sentry/browser": "^10.75.0",
+    "@sentry/browser": "^11.0.0",
     "@types/recharts": "^2.0.1",
     "date-fns": "^4.4.0",
     "lucide-react": "^1.47.0",

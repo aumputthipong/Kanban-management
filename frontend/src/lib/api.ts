@@ -1,4 +1,4 @@
-import { cookies } from "next/headers";
+import { forwardedHeaders } from "@/lib/forwardedHeaders";
 import { API_URL } from "@/lib/constants";
 
 type FetchOptions = Omit<RequestInit, "headers"> & {
@@ -9,14 +9,11 @@ export async function apiFetch<T>(
   path: string,
   options: FetchOptions = {}
 ): Promise<T> {
-  const cookieStore = await cookies();
-  const token = cookieStore.get("auth_token");
-
   const res = await fetch(`${API_URL}${path}`, {
     ...options,
     headers: {
       "Content-Type": "application/json",
-      ...(token ? { Cookie: `auth_token=${token.value}` } : {}),
+      ...(await forwardedHeaders()),
       ...options.headers,
     },
   });

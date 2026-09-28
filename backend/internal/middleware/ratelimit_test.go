@@ -88,3 +88,30 @@ func TestRateLimit_IPv6ClientsBucketByPrefix(t *testing.T) {
 		t.Errorf("address rotation within one /64 bought a new bucket: got %d, want 429", got)
 	}
 }
+
+// Vercel rewrite → Render: Vercel sets XFF to the visitor, Render appends Vercel's egress IP.
+func TestRateLimit_TwoProxies_KeysOnVisitorNotEgress(t *testing.T) {
+	h := limitOne(2)
+
+	if got := send(h, "10.0.0.7:1234", "203.0.113.5, 76.76.21.1"); got != http.StatusOK {
+		t.Fatalf("first visitor: got %d, want 200", got)
+	}
+	if got := send(h, "10.0.0.7:1234", "198.51.100.9, 76.76.21.1"); got != http.StatusOK {
+		t.Errorf("second visitor shares the egress IP; it must not inherit the first one's bucket: got %d, want 200", got)
+	}
+}
+
+// WS and SSR reach Render directly, so the chain holds one hop fewer than configured.
+func TestRateLimit_TwoProxies_ShortChainKeysOnItsOnlyEntry(t *testing.T) {
+	h := limitOne(2)
+
+	if got := send(h, "10.0.0.7:1234", "203.0.113.5"); got != http.StatusOK {
+		t.Fatalf("first caller: got %d, want 200", got)
+	}
+	if got := send(h, "10.0.0.7:1234", "198.51.100.9"); got != http.StatusOK {
+		t.Errorf("second direct caller landed in the first one's bucket: got %d, want 200", got)
+	}
+	if got := send(h, "10.0.0.7:1234", "203.0.113.5"); got != http.StatusTooManyRequests {
+		t.Errorf("first caller again: got %d, want 429", got)
+	}
+}

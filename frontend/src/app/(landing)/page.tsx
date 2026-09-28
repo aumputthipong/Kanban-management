@@ -4,6 +4,7 @@ import { ArrowRight, Calendar, Clock } from "lucide-react";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { apiClient } from "@/lib/apiClient";
+import { forwardedHeaders } from "@/lib/forwardedHeaders";
 import { TryDemoButton } from "@/components/demo/TryDemoButton";
 import { LANDING_PATH, type UserSettings } from "@/types/userSettings";
 
@@ -170,7 +171,7 @@ async function resolveAuthedRedirect(): Promise<string | null> {
   try {
     const settings = await apiClient<UserSettings>("/me/settings", {
       cache: "no-store",
-      headers: { Cookie: store.toString() },
+      headers: await forwardedHeaders(),
     });
     return LANDING_PATH[settings.default_landing] ?? "/my-work";
   } catch {

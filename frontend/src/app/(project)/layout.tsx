@@ -1,18 +1,14 @@
 import { Sidebar } from "@/components/layout/Sidebar";
 import { apiClient } from "@/lib/apiClient";
+import { forwardedHeaders } from "@/lib/forwardedHeaders";
 import type { Board } from "@/types/board";
-import { cookies } from "next/headers";
 import { DemoBanner } from "@/components/demo/DemoBanner";
 
 async function getBoards(): Promise<Board[]> {
   try {
-    const cookieStore = await cookies();
-
     const boards = await apiClient<Board[]>("/boards", {
       cache: "no-store", 
-      headers: {
-        Cookie: cookieStore.toString(),
-      },
+      headers: await forwardedHeaders(),
     });
 
     return boards;
@@ -24,10 +20,9 @@ async function getBoards(): Promise<Board[]> {
 /** Demo sessions get an orientation bar; a failed probe simply means no bar. */
 async function demoSession(): Promise<{ isDemo: boolean; expiresAt: string | null }> {
   try {
-    const cookieStore = await cookies();
     const me = await apiClient<{ is_demo?: boolean; demo_expires_at?: string | null }>("/auth/me", {
       cache: "no-store",
-      headers: { Cookie: cookieStore.toString() },
+      headers: await forwardedHeaders(),
     });
     return { isDemo: me.is_demo === true, expiresAt: me.demo_expires_at ?? null };
   } catch {

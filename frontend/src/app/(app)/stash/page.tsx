@@ -1,7 +1,7 @@
-import { cookies } from "next/headers";
 import { Archive } from "lucide-react";
 import { StashTable } from "@/components/stash/StashTable";
 import { apiClient } from "@/lib/apiClient";
+import { forwardedHeaders } from "@/lib/forwardedHeaders";
 
 export interface StashedBoard {
   id: string;
@@ -14,13 +14,9 @@ export interface StashedBoard {
 
 async function getStashedBoards(): Promise<StashedBoard[]> {
   try {
-    const cookieStore = await cookies();
-
     return await apiClient<StashedBoard[]>("/stash", {
       cache: "no-store",
-      headers: {
-        Cookie: cookieStore.toString(),
-      },
+      headers: await forwardedHeaders(),
     });
   } catch (err) {
     console.error("Fetch Stashed Boards Error:", err);

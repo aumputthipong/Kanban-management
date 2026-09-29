@@ -164,6 +164,19 @@ Before running `down`, take a fresh `pg_dump` — `down` migrations may drop col
 ### Rate limit counts everyone as one caller (verify after every new deploy target)
 Limits key off the client IP, which behind a proxy has to come from `X-Forwarded-For`. `TRUSTED_PROXY_COUNT` says how many proxies to skip: **1** for Render / nginx / a single load balancer (the default), **2** with Cloudflare in front of one, **0** when the binary is exposed directly.
 
+**Vercel rewrite in front of Render (the current prod setup) is 2.** The browser's `/api/*` calls go through the Vercel rewrite, so Render sees `visitor, vercel-egress`; with 1 every visitor keys on one of a handful of Vercel egress IPs and they share one bucket (the 429s of 2026-09-28). WebSocket and SSR calls reach Render directly with one hop fewer — `ClientIPResolver` takes the whole chain when it is shorter than the count, and SSR forwards the visitor's IP (`lib/forwardedHeaders.ts`).
+
+Check through the real path — a request via Vercel and one direct to Render from the same machine must draw down the **same** counter:
+
+```bash
+curl -sI https://turtask-management.vercel.app/api/boards | grep -i x-ratelimit-remaining   # e.g. 299
+curl -sI https://<render-host>/api/boards            | grep -i x-ratelimit-remaining   # must be 298, not 299
+```
+
+Two separate `299`s mean the Vercel path is keyed on Vercel's IP again.
+
+Trade-off: with 2, a caller who hits Render directly can prepend a forged `X-Forwarded-For` entry and pick its own key.
+
 Verify once, from a machine whose public IP you know:
 
 ```bash

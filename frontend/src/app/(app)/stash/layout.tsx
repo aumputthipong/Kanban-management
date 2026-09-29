@@ -1,17 +1,13 @@
 import { Sidebar } from "@/components/layout/Sidebar";
 import { apiClient } from "@/lib/apiClient";
+import { forwardedHeaders } from "@/lib/forwardedHeaders";
 import { Board } from "@/types/board";
-import { cookies } from "next/headers";
 
 async function getBoards(): Promise<Board[]> {
   try {
-    const cookieStore = await cookies();
-
     return await apiClient<Board[]>("/boards", {
       next: { revalidate: 60 },
-      headers: {
-        Cookie: cookieStore.toString(),
-      },
+      headers: await forwardedHeaders(),
     });
   } catch (err) {
     console.error("Failed to fetch boards:", err);

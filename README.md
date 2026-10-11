@@ -1,201 +1,213 @@
-[![CI](https://github.com/aumputthipong/Kanban-management/actions/workflows/ci.yml/badge.svg)](https://github.com/aumputthipong/Kanban-management/actions/workflows/ci.yml)
-
 # Turtask — Mini ERP Kanban
 
-A real-time team task & project management web app. Multi-board Kanban with role-based permissions, optimistic drag-and-drop, WebSocket sync, a cross-board **My Tasks** view, and a per-board analytics dashboard.
+[![CI](https://github.com/aumputthipong/Kanban-management/actions/workflows/ci.yml/badge.svg)](https://github.com/aumputthipong/Kanban-management/actions/workflows/ci.yml)
+![Go 1.26](https://img.shields.io/badge/Go-1.26-00ADD8?logo=go&logoColor=white)
+![Next.js 16](https://img.shields.io/badge/Next.js-16-000000?logo=nextdotjs&logoColor=white)
+![React 19](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)
+![TypeScript strict](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)
+![PostgreSQL 15](https://img.shields.io/badge/PostgreSQL-15-4169E1?logo=postgresql&logoColor=white)
+![Vercel + Render](https://img.shields.io/badge/deployed%20on-Vercel%20%2B%20Render-000000?logo=vercel&logoColor=white)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+<!-- TODO: live demo badge (production URL not recorded in the repo) -->
+<!-- TODO: CodeQL badge (no CodeQL workflow yet) -->
+<!-- TODO: coverage badge (CI uploads coverage.out as an artifact but doesn't publish a %) -->
 
-> Status: actively developed, single-author portfolio project.
+A real-time Kanban for small teams, built so that every teammate sees a card
+move the moment it happens, without waiting on the server to feel fast.
 
----
+![Kanban board](docs/screenshots/board.png)
 
-## Highlights
+## Try it
 
-- **Realtime sync** — card moves and edits broadcast to every viewer via a WebSocket hub
-- **Optimistic UI** — drag-and-drop updates locally first, reconciles with the server
-- **Permission matrix** — owner / manager / member, enforced at middleware + UI
-- **My Tasks** — cross-board work grouped by date *and* by project, with column-aware rows
-- **Project Overview** — Up Next list, Team Workload, Activity feed, auto bottleneck insights
-- **Type-safe SQL** — sqlc-generated queries; no ORM, no runtime surprises
+**Live:** <!-- TODO: production URL --> (free hosting: the first request after
+a quiet spell can take about a minute while the API wakes up)
+
+Click **Try demo** on the landing or sign-in page: you get a throwaway account
+with a private copy of the sample board, deleted after 24 hours. Or sign in
+with the shared account:
+
+| Account | Email | Password |
+|---|---|---|
+| Shared demo | `demo@turtask.app` | `demodemo123` |
+
+**Things worth trying**
+
+- **Watch realtime sync:** open the same board in two windows and drag a card
+  in one. It moves in the other without a refresh.
+- **Feel the optimistic UI:** drag a card across columns. It lands before the
+  server answers; if the server refuses, it snaps back with a toast.
+- **Turn a note into work:** in **Planning**, jot a few notes, then send one
+  to the board (ส่งขึ้น Board). It becomes a card in the To Do column.
+- **Check your day:** **My Work** collects what's due today and overdue across
+  every board; tick cards off in place, with undo.
+
+## How a move reaches everyone
+
+```mermaid
+sequenceDiagram
+    participant A as Browser A
+    participant API as Go API
+    participant DB as PostgreSQL
+    participant B as Browser B
+    A->>A: move card in the store (instant)
+    A->>API: PATCH /cards/:id/move
+    API->>DB: update card, record activity
+    API-->>A: 204 (on error: restore snapshot + toast)
+    API-)A: WS CARD_MOVED (already applied: no-op)
+    API-)B: WS CARD_MOVED (applied to its store)
+```
+
+The sender also receives its own broadcast, so every WebSocket handler treats
+"already in that state" as a no-op instead of filtering by sender.
 
 ## Tech stack
 
-| Layer    | Tech                                                                 |
-|----------|----------------------------------------------------------------------|
-| Frontend | Next.js 16 (App Router) · React 19 · TypeScript · Tailwind v4 · Zustand · @dnd-kit · NextAuth (Google) |
-| Backend  | Go 1.25 · chi · sqlc · pgx/v5 · Gorilla WebSocket · golang-migrate · JWT |
-| Database | PostgreSQL 15 · UUID v4 keys                                         |
-| Infra    | Docker · Docker Compose                                              |
+| Layer | Choice | Role here |
+|---|---|---|
+| Frontend | Next.js 16 (App Router), React 19, TypeScript strict | Pages and routing; a same-origin `/api` rewrite keeps the auth cookie first-party |
+| Client state | Zustand | One board store that optimistic updates and WebSocket events both write to |
+| Drag & drop | @dnd-kit | Card moves across and within columns |
+| Styling | Tailwind CSS 4 | Tokens and rules in [frontend/design.md](frontend/design.md) |
+| API | Go, chi | Thin handlers; permission checks and domain rules live in `service/` |
+| Data | PostgreSQL 15, pgx/v5, sqlc, golang-migrate | SQL compiles to typed Go, so a renamed column is a compile error; migrations run on startup |
+| Realtime | Gorilla WebSocket | One in-memory room per board |
+| Auth | JWT access + opaque refresh token, Google OAuth | Sessions in HttpOnly cookies |
+| Delivery | Docker, Vercel (frontend), Render (API), GitHub Actions | Lint, unit + integration tests and image builds on every PR |
 
-## Architecture
+## App shell
 
 ```
-                 ┌────────────┐  HTTP (REST, JWT cookie)   ┌──────────────┐
-   Browser ───▶  │  Next.js   │ ───────────────────────▶  │   Go API     │
-                 │  (App      │ ◀───── WebSocket  ─────── │   chi +      │
-                 │   Router)  │        broadcast           │   WS Hub     │
-                 └────────────┘                            └──────┬───────┘
-                                                                  │ pgx
-                                                                  ▼
-                                                          ┌───────────────┐
-                                                          │ PostgreSQL    │
-                                                          │ (sqlc-typed)  │
-                                                          └───────────────┘
++-----------------+--------------------------------------------------------+
+| Turtask         |  Board title                                           |
+|-----------------|  Overview  Planning  Board  Members  Calendar  Settings|
+| My Work         |--------------------------------------------------------|
+| All Boards      |  To Do       | In Progress | Review      | Done        |
+|                 |  [card]      | [card]      | [card]      | [card]      |
+| PROJECTS     +  |  [card]      | [card]      |             |             |
+|   Board A       |              |             |             |             |
+|   Board B       |                                                        |
+|                 |                                                        |
+| Stash           |                                                        |
++-----------------+--------------------------------------------------------+
 ```
 
-- **Layered backend** — handler → service → repository (sqlc generated)
-- **WebSocket hub** — per-board rooms; broadcasts card moves, edits, activities
-- **Frontend store** — single Zustand store; WS messages mutate it directly
+The sidebar collapses to icons.
 
-> ⚠ **Single-instance only.** The WS hub keeps room state in-memory and
-> rate limits use an in-memory bucket per instance. Running multiple backend
-> replicas without a shared layer (e.g. Redis pub/sub for WS + a distributed
-> rate limiter) will silently drop broadcasts to clients connected to a
-> different instance. Scale vertically until that layer is introduced.
+<details>
+<summary>Routes</summary>
 
-**Trying it without an account:** the landing page and the sign-in page both carry a **Try demo** button. It provisions a throwaway account plus its own copy of the sample board and drops you straight onto it — nothing to fill in, and nothing you do there affects anyone else's demo. Sandboxes are deleted 24 hours later. The shared `demo@turtask.app` / `demodemo123` login still works if you would rather sign in.
-
-Deeper docs:
-
-- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — layered design, permission matrix, optimistic UI pattern, what's intentionally not here
-- [docs/DATABASE.md](docs/DATABASE.md) — ERD (Mermaid), table-by-table notes, migration rules
-- [docs/DEPLOY.md](docs/DEPLOY.md) — pre-flight checklist, deploy paths (VPS / Vercel+Railway / Cloud Run), rollback, common breakages
-- **API spec** — interactive Swagger UI served at `/docs/index.html` once the backend is running. Raw spec at `/docs/doc.json`. Regenerate after editing handler annotations: `cd backend && go generate ./cmd/api` (requires `swag` — `go install github.com/swaggo/swag/cmd/swag@latest`).
-
-## Key decisions
-
-Short "why", with the full reasoning in [`docs/adr/`](docs/adr/):
-
-- **sqlc, not an ORM** — SQL lives in `queries.sql` and compiles to typed Go; a renamed column is a compile error, not a runtime 500, and there's no hidden N+1. ([ADR 0002](docs/adr/0002-sqlc-over-orm.md))
-- **Opaque, revocable refresh tokens** — the long-lived token is a hashed random string, not a JWT, so sessions can be revoked server-side and a replayed token burns the whole session. ([ADR 0001](docs/adr/0001-opaque-refresh-tokens.md))
-- **In-memory, single-instance WebSocket hub** — one room per board in process memory; the scaling path (Redis pub/sub) is known and deferred until a real hot path needs it. ([ADR 0003](docs/adr/0003-single-instance-websocket-hub.md))
-- **Membership gate returns 404, not 403** — a non-member can't tell "board doesn't exist" from "you're not on it", so board IDs can't be enumerated. ([ADR 0004](docs/adr/0004-membership-gate-returns-404.md))
-- **Layered backend (`handler → service → db`)** — domain rules and permission checks live only in `service/`; handlers stay 10–30 lines.
-- **Optimistic UI + idempotent WS reconcile** — the client mutates its Zustand store first, then reconciles from broadcasts; receiving an event for state it already has is a no-op.
-
-## Project structure
-
-```text
-mini-erp-kanban/
-├── backend/
-│   ├── cmd/api/              # main.go + routes.go (entrypoint)
-│   ├── database/
-│   │   ├── schema.sql        # base schema
-│   │   ├── migrations/       # golang-migrate up/down files
-│   │   └── queries.sql       # sqlc input
-│   ├── internal/
-│   │   ├── handler/          # HTTP handlers
-│   │   ├── service/          # business logic + permission checks
-│   │   ├── middleware/       # auth, CORS, board-membership, role gating
-│   │   ├── db/               # sqlc-generated code (do not edit by hand)
-│   │   ├── websocket/        # Hub + Client
-│   │   ├── migrate/          # startup migration runner
-│   │   ├── token/            # JWT issuance/validation
-│   │   └── ...
-│   ├── Dockerfile
-│   └── .env.example
-├── frontend/
-│   ├── src/
-│   │   ├── app/              # App Router pages
-│   │   ├── components/       # UI (board, my-tasks, dashboard, ...)
-│   │   ├── hooks/            # useWebSocket, useDashboardStats, ...
-│   │   ├── store/            # Zustand stores
-│   │   └── lib/              # apiClient, constants
-│   ├── Dockerfile
-│   └── .env.example
-├── docs/                     # ARCHITECTURE.md · DATABASE.md · DEPLOY.md
-├── docker-compose.yml        # dev: Postgres only
-└── docker-compose.prod.yml   # full stack: db + backend + frontend
+```
+/                               landing (signed-in users go to their default page)
+/login, /register               sign in / sign up (email or Google)
+/invite/:token                  join a board from an invite link
+/my-work                        personal inbox: due today, overdue, upcoming, no date
+/dashboard                      all boards
+/stash                          stashed (archived) boards
+/board/:id/overview             up next, team ownership, activity feed
+/board/:id/planning             planning sessions (requirements, decisions, questions)
+/board/:id/planning/:sessionId  one session: capture notes, comment, promote to card
+/board/:id/tasks                the Kanban board (Board tab)
+/board/:id/members              members, roles and invite link
+/board/:id/calendar             cards by due date
+/board/:id/settings             board settings
 ```
 
----
+</details>
 
-## Quick start
+## Code worth reading
 
-### Prerequisites
+- **Optimistic updates with rollback.** Card actions snapshot the board,
+  update the store, then call the API; a failure restores the snapshot and
+  shows a toast ([`useCardActions`](frontend/src/hooks/useCardActions.ts),
+  [`useDragActions`](frontend/src/hooks/useDragActions.ts)).
+- **A WebSocket contract CI enforces.** Event names are declared once in Go
+  and once in TypeScript; `make check-ws-events` fails the build if they drift
+  or a raw string sneaks in ([ADR 0007](docs/adr/0007-ws-event-contract.md)).
+- **WebSocket auth across two domains.** The cookie lives on the Vercel
+  origin but the socket dials Render, so the page trades it for a short-lived
+  ticket in the handshake URL ([ADR 0005](docs/adr/0005-websocket-ticket-auth.md)).
+- **One error path for the whole app.** [`apiClient`](frontend/src/lib/apiClient.ts)
+  turns 403 and 5xx into toasts itself, so call sites only handle what they
+  can act on.
 
-- Docker + Docker Compose **or**
-- Node.js 20+ · Go 1.25+ · PostgreSQL 15 (running locally)
+**Tested against a real Postgres** (testcontainers):
+[`promote_integration_test.go`](backend/internal/service/promote_integration_test.go)
+races concurrent promotes of one note and checks exactly one card appears;
+[`refresh_rotation_integration_test.go`](backend/internal/service/refresh_rotation_integration_test.go)
+checks a replayed refresh token kills the whole session.
 
-### Option A — Full stack via Docker (recommended)
+More reasoning: [docs/CODE-NOTES.md](docs/CODE-NOTES.md) and the
+[ADRs](docs/adr/).
 
-```bash
-git clone <repo-url>
-cd mini-erp-kanban
+## Screens
 
-# Create root .env for compose vars
-cat > .env <<'EOF'
-POSTGRES_USER=erp_user
-POSTGRES_PASSWORD=erp_password
-POSTGRES_DB=erp_kanban
-JWT_SECRET=$(openssl rand -base64 32)
-FRONTEND_URL=http://localhost:3000
-NEXT_PUBLIC_API_URL=http://localhost:8080/api
-NEXT_PUBLIC_WS_URL=ws://localhost:8080/ws
-GOOGLE_CLIENT_ID=
-GOOGLE_CLIENT_SECRET=
-GOOGLE_REDIRECT_URL=http://localhost:8080/api/auth/google/callback
-EOF
+| My Work | Board overview |
+|---|---|
+| ![My Work: due today across boards](docs/screenshots/my-work.png) | ![Overview: progress, status, insights](docs/screenshots/overview.png) |
+| **Planning session** | **Members and roles** |
+| ![Planning: requirements, decisions, questions](docs/screenshots/planning.png) | ![Members: roles and invite link](docs/screenshots/members.png) |
 
-docker compose -f docker-compose.prod.yml up --build
+## Getting started
+
+Needs Docker, Go 1.26+ and Node.js 20+.
+
+```sh
+docker compose up -d                                       # Postgres on :5432
+cd backend && cp .env.example .env && go run ./cmd/api     # API on :8080, runs migrations
+
+cd frontend                                                # second terminal, from the repo root
+cp .env.example .env.local && npm install && npm run dev   # http://localhost:3000
 ```
 
-Then open <http://localhost:3000>. Migrations run automatically on backend startup.
+**Try demo** works straight away. For the shared `demo@turtask.app` login, run
+`cd backend && go run ./cmd/seed` once the API is up. Every variable is listed
+in `backend/.env.example` and `frontend/.env.example`; API docs (Swagger UI)
+are at <http://localhost:8080/docs/index.html>.
 
-### Option B — Local dev (Postgres in Docker, backend + frontend on host)
+<!-- TODO: full-stack docker-compose.prod.yml is not documented here: in that setup the frontend container proxies /api to localhost:8080, which is itself, not the backend -->
 
-```bash
-# 1. Database
-docker compose up -d                          # uses docker-compose.yml (Postgres only)
+<details>
+<summary>Tests and code generation</summary>
 
-# 2. Backend
-cd backend
-cp .env.example .env                          # then edit values
-go run ./cmd/api                              # migrations run on boot
+| Task | Command |
+|---|---|
+| Everything CI runs | `make verify` |
+| Backend tests / integration tests | `make test` / `make test-integration` |
+| Frontend tests / type check / E2E | `make test-fe` / `make typecheck` / `make test-e2e` |
+| Regenerate sqlc / OpenAPI | `make sqlc` / `make swag` |
+| New migration | `make migrate-new name=add_x` |
 
-# 3. Frontend (new shell)
-cd frontend
-cp .env.example .env.local
-npm install
-npm run dev
+</details>
+
+## Production and security
+
+- **Cookies, not localStorage:** both tokens are `HttpOnly` cookies; the
+  refresh token is stored only as a hash, rotates on every use, and a replay
+  revokes the session ([ADR 0001](docs/adr/0001-opaque-refresh-tokens.md)).
+- **No third-party cookies:** the browser calls `/api` on the frontend origin
+  and a Next.js rewrite proxies it to Render; WebSockets go over `wss://`.
+- **Security headers** on every API response
+  ([`security_headers.go`](backend/internal/middleware/security_headers.go)):
+  `X-Frame-Options: DENY`, `nosniff`, `Referrer-Policy`, `Permissions-Policy`,
+  and HSTS in production.
+- **Rate limits** per client IP, resolved correctly behind the Vercel rewrite
+  and Render proxy; creating a demo sandbox is capped at 5 per hour.
+- **Roles enforced on the server.** Non-members get 404, not 403, so board IDs
+  can't be probed ([ADR 0004](docs/adr/0004-membership-gate-returns-404.md)).
+
+<!-- TODO: Content-Security-Policy is not set (neither on the API nor in next.config.ts) -->
+
+The WebSocket hub and rate limiter keep state in memory, so production runs a
+single API instance ([ADR 0003](docs/adr/0003-single-instance-websocket-hub.md)).
+Deploy runbook: [docs/DEPLOY.md](docs/DEPLOY.md).
+
+## Project layout
+
+```
+backend/     Go API: handlers, services, middleware, WebSocket hub, sqlc queries + migrations
+frontend/    Next.js app: pages, components, Zustand stores, hooks
+docs/        Architecture, database, deploy, code notes, ADRs
 ```
 
-Open <http://localhost:3000>.
-
-### Verifying the install
-
-```bash
-curl http://localhost:8080/healthz | jq
-# { "status": "ok", "version": "dev", "uptime_seconds": 12, "db_connected": true }
-```
-
----
-
-## Environment variables
-
-Both `backend/.env.example` and `frontend/.env.example` document every variable the code reads. Required:
-
-- `JWT_SECRET` — 32+ random bytes (`openssl rand -base64 32`)
-- `DB_URL` — Postgres connection string
-- `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_WS_URL` — frontend ↔ backend URLs
-
-Optional (Google OAuth login): `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URL`.
-
-## Common tasks
-
-A top-level [`Makefile`](Makefile) wraps the most-used commands. `make` with no target lists them. Direct equivalents below if you'd rather not use `make`:
-
-| Task                                | `make`                | Direct                                                  |
-|-------------------------------------|-----------------------|---------------------------------------------------------|
-| Verify everything CI runs           | `make verify`         | `go vet + go test + tsc + vitest`                       |
-| Run backend tests                   | `make test`           | `cd backend && go test ./...`                           |
-| Run frontend tests                  | `make test-fe`        | `cd frontend && npm test`                               |
-| Run frontend E2E (Playwright)       | `make test-e2e`       | `cd frontend && npx playwright install chromium && npm run test:e2e` |
-| Frontend type check                 | `make typecheck`      | `cd frontend && npx tsc --noEmit`                       |
-| Regenerate sqlc                     | `make sqlc`           | `cd backend && sqlc generate`                           |
-| New migration stub                  | `make migrate-new name=add_x` | (manual file creation under `database/migrations/`) |
-| Regenerate OpenAPI spec             | `make swag`           | `cd backend && go generate ./cmd/api`                   |
-| Build production images             | `make build`          | `docker compose -f docker-compose.prod.yml build`       |
-| Inspect health                      | —                     | `curl localhost:8080/healthz`                           |
-| Browse API docs                     | —                     | <http://localhost:8080/docs/index.html>                 |
-
-
+More detail: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md),
+[docs/DATABASE.md](docs/DATABASE.md). Contributor rules: [AGENTS.md](AGENTS.md).

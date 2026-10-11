@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Play } from "lucide-react";
 import { apiClient } from "@/lib/apiClient";
@@ -8,6 +8,8 @@ import { useToastStore } from "@/store/useToastStore";
 import type { DemoSession } from "@/types/demo";
 
 type Variant = "hero" | "quiet";
+
+const SLOW_START_TOAST_DELAY_MS = 1500;
 
 const STYLES: Record<Variant, string> = {
   hero: "border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 px-7 py-3.5 rounded-full",
@@ -25,16 +27,36 @@ export function TryDemoButton({
 }) {
   const router = useRouter();
   const showToast = useToastStore((s) => s.show);
+  const dismissToast = useToastStore((s) => s.dismiss);
   const [isStarting, setIsStarting] = useState(false);
+  const slowTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const slowToastId = useRef<string | null>(null);
+
+  const clearSlowNotice = useCallback(() => {
+    if (slowTimer.current) clearTimeout(slowTimer.current);
+    slowTimer.current = null;
+    if (slowToastId.current) dismissToast(slowToastId.current);
+    slowToastId.current = null;
+  }, [dismissToast]);
+
+  // Cold-start notice stays up until the board route unmounts this page.
+  useEffect(() => clearSlowNotice, [clearSlowNotice]);
 
   const start = async () => {
     setIsStarting(true);
+    slowTimer.current = setTimeout(() => {
+      slowToastId.current = showToast({
+        message: "กำลังเปิดระบบและเตรียมข้อมูลตัวอย่าง",
+        duration: 0,
+      });
+    }, SLOW_START_TOAST_DELAY_MS);
     try {
       const session = await apiClient<DemoSession>("/auth/demo", { method: "POST" });
       // /board/[boardId] has no page; /tasks is the board.
       router.push(`/board/${session.board_id}/tasks`);
       router.refresh();
     } catch {
+      clearSlowNotice();
       // apiClient toasts 403/5xx itself; this covers the rate limit.
       showToast({ message: "เปิดโหมดทดลองไม่สำเร็จ ลองใหม่อีกครั้งในอีกสักครู่" });
       setIsStarting(false);

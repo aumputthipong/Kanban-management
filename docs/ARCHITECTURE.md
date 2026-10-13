@@ -47,29 +47,36 @@ If a query gets ugly enough that hand-rolled SQL would help, write it as a servi
 
 ### Permission model
 
-Three roles per board: `owner` > `manager` > `member` (see [`internal/core`](../backend/internal/core/)). Enforced in two layers:
+Three roles per board: `owner` > `manager` > `member`. The rules are pure functions in [`core/permissions.go`](../backend/internal/core/permissions.go); why they are drawn where they are is in [ADR 0012](adr/0012-board-role-model.md). Enforced in two layers:
 
 1. **Membership gate** — [`middleware.RequireBoardMember`](../backend/internal/middleware/board_access.go) returns 404 (not 403) if the caller is not a member. The 404 prevents enumeration of board IDs ([ADR 0004](adr/0004-membership-gate-returns-404.md)).
-2. **Role gate** — [`middleware.RequireBoardRole(core.RoleManager)`](../backend/internal/middleware/board_role.go) returns 403 if the caller is a member but lacks the required role.
+2. **Role gate** — [`middleware.RequireBoardRole`](../backend/internal/middleware/board_role.go) on board-scoped routes, or a `core.Can*` check in the handler on routes addressed by row ID (`/cards/:id`, `/columns/:id`, `/planning/...`). The handler resolves the board first, so a non-member still gets 404. A member who lacks the role gets 403.
 
-Action matrix:
+Action matrix (the readable form of `permissions.go`; change both together):
 
-| Action                      | owner | manager | member |
-|-----------------------------|:-----:|:-------:|:------:|
-| Read board / activities     | ✅    | ✅      | ✅     |
-| Create / move card          | ✅    | ✅      | ✅     |
-| Edit card fields & subtasks | ✅    | ✅      | own¹   |
-| Update board title / budget | ✅    | ✅      |        |
-| Add / remove members        | ✅    | ✅      |        |
-| Change member roles         | ✅    | ✅      |        |
-| Manage tags                 | ✅    | ✅      |        |
-| Move board to trash         | ✅    |         |        |
-| Restore / hard-delete       | ✅    |         |        |
-| Leave board                 |       | ✅      | ✅     |
+| Action                                        | owner | manager | member |
+|-----------------------------------------------|:-----:|:-------:|:------:|
+| Read board / activities                       | ✅    | ✅      | ✅     |
+| Create / move / mark done a card              | ✅    | ✅      | ✅     |
+| Edit card fields & subtasks                   | ✅    | ✅      | own¹   |
+| Delete card                                   | ✅    | ✅      | creator² |
+| Create / rename / delete column               | ✅    | ✅      |        |
+| Edit board settings, manage tags              | ✅    | ✅      |        |
+| Invite (by email or link)                     | ✅    | as member³ |     |
+| Remove members / change roles                 | ✅⁴   | members only³ |  |
+| Transfer ownership                            | ✅    |         |        |
+| Stash / restore / hard-delete board           | ✅    |         |        |
+| Planning: sessions, notes, comments, promote  | ✅    | ✅      | ✅     |
+| Delete a planning session                     | ✅    | ✅      | creator, if empty |
+| Delete someone else's comment                 | ✅    | ✅      |        |
+| Leave board                                   | transfer first | ✅ | ✅ |
 
-¹ A member may edit a card they created or are assigned to (`canEditCard` in the card handler, mirrored by `useCanEdit`). Subtasks follow the same rule; reading them only needs membership.
+¹ Created by them or assigned to them. Reading subtasks only needs membership.
+² Assignees can edit a card but not delete it.
+³ A manager may grant only `member`, and may remove or re-role members only, not other managers.
+⁴ Except the owner row itself. `owner` is never grantable; it moves only by transfer, and the old owner becomes manager.
 
-The frontend mirrors this matrix for UI gating (hide buttons), but the backend is the source of truth — never trust the client.
+[`frontend/src/lib/permissions.ts`](../frontend/src/lib/permissions.ts) mirrors these functions to hide controls, but the backend is the source of truth — never trust the client.
 
 ### WebSocket hub
 
@@ -160,7 +167,7 @@ board as cards, with the source link preserved both ways.
             ┌──────────────────────────┐                                  ┌──────────────────────────┐
             │ cards                    │ ◀── promoted_to_card_id ──────── │ planning_items           │
             │ board.first TODO column  │      (back-link FK)              │ status=promoted          │
-            │ AC + Note copied over    │                                  │ claim auto-released      │
+            │ AC + Note copied over    │                                  │                          │
             └──────────────────────────┘                                  └──────────────────────────┘
 ```
 
@@ -176,8 +183,6 @@ board as cards, with the source link preserved both ways.
   1. Takes `SELECT ... FOR UPDATE` on the planning item (concurrent promoters serialise — see the integration test `TestPromoteItem_ConcurrentPromote_ExactlyOneSucceeds`).
   2. Inserts a `cards` row in the board's first `TODO` column, copying `acceptance_criteria` + `implementation_note` forward.
   3. Sets `status='promoted'` + `promoted_to_card_id=<new card>`.
-  4. Auto-releases any claim (clears `claimed_by_user_id` + `claimed_at`).
-- **ClaimItem** is atomic without a transaction: the `WHERE claimed_by_user_id IS NULL` predicate in the UPDATE is the serialisation point. Concurrent claimers see one success + N-1 `ErrPlanningItemAlreadyClaimed`.
 - **Card backlink** uses partial index `idx_planning_items_promoted_card WHERE promoted_to_card_id IS NOT NULL` so the reverse lookup `GET /api/cards/:cardID/source` stays cheap even as the cards table grows.
 
 ### REST surface (all under `/api/planning`)
@@ -187,7 +192,7 @@ GET    /boards/:boardID/planning/sessions       list sessions on a board
 POST   /boards/:boardID/planning/sessions       create session
 GET    /planning/sessions/:sessionID            session detail (items inline)
 PATCH  /planning/sessions/:sessionID            edit session (PATCH semantics)
-DELETE /planning/sessions/:sessionID            delete session
+DELETE /planning/sessions/:sessionID            delete session (manager+, or its creator while empty)
 
 POST   /planning/sessions/:sessionID/items      capture item
 PATCH  /planning/items/:itemID                  edit item (type/title/status/AC/Note)
@@ -199,9 +204,6 @@ POST   /planning/items/:itemID/comments         add comment
 PATCH  /planning/comments/:commentID            edit (author only)
 DELETE /planning/comments/:commentID            soft delete (author OR board owner/manager)
 
-POST   /planning/items/:itemID/claim            claim ("I'm looking at this")
-DELETE /planning/items/:itemID/claim            release (own OR force-release by owner/manager)
-
 GET    /cards/:cardID/source                    reverse: which planning row produced this card?
 ```
 
@@ -209,7 +211,9 @@ Permission gate is the standard 404-not-403 pattern. The handler resolves
 `boardID` from the request's nested ID (item → session → board for most
 routes; comment → item → session → board for the comment edit/delete
 paths) and calls `requireMembership` before any mutation. Non-members
-get 404 with no signal about whether the resource exists.
+get 404 with no signal about whether the resource exists. Every other
+planning action is open to all members on purpose ([ADR 0012](adr/0012-board-role-model.md));
+the one role check is deleting a session, which cascades every note in it.
 
 ### Activity event types
 
@@ -220,24 +224,24 @@ The full set the feed renderer knows about:
 planning.session_{created,updated,deleted}
 planning.item_{created,updated,deleted,promoted}
 planning.comment_{created,edited,deleted}
-planning.item_{claimed,released}
-planning.claim_auto_released_on_promote
+planning.item_{claimed,released}             legacy: no longer emitted (claim removed in 000017)
+planning.claim_auto_released_on_promote      legacy: kept so old rows still render
 ```
 
-The comment + claim payloads carry a body preview / item title so the
+The comment payloads carry a body preview / item title so the
 team feed (`TeamTabContent.describeActivity`) renders human-readable
 lines without joining back to the source tables.
 
 ### Frontend layout
 
 - Page: `frontend/src/app/(project)/board/[boardId]/planning/[sessionId]/page.tsx`
-- Data hook: `useSessionItems(boardId, sessionId)` — initial fetch + optimistic CRUD over the items array, plus claim/release helpers.
+- Data hook: `useSessionItems(boardId, sessionId)` — initial fetch + optimistic CRUD over the items array.
 - Per-item thread hook: `usePlanningComments(itemId, currentUserId)` — lazy, never fetches until the consumer calls `load()`.
 
 **Why one comment hook per row is cheap.** `ItemRow` instantiates `usePlanningComments` once per visible item, so a 50-item session holds 50 instances. Cost stays flat because the hook never fetches until `load()` is called (an unexpanded thread costs only local state) and the visibility listener is only attached after `loaded` becomes true. Threads a user actually expands are a handful. If an "expand all" affordance ever ships, revisit by hoisting the visibility listener to one shared subscriber.
 
 Its optimistic flows: **create** appends a `__pending_` placeholder and swaps it for the server row (dropping it plus a toast on failure); **edit** patches local state and reverts on failure; **delete** flips `body` to null and `deleted_at` to now locally, reverting if the server rejects.
-- Composition: `SessionCaptureView` orchestrates filter chips, items list, capture input, sidebar, deep-link scroll. `ItemRow` extracts a popover, claim affordance, action button cluster, and details panel (see `frontend/src/components/board/planning/`).
+- Composition: `SessionCaptureView` orchestrates filter chips, items list, capture input, sidebar, deep-link scroll. `ItemRow` extracts a popover, action button cluster, and details panel (see `frontend/src/components/board/planning/`).
 
 ---
 

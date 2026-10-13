@@ -68,7 +68,7 @@ The sender also receives its own broadcast, so every WebSocket handler treats
 | Client state | Zustand | One board store that optimistic updates and WebSocket events both write to |
 | Drag & drop | @dnd-kit | Card moves across and within columns |
 | Styling | Tailwind CSS 4 | Tokens and rules in [frontend/design.md](frontend/design.md) |
-| API | Go, chi | Thin handlers; permission checks and domain rules live in `service/` |
+| API | Go, chi | Thin handlers; domain rules live in `service/`, role rules in `core/permissions.go` |
 | Data | PostgreSQL 15, pgx/v5, sqlc, golang-migrate | SQL compiles to typed Go, so a renamed column is a compile error; migrations run on startup |
 | Realtime | Gorilla WebSocket | One in-memory room per board |
 | Auth | JWT access + opaque refresh token, Google OAuth | Sessions in HttpOnly cookies |
@@ -194,6 +194,8 @@ are at <http://localhost:8080/docs/index.html>.
   and Render proxy; creating a demo sandbox is capped at 5 per hour.
 - **Roles enforced on the server.** Non-members get 404, not 403, so board IDs
   can't be probed ([ADR 0004](docs/adr/0004-membership-gate-returns-404.md)).
+  Destructive actions are gated by role while everyday collaboration stays
+  open to every member ([ADR 0012](docs/adr/0012-board-role-model.md)).
 
 <!-- TODO: Content-Security-Policy is not set (neither on the API nor in next.config.ts) -->
 

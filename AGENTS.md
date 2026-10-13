@@ -56,13 +56,15 @@ handler/  → service/  → db/ (sqlc-generated)
 ```
 
 - **handler/** decode + validate → call service → encode response. 10–30 บรรทัดต่อ handler.
-- **service/** business logic + permission check + transaction. ที่เดียวที่กฎ domain อาศัยอยู่.
+- **service/** business logic + transaction. ที่เดียวที่กฎ domain อาศัยอยู่ (ยกเว้นกฎ role ซึ่งอยู่ที่ `core/permissions.go` — ดูข้างล่าง).
 - **db/** sqlc generated **ห้ามแก้ด้วยมือ**. เปลี่ยน query ที่ `database/queries.sql` แล้วรัน `make sqlc`.
 
 ### Permissions
 
 - ใช้ `middleware.RequireBoardMember` แล้วตามด้วย `RequireBoardRole(core.Role...)` เสมอ.
 - Membership gate คืน **404** (ไม่ใช่ 403) เพื่อกัน enumeration. **ห้าม** เปลี่ยนเป็น 403.
+- **กฎ role อยู่ที่ [`core/permissions.go`](backend/internal/core/permissions.go) ที่เดียว** (เหตุผลที่ขีดเส้นตรงนี้: [ADR 0012](docs/adr/0012-board-role-model.md)). Route ที่เข้าด้วย ID ของแถว (`/cards/:id`, `/columns/:id`, `/planning/...`) ไม่ผ่าน `RequireBoardRole` — handler ต้อง resolve board + role แล้วเรียก `core.Can*` เอง. การซ่อนปุ่มใน UI **ไม่นับ** เป็นการกันสิทธิ์.
+- เพิ่ม/แก้กฎ → แก้ `permissions.go` + table test, `frontend/src/lib/permissions.ts`, และตาราง action matrix ใน `docs/ARCHITECTURE.md` พร้อมกัน.
 - Frontend mirror permission matrix สำหรับ hide UI; backend คือ source of truth — **ห้าม** trust client.
 
 ### Database / Migrations

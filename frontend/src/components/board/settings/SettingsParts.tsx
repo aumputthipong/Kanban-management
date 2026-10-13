@@ -190,16 +190,20 @@ export function Segmented<T extends string>({
   );
 }
 
+type SelectOption = string | { value: string; label: string };
+
 export function SelectField({
   value,
   options,
   onChange,
   disabled = false,
+  ariaLabel,
 }: {
   value: string;
-  options: string[];
+  options: SelectOption[];
   onChange: (next: string) => void;
   disabled?: boolean;
+  ariaLabel?: string;
 }) {
   return (
     <div className="relative inline-block">
@@ -207,13 +211,17 @@ export function SelectField({
         value={value}
         disabled={disabled}
         onChange={(e) => onChange(e.target.value)}
+        aria-label={ariaLabel}
         className="appearance-none h-[42px] pl-3.5 pr-9 border border-slate-200 rounded-lg bg-white text-sm font-semibold text-slate-900 cursor-pointer hover:border-slate-300 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:border-blue-300 focus:ring-2 focus:ring-blue-800/10"
       >
-        {options.map((o) => (
-          <option key={o} value={o}>
-            {o}
-          </option>
-        ))}
+        {options.map((o) => {
+          const opt = typeof o === "string" ? { value: o, label: o } : o;
+          return (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          );
+        })}
       </select>
       <ChevronDown
         size={15}

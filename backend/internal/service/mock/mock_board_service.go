@@ -28,6 +28,7 @@ type MockBoardService struct {
 	AddBoardMemberByEmailFn func(ctx context.Context, boardID, email, role string) error
 	RemoveBoardMemberFn     func(ctx context.Context, boardID, userID string) error
 	UpdateMemberRoleFn      func(ctx context.Context, boardID, userID string, role string) error
+	TransferOwnershipFn     func(ctx context.Context, boardID, ownerID, targetID string) (string, error)
 
 	GetCardFn       func(ctx context.Context, cardID string) (db.Card, error)
 	GetCardDetailFn func(ctx context.Context, cardID string) (service.CardDetailData, error)
@@ -134,4 +135,8 @@ func (m *MockBoardService) UpdateCard(ctx context.Context, arg service.UpdateCar
 
 func (m *MockBoardService) GetAllUsers(ctx context.Context) ([]db.GetAllUsersRow, error) {
 	return m.GetAllUsersFn(ctx)
+}
+
+func (m *MockBoardService) TransferOwnership(ctx context.Context, boardID, ownerID, targetID string) (string, error) {
+	return m.TransferOwnershipFn(ctx, boardID, ownerID, targetID)
 }

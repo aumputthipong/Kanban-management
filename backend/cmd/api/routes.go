@@ -137,6 +137,8 @@ func setupRoutes(d routerDeps) http.Handler {
 				r.Route("/members", func(r chi.Router) {
 					r.Get("/", httputil.MakeHandler(d.boardHandler.GetBoardMembers))
 					r.Delete("/me", httputil.MakeHandler(d.boardHandler.LeaveBoard))
+					r.With(middleware.RequireBoardRole(core.RoleOwner)).
+						Post("/transfer-ownership", httputil.MakeHandler(d.boardHandler.TransferOwnership))
 
 					r.Group(func(r chi.Router) {
 						r.Use(middleware.RequireBoardRole(core.RoleManager))

@@ -374,6 +374,15 @@ SET role = $3
 WHERE board_id = $1 AND user_id = $2
 RETURNING *;
 
+-- name: LockTwoBoardMembers :many
+-- ORDER BY fixes the lock order so concurrent transfers on one board cannot deadlock.
+SELECT user_id, role
+FROM board_members
+WHERE board_id = sqlc.arg(board_id)
+  AND user_id IN (sqlc.arg(first_user_id)::uuid, sqlc.arg(second_user_id)::uuid)
+ORDER BY user_id
+FOR UPDATE;
+
 -- name: GetBoardMemberRole :one
 -- Active boards only: a stashed board (deleted_at set) reports no membership so
 -- the board-access gate 404s — stashed boards are unreachable via normal routes

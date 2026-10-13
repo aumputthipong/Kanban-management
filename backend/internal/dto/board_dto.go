@@ -75,6 +75,10 @@ type AddMemberRequest struct {
 	Role  string `json:"role"  validate:"required,oneof=owner manager member"`
 }
 
+type TransferOwnershipRequest struct {
+	UserID string `json:"user_id" validate:"required,uuid"`
+}
+
 type UpdateMemberRoleRequest struct {
 	Role string `json:"role" validate:"required,oneof=owner manager member"`
 }

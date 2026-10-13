@@ -3,36 +3,17 @@
 import { useState } from "react";
 import { AlertTriangle, Archive, Loader2 } from "lucide-react";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { DangerRow } from "./DangerRow";
 import { SectionCard } from "./SettingsParts";
+import { TransferOwnershipRow } from "./TransferOwnershipRow";
 
 interface DangerSectionProps {
+  boardId: string;
   onArchive: () => void;
   isArchiving: boolean;
 }
 
-function DangerRow({
-  title,
-  help,
-  children,
-}: {
-  title: React.ReactNode;
-  help: React.ReactNode;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="flex items-center gap-5 px-5 py-4 border-t border-slate-100 first:border-t-0">
-      <div className="flex-1 min-w-0">
-        <div className="text-sm font-bold text-slate-900 flex items-center gap-2 flex-wrap">
-          {title}
-        </div>
-        <p className="text-[12.5px] text-slate-500 mt-1 leading-relaxed">{help}</p>
-      </div>
-      <div className="shrink-0">{children}</div>
-    </div>
-  );
-}
-
-export function DangerSection({ onArchive, isArchiving }: DangerSectionProps) {
+export function DangerSection({ boardId, onArchive, isArchiving }: DangerSectionProps) {
   const [confirmArchive, setConfirmArchive] = useState(false);
 
   return (
@@ -59,6 +40,9 @@ export function DangerSection({ onArchive, isArchiving }: DangerSectionProps) {
             Stash
           </button>
         </DangerRow>
+
+        {/* Transfer ownership */}
+        <TransferOwnershipRow boardId={boardId} />
       </SectionCard>
 
       <ConfirmDialog

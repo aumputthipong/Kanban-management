@@ -281,8 +281,17 @@ func (h *PlanningHandler) DeleteSession(w http.ResponseWriter, r *http.Request) 
 		}
 		return httputil.NewAPIError(http.StatusInternalServerError, "Failed to load session", err)
 	}
-	if _, apiErr := h.requireMembership(r, sess.BoardID, userID); apiErr != nil {
+	role, apiErr := h.requireMembership(r, sess.BoardID, userID)
+	if apiErr != nil {
 		return apiErr
+	}
+	items, err := h.planning.ListItems(r.Context(), sessionID)
+	if err != nil {
+		return httputil.NewAPIError(http.StatusInternalServerError, "Failed to load session items", err)
+	}
+	isCreator := sess.CreatedBy != nil && *sess.CreatedBy == userID
+	if !core.CanDeletePlanningSession(role, isCreator, len(items) > 0) {
+		return httputil.NewAPIError(http.StatusForbidden, "You do not have permission to delete this session", nil)
 	}
 	if err := h.planning.DeleteSession(r.Context(), sessionID); err != nil {
 		return httputil.NewAPIError(http.StatusInternalServerError, "Failed to delete session", err)

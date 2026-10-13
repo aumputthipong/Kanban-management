@@ -32,11 +32,10 @@ func boardMembership(ctx context.Context, svc service.BoardServicer, boardID, us
 	return core.BoardRole(role), nil
 }
 
-// Creator or assignee, else manager+. Mirrored by frontend useCanEdit.
 func canEditCard(card db.Card, userID string, role core.BoardRole) bool {
-	isOwnCard := (card.CreatedBy != nil && *card.CreatedBy == userID) ||
-		(card.AssigneeID != nil && *card.AssigneeID == userID)
-	return isOwnCard || role == core.RoleOwner || role == core.RoleManager
+	isCreator := card.CreatedBy != nil && *card.CreatedBy == userID
+	isAssignee := card.AssigneeID != nil && *card.AssigneeID == userID
+	return core.CanEditCard(role, isCreator, isAssignee)
 }
 
 func (h *BoardHandler) requireBoardMembership(r *http.Request, boardID, userID string) (core.BoardRole, *httputil.APIError) {

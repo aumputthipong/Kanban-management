@@ -125,7 +125,8 @@ func setupRoutes(d routerDeps) http.Handler {
 
 				r.Get("/", httputil.MakeHandler(d.boardHandler.GetBoardData))
 				r.Get("/activities", httputil.MakeHandler(d.activityHandler.ListByBoard))
-				r.Post("/columns", httputil.MakeHandler(d.boardCmdHandler.CreateColumn))
+				r.With(middleware.RequireBoardRole(core.RoleManager)).
+					Post("/columns", httputil.MakeHandler(d.boardCmdHandler.CreateColumn))
 
 				r.With(middleware.RequireBoardRole(core.RoleManager)).
 					Patch("/", httputil.MakeHandler(d.boardHandler.UpdateBoard))

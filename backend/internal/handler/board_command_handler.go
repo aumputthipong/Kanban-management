@@ -106,30 +106,39 @@ func activityPayload(act db.Activity) map[string]any {
 	}
 }
 
-func (h *BoardCommandHandler) cardContext(r *http.Request, cardID string) (string, string, *httputil.APIError) {
+type cardScope struct {
+	boardID string
+	userID  string
+	role    core.BoardRole
+	card    db.Card
+}
+
+func (h *BoardCommandHandler) cardContext(r *http.Request, cardID string) (cardScope, *httputil.APIError) {
 	userID, ok := r.Context().Value(middleware.UserIDKey).(string)
 	if !ok || userID == "" {
-		return "", "", httputil.NewAPIError(http.StatusUnauthorized, "Unauthorized", nil)
+		return cardScope{}, httputil.NewAPIError(http.StatusUnauthorized, "Unauthorized", nil)
 	}
 
 	card, err := h.boardService.GetCard(r.Context(), cardID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return "", "", httputil.NewAPIError(http.StatusNotFound, "Not found", nil)
+			return cardScope{}, httputil.NewAPIError(http.StatusNotFound, "Not found", nil)
 		}
-		return "", "", httputil.NewAPIError(http.StatusInternalServerError, "Failed to load card", err)
+		return cardScope{}, httputil.NewAPIError(http.StatusInternalServerError, "Failed to load card", err)
 	}
 
 	boardID, err := h.boardService.GetBoardIDByColumn(r.Context(), card.ColumnID)
 	if err != nil {
-		return "", "", httputil.NewAPIError(http.StatusInternalServerError, "Failed to resolve board", err)
+		return cardScope{}, httputil.NewAPIError(http.StatusInternalServerError, "Failed to resolve board", err)
 	}
-	if _, apiErr := boardMembership(r.Context(), h.boardService, boardID, userID); apiErr != nil {
-		return "", "", apiErr
+	role, apiErr := boardMembership(r.Context(), h.boardService, boardID, userID)
+	if apiErr != nil {
+		return cardScope{}, apiErr
 	}
-	return boardID, userID, nil
+	return cardScope{boardID: boardID, userID: userID, role: role, card: card}, nil
 }
 
+// Resolves the column's board and requires manager+, the bar for every column mutation.
 func (h *BoardCommandHandler) columnContext(r *http.Request, columnID string) (string, string, *httputil.APIError) {
 	userID, ok := r.Context().Value(middleware.UserIDKey).(string)
 	if !ok || userID == "" {
@@ -143,8 +152,12 @@ func (h *BoardCommandHandler) columnContext(r *http.Request, columnID string) (s
 		}
 		return "", "", httputil.NewAPIError(http.StatusInternalServerError, "Failed to resolve board", err)
 	}
-	if _, apiErr := boardMembership(r.Context(), h.boardService, boardID, userID); apiErr != nil {
+	role, apiErr := boardMembership(r.Context(), h.boardService, boardID, userID)
+	if apiErr != nil {
 		return "", "", apiErr
+	}
+	if !core.CanManageColumns(role) {
+		return "", "", httputil.NewAPIError(http.StatusForbidden, "You do not have permission to manage columns", nil)
 	}
 	return boardID, userID, nil
 }

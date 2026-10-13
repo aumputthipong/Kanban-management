@@ -1,20 +1,7 @@
 import { useBoardStore } from "@/store/useBoardStore";
+import { atLeast, type BoardRole as Role } from "@/lib/permissions";
 
-export type BoardRole = "owner" | "manager" | "member" | null;
-
-// UI gating only — the backend re-checks in middleware/board_role.go.
-function roleRank(role: BoardRole): number {
-  switch (role) {
-    case "owner":
-      return 3;
-    case "manager":
-      return 2;
-    case "member":
-      return 1;
-    default:
-      return 0;
-  }
-}
+export type BoardRole = Role | null;
 
 export function useBoardRole(): BoardRole {
   const currentUserId = useBoardStore((s) => s.currentUserId);
@@ -22,11 +9,11 @@ export function useBoardRole(): BoardRole {
   if (!currentUserId) return null;
   const me = boardMembers.find((m) => m.user_id === currentUserId);
   if (!me) return null;
-  return (me.role as BoardRole) ?? null;
+  return (me.role as Role) ?? null;
 }
 
 export function useCanManageBoard(): boolean {
-  return roleRank(useBoardRole()) >= roleRank("manager");
+  return atLeast(useBoardRole(), "manager");
 }
 
 export function useCanDeleteBoard(): boolean {
@@ -34,9 +21,9 @@ export function useCanDeleteBoard(): boolean {
 }
 
 export function useCanInviteMembers(): boolean {
-  return roleRank(useBoardRole()) >= roleRank("manager");
+  return atLeast(useBoardRole(), "manager");
 }
 
 export function useCanManageTags(): boolean {
-  return roleRank(useBoardRole()) >= roleRank("manager");
+  return atLeast(useBoardRole(), "manager");
 }

@@ -2,7 +2,8 @@ import { useState } from "react";
 import { Crown, ChevronDown, UserMinus, Loader2 } from "lucide-react";
 import type { BoardMember } from "@/types/board";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
-import { useCanManageBoard } from "@/hooks/useBoardRole";
+import { useBoardRole } from "@/hooks/useBoardRole";
+import { canManageMember, grantableRoles, type BoardRole } from "@/lib/permissions";
 import { useBoardStore } from "@/store/useBoardStore";
 import { getAvatarColor } from "@/utils/avatar";
 
@@ -22,10 +23,12 @@ interface MemberItemProps {
 export function MemberItem({ member, isLoading, onRoleChange, onRemove }: MemberItemProps) {
   const isOwner = member.role === "owner";
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const canManage = useCanManageBoard();
+  const myRole = useBoardRole();
   const currentUserId = useBoardStore((s) => s.currentUserId);
   const isYou = member.user_id === currentUserId;
-  const canEditRow = canManage && !isOwner;
+  const canRemove = canManageMember(myRole, member.role as BoardRole);
+  const roleOptions = grantableRoles(myRole);
+  const canChangeRole = canRemove && roleOptions.length > 1;
 
   return (
     <>
@@ -58,7 +61,7 @@ export function MemberItem({ member, isLoading, onRoleChange, onRemove }: Member
               <Crown size={12} />
               Owner
             </span>
-          ) : canEditRow ? (
+          ) : canChangeRole ? (
             <div className="relative">
               <select
                 value={member.role}
@@ -67,8 +70,11 @@ export function MemberItem({ member, isLoading, onRoleChange, onRemove }: Member
                 aria-label={`role for ${member.full_name}`}
                 className="h-8 cursor-pointer appearance-none rounded-sm border border-slate-200 bg-white pl-2.5 pr-7 text-[12.5px] font-semibold text-slate-900 transition hover:border-indigo-200 hover:bg-slate-50 focus:outline-none disabled:opacity-40"
               >
-                <option value="manager">Manager</option>
-                <option value="member">Member</option>
+                {roleOptions.map((r) => (
+                  <option key={r} value={r}>
+                    {ROLE_LABELS[r]}
+                  </option>
+                ))}
               </select>
               <ChevronDown
                 size={13}
@@ -81,7 +87,7 @@ export function MemberItem({ member, isLoading, onRoleChange, onRemove }: Member
             </span>
           )}
 
-          {canEditRow && (
+          {canRemove && (
             <>
               <span className="mx-0.5 h-5 w-px bg-slate-200" />
               <button

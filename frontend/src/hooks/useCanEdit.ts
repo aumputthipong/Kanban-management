@@ -1,19 +1,19 @@
 import { useBoardStore } from "@/store/useBoardStore";
+import { useBoardRole } from "@/hooks/useBoardRole";
+import { canDeleteCard, canEditCard } from "@/lib/permissions";
 import type { Card } from "@/types/board";
 
-/** Creator, assignee, or board owner/manager. UI gating only. */
+/** UI gating only — the backend re-checks every write. */
 export function useCanEdit(card: Card): boolean {
   const currentUserId = useBoardStore((s) => s.currentUserId);
-  const boardMembers = useBoardStore((s) => s.boardMembers);
-
+  const role = useBoardRole();
   if (!currentUserId) return false;
+  return canEditCard(role, card.created_by === currentUserId, card.assignee_id === currentUserId);
+}
 
-  if (card.created_by === currentUserId) return true;
-
-  if (card.assignee_id === currentUserId) return true;
-
-  const member = boardMembers.find((m) => m.user_id === currentUserId);
-  if (member && (member.role === "owner" || member.role === "manager")) return true;
-
-  return false;
+export function useCanDeleteCard(card: Card): boolean {
+  const currentUserId = useBoardStore((s) => s.currentUserId);
+  const role = useBoardRole();
+  if (!currentUserId) return false;
+  return canDeleteCard(role, card.created_by === currentUserId);
 }

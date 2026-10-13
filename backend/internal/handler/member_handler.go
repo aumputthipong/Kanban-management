@@ -89,6 +89,23 @@ func memberActivity(boardID, actorID, event string, payload service.MemberChange
 	}
 }
 
+func actorRole(r *http.Request) core.BoardRole {
+	role, _ := middleware.BoardRoleFromContext(r.Context())
+	return core.BoardRole(role)
+}
+
+// 404 if the target is not a member, 403 if the actor may not act on their role.
+func (h *BoardHandler) authorizeMemberTarget(r *http.Request, boardID, targetID string) *httputil.APIError {
+	target, apiErr := boardMembership(r.Context(), h.boardService, boardID, targetID)
+	if apiErr != nil {
+		return apiErr
+	}
+	if !core.CanManageMember(actorRole(r), target) {
+		return httputil.NewAPIError(http.StatusForbidden, "You do not have permission to manage this member", nil)
+	}
+	return nil
+}
+
 func (h *BoardHandler) AddBoardMember(w http.ResponseWriter, r *http.Request) error {
 	boardID, err := httputil.GetUUIDParam(r, "boardID")
 	if err != nil {
@@ -101,6 +118,9 @@ func (h *BoardHandler) AddBoardMember(w http.ResponseWriter, r *http.Request) er
 	}
 	if core.BoardRole(req.Role) == core.RoleOwner {
 		return httputil.NewAPIError(http.StatusBadRequest, "Invalid role — cannot add a member as owner", nil)
+	}
+	if !core.CanGrantRole(actorRole(r), core.BoardRole(req.Role)) {
+		return httputil.NewAPIError(http.StatusForbidden, "You do not have permission to grant this role", nil)
 	}
 
 	if err := h.boardService.AddBoardMemberByEmail(r.Context(), boardID, req.Email, req.Role); err != nil {
@@ -138,6 +158,10 @@ func (h *BoardHandler) RemoveBoardMember(w http.ResponseWriter, r *http.Request)
 		return httputil.NewAPIError(http.StatusBadRequest, "Invalid user ID", err)
 	}
 
+	if apiErr := h.authorizeMemberTarget(r, boardID, userIDStr); apiErr != nil {
+		return apiErr
+	}
+
 	removed := memberSnapshot(r.Context(), h.boardService, h.activity, boardID, userIDStr)
 	if err := h.boardService.RemoveBoardMember(r.Context(), boardID, userIDStr); err != nil {
 		return httputil.NewAPIError(http.StatusInternalServerError, "Failed to remove member", err)
@@ -170,6 +194,12 @@ func (h *BoardHandler) UpdateMemberRole(w http.ResponseWriter, r *http.Request) 
 	}
 	if core.BoardRole(req.Role) == core.RoleOwner {
 		return httputil.NewAPIError(http.StatusBadRequest, "Invalid role — cannot change to owner", nil)
+	}
+	if apiErr := h.authorizeMemberTarget(r, boardID, userIDStr); apiErr != nil {
+		return apiErr
+	}
+	if !core.CanGrantRole(actorRole(r), core.BoardRole(req.Role)) {
+		return httputil.NewAPIError(http.StatusForbidden, "You do not have permission to grant this role", nil)
 	}
 
 	before := memberSnapshot(r.Context(), h.boardService, h.activity, boardID, userIDStr)

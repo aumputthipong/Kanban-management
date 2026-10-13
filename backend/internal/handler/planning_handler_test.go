@@ -490,3 +490,52 @@ func TestUpdateItem_SetAcceptanceCriteria_PassesThroughAndLogsField(t *testing.T
 	assert.Contains(t, payload.Fields, "acceptance_criteria")
 	assert.NotContains(t, payload.Fields, "implementation_note")
 }
+
+// DeleteSession
+
+// A session delete cascades every item, so a creator may only remove an empty one.
+func TestDeleteSession_Permissions(t *testing.T) {
+	creator, someoneElse := validUserID, otherUserID
+	cases := []struct {
+		name     string
+		role     string
+		owner    *string
+		hasItems bool
+		want     int
+	}{
+		{"member creator, empty", "member", &creator, false, http.StatusNoContent},
+		{"member creator, has items", "member", &creator, true, http.StatusForbidden},
+		{"member not creator, empty", "member", &someoneElse, false, http.StatusForbidden},
+		{"member, creator account deleted", "member", nil, false, http.StatusForbidden},
+		{"manager, has items", "manager", &someoneElse, true, http.StatusNoContent},
+		{"owner, has items", "owner", &someoneElse, true, http.StatusNoContent},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			deleted := false
+			plan := &mock.MockPlanningService{
+				GetSessionFn: func(ctx context.Context, sessionID string) (db.PlanningSession, error) {
+					return db.PlanningSession{ID: sessionID, BoardID: validBoardID, Title: "Sprint 1", CreatedBy: c.owner}, nil
+				},
+				ListItemsFn: func(ctx context.Context, sessionID string) ([]db.PlanningItem, error) {
+					if c.hasItems {
+						return []db.PlanningItem{{ID: validPlanningItemID}}, nil
+					}
+					return nil, nil
+				},
+				DeleteSessionFn: func(ctx context.Context, sessionID string) error { deleted = true; return nil },
+			}
+			boards := &mock.MockBoardService{GetBoardMemberRoleFn: roleIs(c.role)}
+			h := NewPlanningHandler(plan, boards, &mock.MockActivityRecorder{})
+
+			req := httptest.NewRequest(http.MethodDelete, "/planning/sessions/"+validPlanningSessionID, nil)
+			req = withUserID(chiCtx(req, "sessionID", validPlanningSessionID), validUserID)
+			w := httptest.NewRecorder()
+
+			httputil.MakeHandler(h.DeleteSession)(w, req)
+
+			assert.Equal(t, c.want, w.Code)
+			assert.Equal(t, c.want == http.StatusNoContent, deleted)
+		})
+	}
+}

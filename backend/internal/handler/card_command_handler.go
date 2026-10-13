@@ -30,10 +30,11 @@ func (h *BoardCommandHandler) MoveCard(w http.ResponseWriter, r *http.Request) e
 	if err := httputil.DecodeAndValidate(r, &req); err != nil {
 		return err
 	}
-	boardID, userID, apiErr := h.cardContext(r, cardID)
+	sc, apiErr := h.cardContext(r, cardID)
 	if apiErr != nil {
 		return apiErr
 	}
+	boardID, userID := sc.boardID, sc.userID
 	// Otherwise a member of board A could move a card into board B.
 	if err := h.boardCmd.VerifyColumnInBoard(r.Context(), req.ColumnID, boardID); err != nil {
 		return httputil.NewAPIError(http.StatusNotFound, "Not found", nil)
@@ -66,6 +67,7 @@ func (h *BoardCommandHandler) MoveCard(w http.ResponseWriter, r *http.Request) e
 // @Security CookieAuth
 // @Param    cardID path string true "Card UUID"
 // @Success  204
+// @Failure  403    {object} httputil.ErrorResponse
 // @Failure  404    {object} httputil.ErrorResponse
 // @Router   /api/cards/{cardID} [delete]
 func (h *BoardCommandHandler) DeleteCard(w http.ResponseWriter, r *http.Request) error {
@@ -73,9 +75,14 @@ func (h *BoardCommandHandler) DeleteCard(w http.ResponseWriter, r *http.Request)
 	if apiErr != nil {
 		return apiErr
 	}
-	boardID, userID, apiErr := h.cardContext(r, cardID)
+	sc, apiErr := h.cardContext(r, cardID)
 	if apiErr != nil {
 		return apiErr
+	}
+	boardID, userID := sc.boardID, sc.userID
+	isCreator := sc.card.CreatedBy != nil && *sc.card.CreatedBy == userID
+	if !core.CanDeleteCard(sc.role, isCreator) {
+		return httputil.NewAPIError(http.StatusForbidden, "You do not have permission to delete this card", nil)
 	}
 
 	title, err := h.boardCmd.DeleteCard(r.Context(), cardID)
@@ -113,10 +120,11 @@ func (h *BoardCommandHandler) ToggleCardDone(w http.ResponseWriter, r *http.Requ
 	if err := httputil.DecodeAndValidate(r, &req); err != nil {
 		return err
 	}
-	boardID, userID, apiErr := h.cardContext(r, cardID)
+	sc, apiErr := h.cardContext(r, cardID)
 	if apiErr != nil {
 		return apiErr
 	}
+	boardID, userID := sc.boardID, sc.userID
 
 	result, err := h.boardCmd.ToggleCardDone(r.Context(), cardID, boardID, *req.IsDone)
 	if err != nil {

@@ -14,8 +14,11 @@ export const getOverdueText = (dueDateStr: string) => {
   return `Overdue by ${diffDays} days`;
 };
 
+const isValidDate = (d: Date) => !Number.isNaN(d.getTime());
+
 export const formatThaiDate = (dateStr: string) => {
   const date = new Date(dateStr);
+  if (!isValidDate(date)) return "";
   return date.toLocaleDateString("th-TH", {
     year: "numeric",
     month: "long",
@@ -65,6 +68,7 @@ export const formatRelativeDueDate = (dueDateStr: string): string => {
   today.setHours(0, 0, 0, 0);
 
   const dueDate = new Date(dueDateStr);
+  if (!isValidDate(dueDate)) return "";
   dueDate.setHours(0, 0, 0, 0);
 
   const diffDays = Math.round(

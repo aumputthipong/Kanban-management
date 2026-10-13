@@ -2440,6 +2440,47 @@ func (q *Queries) LockRefreshTokenByHash(ctx context.Context, tokenHash string) 
 	return i, err
 }
 
+const lockTwoBoardMembers = `-- name: LockTwoBoardMembers :many
+SELECT user_id, role
+FROM board_members
+WHERE board_id = $1
+  AND user_id IN ($2::uuid, $3::uuid)
+ORDER BY user_id
+FOR UPDATE
+`
+
+type LockTwoBoardMembersParams struct {
+	BoardID      string
+	FirstUserID  string
+	SecondUserID string
+}
+
+type LockTwoBoardMembersRow struct {
+	UserID string
+	Role   string
+}
+
+// ORDER BY fixes the lock order so concurrent transfers on one board cannot deadlock.
+func (q *Queries) LockTwoBoardMembers(ctx context.Context, arg LockTwoBoardMembersParams) ([]LockTwoBoardMembersRow, error) {
+	rows, err := q.db.Query(ctx, lockTwoBoardMembers, arg.BoardID, arg.FirstUserID, arg.SecondUserID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []LockTwoBoardMembersRow
+	for rows.Next() {
+		var i LockTwoBoardMembersRow
+		if err := rows.Scan(&i.UserID, &i.Role); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const removeBoardMember = `-- name: RemoveBoardMember :exec
 DELETE FROM board_members
 WHERE board_id = $1 AND user_id = $2

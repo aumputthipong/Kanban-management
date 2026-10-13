@@ -249,3 +249,43 @@ func (h *BoardHandler) LeaveBoard(w http.ResponseWriter, r *http.Request) error 
 	w.WriteHeader(http.StatusNoContent)
 	return nil
 }
+
+func (h *BoardHandler) TransferOwnership(w http.ResponseWriter, r *http.Request) error {
+	boardID, err := httputil.GetUUIDParam(r, "boardID")
+	if err != nil {
+		return httputil.NewAPIError(http.StatusBadRequest, "Invalid board ID", err)
+	}
+	ownerID, ok := r.Context().Value(middleware.UserIDKey).(string)
+	if !ok || ownerID == "" {
+		return httputil.NewAPIError(http.StatusUnauthorized, "Unauthorized", nil)
+	}
+	var req dto.TransferOwnershipRequest
+	if err := httputil.DecodeAndValidate(r, &req); err != nil {
+		return err
+	}
+
+	owner := memberSnapshot(r.Context(), h.boardService, h.activity, boardID, ownerID)
+	target := memberSnapshot(r.Context(), h.boardService, h.activity, boardID, req.UserID)
+	previous, err := h.boardService.TransferOwnership(r.Context(), boardID, ownerID, req.UserID)
+	if err != nil {
+		switch {
+		case errors.Is(err, service.ErrTransferToSelf):
+			return httputil.NewAPIError(http.StatusBadRequest, "คุณเป็น owner อยู่แล้ว", err)
+		case errors.Is(err, service.ErrTransferTargetMissing):
+			return httputil.NewAPIError(http.StatusNotFound, "ไม่พบสมาชิกคนนี้ในบอร์ด", err)
+		case errors.Is(err, service.ErrNotBoardOwner):
+			return httputil.NewAPIError(http.StatusConflict, "สิทธิ์ owner ถูกเปลี่ยนไปแล้ว", err)
+		default:
+			return httputil.NewAPIError(http.StatusInternalServerError, "Failed to transfer ownership", err)
+		}
+	}
+
+	broadcastMembers(r.Context(), h.boardService, h.broadcaster, boardID)
+	recordActivity(r.Context(), h.activity, h.broadcaster, memberActivity(boardID, ownerID, service.EventMemberRole,
+		service.MemberChangedPayload{UserID: req.UserID, Name: target.FullName, Role: string(core.RoleOwner), PreviousRole: previous, Via: "transfer"}))
+	recordActivity(r.Context(), h.activity, h.broadcaster, memberActivity(boardID, ownerID, service.EventMemberRole,
+		service.MemberChangedPayload{UserID: ownerID, Name: owner.FullName, Role: string(core.RoleManager), PreviousRole: string(core.RoleOwner), Via: "transfer"}))
+
+	w.WriteHeader(http.StatusNoContent)
+	return nil
+}

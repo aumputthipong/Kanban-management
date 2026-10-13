@@ -108,7 +108,9 @@ export function BoardSettingsForm({ boardId, board }: BoardSettingsFormProps) {
             onSaveField={(field, value) => saveField(field, value)}
             onSaved={showSaved}
           />
-          {canDelete && <DangerSection onArchive={deleteBoard} isArchiving={isDeleting} />}
+          {canDelete && (
+            <DangerSection boardId={boardId} onArchive={deleteBoard} isArchiving={isDeleting} />
+          )}
 
           <p className="text-[12.5px] text-slate-400 text-center pt-2">
             การตั้งค่าทั้งหมดมีผลกับ Project {board.title} เท่านั้น

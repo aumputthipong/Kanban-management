@@ -913,3 +913,80 @@ func TestLeaveBoard_RecordsMemberLeft(t *testing.T) {
 	assert.Equal(t, otherUserID, got[0].ActorID)
 	assert.Equal(t, "Bob", memberPayload(t, got[0]).Name)
 }
+
+// TransferOwnership
+
+func transferReq(body string) *http.Request {
+	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(body))
+	return asOwner(withUserID(chiCtx(req, "boardID", validBoardID), validUserID))
+}
+
+func TestTransferOwnership_Success_RecordsBothRoleChanges(t *testing.T) {
+	var got []service.RecordParams
+	svc := &mock.MockBoardService{
+		GetBoardMembersFn: membersAfterChange(),
+		TransferOwnershipFn: func(ctx context.Context, boardID, ownerID, targetID string) (string, error) {
+			assert.Equal(t, validUserID, ownerID)
+			assert.Equal(t, otherUserID, targetID)
+			return "manager", nil
+		},
+	}
+	bc := &mock.MockBroadcaster{}
+	h := NewBoardHandler(svc, nil, spyMemberRecorder(&got), bc)
+	w := httptest.NewRecorder()
+
+	httputil.MakeHandler(h.TransferOwnership)(w, transferReq(`{"user_id":"`+otherUserID+`"}`))
+
+	require.Equal(t, http.StatusNoContent, w.Code)
+	require.Len(t, got, 2)
+	assert.Equal(t, service.MemberChangedPayload{UserID: otherUserID, Name: "Bob", Role: "owner", PreviousRole: "manager", Via: "transfer"}, memberPayload(t, got[0]))
+	assert.Equal(t, service.MemberChangedPayload{UserID: validUserID, Name: "Owner", Role: "manager", PreviousRole: "owner", Via: "transfer"}, memberPayload(t, got[1]))
+	assert.NotEmpty(t, bc.Sent, "the new member list must be broadcast")
+}
+
+func TestTransferOwnership_ServiceErrors(t *testing.T) {
+	cases := map[string]struct {
+		err  error
+		want int
+	}{
+		"to self":               {service.ErrTransferToSelf, http.StatusBadRequest},
+		"target not a member":   {service.ErrTransferTargetMissing, http.StatusNotFound},
+		"lost ownership (race)": {service.ErrNotBoardOwner, http.StatusConflict},
+		"db error":              {errors.New("db down"), http.StatusInternalServerError},
+	}
+	for name, c := range cases {
+		t.Run(name, func(t *testing.T) {
+			var got []service.RecordParams
+			svc := &mock.MockBoardService{
+				GetBoardMembersFn: membersAfterChange(),
+				TransferOwnershipFn: func(ctx context.Context, boardID, ownerID, targetID string) (string, error) {
+					return "", c.err
+				},
+			}
+			bc := &mock.MockBroadcaster{}
+			h := NewBoardHandler(svc, nil, spyMemberRecorder(&got), bc)
+			w := httptest.NewRecorder()
+
+			httputil.MakeHandler(h.TransferOwnership)(w, transferReq(`{"user_id":"`+otherUserID+`"}`))
+
+			assert.Equal(t, c.want, w.Code)
+			assert.Empty(t, got, "a failed transfer records nothing")
+			assert.Empty(t, bc.Sent)
+		})
+	}
+}
+
+func TestTransferOwnership_InvalidUserID_Returns400(t *testing.T) {
+	svc := &mock.MockBoardService{
+		TransferOwnershipFn: func(ctx context.Context, boardID, ownerID, targetID string) (string, error) {
+			t.Fatal("must validate user_id before calling the service")
+			return "", nil
+		},
+	}
+	h := NewBoardHandler(svc, nil, nil, nil)
+	w := httptest.NewRecorder()
+
+	httputil.MakeHandler(h.TransferOwnership)(w, transferReq(`{"user_id":"not-a-uuid"}`))
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}

@@ -12,6 +12,10 @@ import (
 var (
 	ErrUserNotFound  = errors.New("no user with that email")
 	ErrAlreadyMember = errors.New("user is already a member of this board")
+
+	ErrTransferToSelf        = errors.New("cannot transfer ownership to yourself")
+	ErrTransferTargetMissing = errors.New("transfer target is not a member of this board")
+	ErrNotBoardOwner         = errors.New("caller is no longer the board owner")
 )
 
 type BoardMember struct {
@@ -82,4 +86,51 @@ func (s *BoardService) UpdateMemberRole(ctx context.Context, boardID, userID str
 		Role:    role,
 	})
 	return err
+}
+
+// The target becomes owner and the caller drops to manager, in one transaction.
+// Returns the target's previous role for the activity row.
+func (s *BoardService) TransferOwnership(ctx context.Context, boardID, ownerID, targetID string) (string, error) {
+	if ownerID == targetID {
+		return "", ErrTransferToSelf
+	}
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return "", fmt.Errorf("begin tx: %w", err)
+	}
+	defer tx.Rollback(ctx)
+	qtx := s.queries.WithTx(tx)
+
+	rows, err := qtx.LockTwoBoardMembers(ctx, db.LockTwoBoardMembersParams{
+		BoardID: boardID, FirstUserID: ownerID, SecondUserID: targetID,
+	})
+	if err != nil {
+		return "", fmt.Errorf("lock members: %w", err)
+	}
+	roles := make(map[string]string, len(rows))
+	for _, r := range rows {
+		roles[r.UserID] = r.Role
+	}
+	if roles[ownerID] != "owner" {
+		return "", ErrNotBoardOwner
+	}
+	previous, ok := roles[targetID]
+	if !ok {
+		return "", ErrTransferTargetMissing
+	}
+
+	if _, err := qtx.UpdateBoardMemberRole(ctx, db.UpdateBoardMemberRoleParams{
+		BoardID: boardID, UserID: ownerID, Role: "manager",
+	}); err != nil {
+		return "", fmt.Errorf("demote owner: %w", err)
+	}
+	if _, err := qtx.UpdateBoardMemberRole(ctx, db.UpdateBoardMemberRoleParams{
+		BoardID: boardID, UserID: targetID, Role: "owner",
+	}); err != nil {
+		return "", fmt.Errorf("promote target: %w", err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return "", fmt.Errorf("commit: %w", err)
+	}
+	return previous, nil
 }

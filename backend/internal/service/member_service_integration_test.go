@@ -5,6 +5,7 @@ package service_test
 import (
 	"context"
 	"fmt"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -146,4 +147,91 @@ func TestUpdateMemberRole_RegularMember_Success(t *testing.T) {
 	role, err := f.queries.GetBoardMemberRole(ctx, db.GetBoardMemberRoleParams{BoardID: f.boardID, UserID: member})
 	require.NoError(t, err)
 	assert.Equal(t, "manager", role)
+}
+
+func (f *memberFixture) roleOf(ctx context.Context, t *testing.T, userID string) string {
+	t.Helper()
+	role, err := f.queries.GetBoardMemberRole(ctx, db.GetBoardMemberRoleParams{BoardID: f.boardID, UserID: userID})
+	require.NoError(t, err)
+	return role
+}
+
+func TestTransferOwnership_SwapsRolesAtomically(t *testing.T) {
+	ctx := context.Background()
+	f := newMemberFixture(t)
+	target := f.addPlainMember(ctx, t)
+
+	previous, err := f.svc.TransferOwnership(ctx, f.boardID, f.ownerID, target)
+
+	require.NoError(t, err)
+	assert.Equal(t, "member", previous)
+	assert.Equal(t, "owner", f.roleOf(ctx, t, target))
+	assert.Equal(t, "manager", f.roleOf(ctx, t, f.ownerID))
+}
+
+func TestTransferOwnership_TargetNotMember_ChangesNothing(t *testing.T) {
+	ctx := context.Background()
+	f := newMemberFixture(t)
+	outsider := f.seed.User(ctx)
+
+	_, err := f.svc.TransferOwnership(ctx, f.boardID, f.ownerID, outsider)
+
+	require.ErrorIs(t, err, service.ErrTransferTargetMissing)
+	assert.Equal(t, "owner", f.roleOf(ctx, t, f.ownerID), "the owner must not be demoted by a failed transfer")
+}
+
+func TestTransferOwnership_CallerNotOwner_Rejected(t *testing.T) {
+	ctx := context.Background()
+	f := newMemberFixture(t)
+	a, b := f.addPlainMember(ctx, t), f.addPlainMember(ctx, t)
+
+	_, err := f.svc.TransferOwnership(ctx, f.boardID, a, b)
+
+	require.ErrorIs(t, err, service.ErrNotBoardOwner)
+	assert.Equal(t, "member", f.roleOf(ctx, t, b))
+}
+
+func TestTransferOwnership_ToSelf_Rejected(t *testing.T) {
+	ctx := context.Background()
+	f := newMemberFixture(t)
+
+	_, err := f.svc.TransferOwnership(ctx, f.boardID, f.ownerID, f.ownerID)
+
+	require.ErrorIs(t, err, service.ErrTransferToSelf)
+}
+
+// A double-submit to two different targets must leave exactly one owner.
+func TestTransferOwnership_ConcurrentToTwoTargets_ExactlyOneOwner(t *testing.T) {
+	ctx := context.Background()
+	f := newMemberFixture(t)
+	targets := []string{f.addPlainMember(ctx, t), f.addPlainMember(ctx, t)}
+
+	var next int32
+	var mu sync.Mutex
+	errs := raceN(2, func() error {
+		mu.Lock()
+		target := targets[next]
+		next++
+		mu.Unlock()
+		_, err := f.svc.TransferOwnership(ctx, f.boardID, f.ownerID, target)
+		return err
+	})
+
+	succeeded := 0
+	for _, err := range errs {
+		if err == nil {
+			succeeded++
+		} else {
+			assert.ErrorIs(t, err, service.ErrNotBoardOwner)
+		}
+	}
+	assert.Equal(t, 1, succeeded)
+
+	owners := 0
+	for _, id := range append(targets, f.ownerID) {
+		if f.roleOf(ctx, t, id) == "owner" {
+			owners++
+		}
+	}
+	assert.Equal(t, 1, owners)
 }

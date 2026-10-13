@@ -34,6 +34,7 @@ type BoardServicer interface {
 	AddBoardMemberByEmail(ctx context.Context, boardID, email, role string) error
 	RemoveBoardMember(ctx context.Context, boardID, userID string) error
 	UpdateMemberRole(ctx context.Context, boardID, userID string, role string) error
+	TransferOwnership(ctx context.Context, boardID, ownerID, targetID string) (string, error)
 
 	// Card
 	GetCard(ctx context.Context, cardID string) (db.Card, error)

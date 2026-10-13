@@ -105,6 +105,27 @@ func TestAddBoardMember_InvalidRole_Returns400(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 }
 
+// Manager+ can add members, so role=owner here would be privilege escalation.
+func TestAddBoardMember_AsOwner_Returns400(t *testing.T) {
+	svc := &mock.MockBoardService{
+		AddBoardMemberByEmailFn: func(ctx context.Context, boardID, email, role string) error {
+			t.Fatal("must reject owner role before service call")
+			return nil
+		},
+	}
+	h := NewBoardHandler(svc, nil, nil, nil)
+
+	body := strings.NewReader(`{"email":"newbie@example.com","role":"owner"}`)
+	req := httptest.NewRequest(http.MethodPost, "/boards/"+validBoardID+"/members", body)
+	req = chiCtx(req, "boardID", validBoardID)
+	w := httptest.NewRecorder()
+
+	httputil.MakeHandler(h.AddBoardMember)(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	assert.Contains(t, w.Body.String(), "owner")
+}
+
 func TestAddBoardMember_MissingEmail_Returns400(t *testing.T) {
 	svc := &mock.MockBoardService{}
 	h := NewBoardHandler(svc, nil, nil, nil)

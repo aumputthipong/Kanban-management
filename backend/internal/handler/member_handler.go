@@ -99,6 +99,9 @@ func (h *BoardHandler) AddBoardMember(w http.ResponseWriter, r *http.Request) er
 	if err := httputil.DecodeAndValidate(r, &req); err != nil {
 		return err
 	}
+	if core.BoardRole(req.Role) == core.RoleOwner {
+		return httputil.NewAPIError(http.StatusBadRequest, "Invalid role — cannot add a member as owner", nil)
+	}
 
 	if err := h.boardService.AddBoardMemberByEmail(r.Context(), boardID, req.Email, req.Role); err != nil {
 		switch {

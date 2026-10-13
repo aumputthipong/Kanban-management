@@ -14,12 +14,145 @@ import (
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/middleware"
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/service"
 	"github.com/aumputthipong/mini-erp-kanban/backend/internal/service/mock"
+	"github.com/jackc/pgx/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func withBoardRole(r *http.Request, role string) *http.Request {
 	return r.WithContext(context.WithValue(r.Context(), middleware.BoardRoleKey, role))
+}
+
+func asOwner(r *http.Request) *http.Request { return withBoardRole(r, "owner") }
+
+func roleIs(role string) func(ctx context.Context, boardID, userID string) (string, error) {
+	return func(ctx context.Context, boardID, userID string) (string, error) { return role, nil }
+}
+
+// Manager scope: managers act on members only and can grant only member.
+
+func TestAddBoardMember_ManagerGrantsManager_Returns403(t *testing.T) {
+	svc := &mock.MockBoardService{
+		AddBoardMemberByEmailFn: func(ctx context.Context, boardID, email, role string) error {
+			t.Fatal("a manager must not add another manager")
+			return nil
+		},
+	}
+	h := NewBoardHandler(svc, nil, nil, nil)
+	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(`{"email":"b@x.io","role":"manager"}`))
+	w := httptest.NewRecorder()
+
+	httputil.MakeHandler(h.AddBoardMember)(w, withBoardRole(chiCtx(req, "boardID", validBoardID), "manager"))
+
+	assert.Equal(t, http.StatusForbidden, w.Code)
+}
+
+func TestAddBoardMember_ManagerGrantsMember_Returns201(t *testing.T) {
+	svc := &mock.MockBoardService{
+		AddBoardMemberByEmailFn: func(ctx context.Context, boardID, email, role string) error { return nil },
+	}
+	h := NewBoardHandler(svc, nil, nil, nil)
+	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(`{"email":"b@x.io","role":"member"}`))
+	w := httptest.NewRecorder()
+
+	httputil.MakeHandler(h.AddBoardMember)(w, withBoardRole(chiCtx(req, "boardID", validBoardID), "manager"))
+
+	assert.Equal(t, http.StatusCreated, w.Code)
+}
+
+func TestRemoveBoardMember_ManagerRemovesManager_Returns403(t *testing.T) {
+	svc := &mock.MockBoardService{
+		GetBoardMemberRoleFn: roleIs("manager"),
+		RemoveBoardMemberFn: func(ctx context.Context, boardID, userID string) error {
+			t.Fatal("a manager must not remove another manager")
+			return nil
+		},
+	}
+	h := NewBoardHandler(svc, nil, nil, nil)
+	req := httptest.NewRequest(http.MethodDelete, "/", nil)
+	w := httptest.NewRecorder()
+
+	httputil.MakeHandler(h.RemoveBoardMember)(w, withBoardRole(chiCtx(req, "boardID", validBoardID, "userID", otherUserID), "manager"))
+
+	assert.Equal(t, http.StatusForbidden, w.Code)
+}
+
+func TestRemoveBoardMember_ManagerRemovesMember_Returns204(t *testing.T) {
+	svc := &mock.MockBoardService{
+		GetBoardMemberRoleFn: roleIs("member"),
+		RemoveBoardMemberFn:  func(ctx context.Context, boardID, userID string) error { return nil },
+	}
+	h := NewBoardHandler(svc, nil, nil, nil)
+	req := httptest.NewRequest(http.MethodDelete, "/", nil)
+	w := httptest.NewRecorder()
+
+	httputil.MakeHandler(h.RemoveBoardMember)(w, withBoardRole(chiCtx(req, "boardID", validBoardID, "userID", otherUserID), "manager"))
+
+	assert.Equal(t, http.StatusNoContent, w.Code)
+}
+
+func TestRemoveBoardMember_OwnerRemovesOwner_Returns403(t *testing.T) {
+	svc := &mock.MockBoardService{
+		GetBoardMemberRoleFn: roleIs("owner"),
+		RemoveBoardMemberFn: func(ctx context.Context, boardID, userID string) error {
+			t.Fatal("the owner row must never be removed")
+			return nil
+		},
+	}
+	h := NewBoardHandler(svc, nil, nil, nil)
+	req := httptest.NewRequest(http.MethodDelete, "/", nil)
+	w := httptest.NewRecorder()
+
+	httputil.MakeHandler(h.RemoveBoardMember)(w, asOwner(chiCtx(req, "boardID", validBoardID, "userID", validUserID)))
+
+	assert.Equal(t, http.StatusForbidden, w.Code)
+}
+
+func TestRemoveBoardMember_TargetNotMember_Returns404(t *testing.T) {
+	svc := &mock.MockBoardService{
+		GetBoardMemberRoleFn: func(ctx context.Context, boardID, userID string) (string, error) { return "", pgx.ErrNoRows },
+	}
+	h := NewBoardHandler(svc, nil, nil, nil)
+	req := httptest.NewRequest(http.MethodDelete, "/", nil)
+	w := httptest.NewRecorder()
+
+	httputil.MakeHandler(h.RemoveBoardMember)(w, asOwner(chiCtx(req, "boardID", validBoardID, "userID", otherUserID)))
+
+	assert.Equal(t, http.StatusNotFound, w.Code)
+}
+
+func TestUpdateMemberRole_ManagerPromotesMember_Returns403(t *testing.T) {
+	svc := &mock.MockBoardService{
+		GetBoardMemberRoleFn: roleIs("member"),
+		UpdateMemberRoleFn: func(ctx context.Context, boardID, userID, role string) error {
+			t.Fatal("a manager must not promote to manager")
+			return nil
+		},
+	}
+	h := NewBoardHandler(svc, nil, nil, nil)
+	req := httptest.NewRequest(http.MethodPatch, "/", strings.NewReader(`{"role":"manager"}`))
+	w := httptest.NewRecorder()
+
+	httputil.MakeHandler(h.UpdateMemberRole)(w, withBoardRole(chiCtx(req, "boardID", validBoardID, "userID", otherUserID), "manager"))
+
+	assert.Equal(t, http.StatusForbidden, w.Code)
+}
+
+func TestUpdateMemberRole_ManagerDemotesManager_Returns403(t *testing.T) {
+	svc := &mock.MockBoardService{
+		GetBoardMemberRoleFn: roleIs("manager"),
+		UpdateMemberRoleFn: func(ctx context.Context, boardID, userID, role string) error {
+			t.Fatal("a manager must not demote another manager")
+			return nil
+		},
+	}
+	h := NewBoardHandler(svc, nil, nil, nil)
+	req := httptest.NewRequest(http.MethodPatch, "/", strings.NewReader(`{"role":"member"}`))
+	w := httptest.NewRecorder()
+
+	httputil.MakeHandler(h.UpdateMemberRole)(w, withBoardRole(chiCtx(req, "boardID", validBoardID, "userID", otherUserID), "manager"))
+
+	assert.Equal(t, http.StatusForbidden, w.Code)
 }
 
 // GetBoardMembers
@@ -63,7 +196,7 @@ func TestAddBoardMember_Success(t *testing.T) {
 	req = chiCtx(req, "boardID", validBoardID)
 	w := httptest.NewRecorder()
 
-	httputil.MakeHandler(h.AddBoardMember)(w, req)
+	httputil.MakeHandler(h.AddBoardMember)(w, asOwner(req))
 
 	assert.Equal(t, http.StatusCreated, w.Code)
 	assert.Equal(t, validBoardID, gotBoardID)
@@ -80,7 +213,7 @@ func TestAddBoardMember_InvalidBoardID_Returns400(t *testing.T) {
 	req = chiCtx(req, "boardID", "not-a-uuid")
 	w := httptest.NewRecorder()
 
-	httputil.MakeHandler(h.AddBoardMember)(w, req)
+	httputil.MakeHandler(h.AddBoardMember)(w, asOwner(req))
 
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 }
@@ -100,7 +233,7 @@ func TestAddBoardMember_InvalidRole_Returns400(t *testing.T) {
 	req = chiCtx(req, "boardID", validBoardID)
 	w := httptest.NewRecorder()
 
-	httputil.MakeHandler(h.AddBoardMember)(w, req)
+	httputil.MakeHandler(h.AddBoardMember)(w, asOwner(req))
 
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 }
@@ -120,7 +253,7 @@ func TestAddBoardMember_AsOwner_Returns400(t *testing.T) {
 	req = chiCtx(req, "boardID", validBoardID)
 	w := httptest.NewRecorder()
 
-	httputil.MakeHandler(h.AddBoardMember)(w, req)
+	httputil.MakeHandler(h.AddBoardMember)(w, asOwner(req))
 
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 	assert.Contains(t, w.Body.String(), "owner")
@@ -135,7 +268,7 @@ func TestAddBoardMember_MissingEmail_Returns400(t *testing.T) {
 	req = chiCtx(req, "boardID", validBoardID)
 	w := httptest.NewRecorder()
 
-	httputil.MakeHandler(h.AddBoardMember)(w, req)
+	httputil.MakeHandler(h.AddBoardMember)(w, asOwner(req))
 
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 }
@@ -154,7 +287,7 @@ func TestAddBoardMember_InvalidEmail_Returns400(t *testing.T) {
 	req = chiCtx(req, "boardID", validBoardID)
 	w := httptest.NewRecorder()
 
-	httputil.MakeHandler(h.AddBoardMember)(w, req)
+	httputil.MakeHandler(h.AddBoardMember)(w, asOwner(req))
 
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 }
@@ -172,7 +305,7 @@ func TestAddBoardMember_UserNotFound_Returns404(t *testing.T) {
 	req = chiCtx(req, "boardID", validBoardID)
 	w := httptest.NewRecorder()
 
-	httputil.MakeHandler(h.AddBoardMember)(w, req)
+	httputil.MakeHandler(h.AddBoardMember)(w, asOwner(req))
 
 	assert.Equal(t, http.StatusNotFound, w.Code)
 }
@@ -190,7 +323,7 @@ func TestAddBoardMember_AlreadyMember_Returns409(t *testing.T) {
 	req = chiCtx(req, "boardID", validBoardID)
 	w := httptest.NewRecorder()
 
-	httputil.MakeHandler(h.AddBoardMember)(w, req)
+	httputil.MakeHandler(h.AddBoardMember)(w, asOwner(req))
 
 	assert.Equal(t, http.StatusConflict, w.Code)
 }
@@ -208,7 +341,7 @@ func TestAddBoardMember_ServiceError_Returns500(t *testing.T) {
 	req = chiCtx(req, "boardID", validBoardID)
 	w := httptest.NewRecorder()
 
-	httputil.MakeHandler(h.AddBoardMember)(w, req)
+	httputil.MakeHandler(h.AddBoardMember)(w, asOwner(req))
 
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
 }
@@ -218,6 +351,7 @@ func TestAddBoardMember_ServiceError_Returns500(t *testing.T) {
 func TestRemoveBoardMember_Success(t *testing.T) {
 	var gotBoardID, gotUserID string
 	svc := &mock.MockBoardService{
+		GetBoardMemberRoleFn: roleIs("manager"),
 		RemoveBoardMemberFn: func(ctx context.Context, boardID, userID string) error {
 			gotBoardID, gotUserID = boardID, userID
 			return nil
@@ -229,7 +363,7 @@ func TestRemoveBoardMember_Success(t *testing.T) {
 	req = chiCtx(req, "boardID", validBoardID, "userID", otherUserID)
 	w := httptest.NewRecorder()
 
-	httputil.MakeHandler(h.RemoveBoardMember)(w, req)
+	httputil.MakeHandler(h.RemoveBoardMember)(w, asOwner(req))
 
 	assert.Equal(t, http.StatusNoContent, w.Code)
 	assert.Equal(t, validBoardID, gotBoardID)
@@ -244,13 +378,14 @@ func TestRemoveBoardMember_InvalidBoardID_Returns400(t *testing.T) {
 	req = chiCtx(req, "boardID", "bad", "userID", otherUserID)
 	w := httptest.NewRecorder()
 
-	httputil.MakeHandler(h.RemoveBoardMember)(w, req)
+	httputil.MakeHandler(h.RemoveBoardMember)(w, asOwner(req))
 
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 }
 
 func TestRemoveBoardMember_InvalidUserID_Returns400(t *testing.T) {
 	svc := &mock.MockBoardService{
+		GetBoardMemberRoleFn: roleIs("manager"),
 		RemoveBoardMemberFn: func(ctx context.Context, boardID, userID string) error {
 			t.Fatal("must not call service with invalid user ID")
 			return nil
@@ -262,13 +397,14 @@ func TestRemoveBoardMember_InvalidUserID_Returns400(t *testing.T) {
 	req = chiCtx(req, "boardID", validBoardID, "userID", "bad")
 	w := httptest.NewRecorder()
 
-	httputil.MakeHandler(h.RemoveBoardMember)(w, req)
+	httputil.MakeHandler(h.RemoveBoardMember)(w, asOwner(req))
 
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 }
 
 func TestRemoveBoardMember_ServiceError_Returns500(t *testing.T) {
 	svc := &mock.MockBoardService{
+		GetBoardMemberRoleFn: roleIs("manager"),
 		RemoveBoardMemberFn: func(ctx context.Context, boardID, userID string) error {
 			return errors.New("db down")
 		},
@@ -279,7 +415,7 @@ func TestRemoveBoardMember_ServiceError_Returns500(t *testing.T) {
 	req = chiCtx(req, "boardID", validBoardID, "userID", otherUserID)
 	w := httptest.NewRecorder()
 
-	httputil.MakeHandler(h.RemoveBoardMember)(w, req)
+	httputil.MakeHandler(h.RemoveBoardMember)(w, asOwner(req))
 
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
 }
@@ -289,6 +425,7 @@ func TestRemoveBoardMember_ServiceError_Returns500(t *testing.T) {
 func TestUpdateMemberRole_Success(t *testing.T) {
 	var gotRole string
 	svc := &mock.MockBoardService{
+		GetBoardMemberRoleFn: roleIs("manager"),
 		UpdateMemberRoleFn: func(ctx context.Context, boardID, userID, role string) error {
 			gotRole = role
 			return nil
@@ -301,7 +438,7 @@ func TestUpdateMemberRole_Success(t *testing.T) {
 	req = chiCtx(req, "boardID", validBoardID, "userID", otherUserID)
 	w := httptest.NewRecorder()
 
-	httputil.MakeHandler(h.UpdateMemberRole)(w, req)
+	httputil.MakeHandler(h.UpdateMemberRole)(w, asOwner(req))
 
 	assert.Equal(t, http.StatusNoContent, w.Code)
 	assert.Equal(t, "manager", gotRole)
@@ -310,6 +447,7 @@ func TestUpdateMemberRole_Success(t *testing.T) {
 // Owner is a singleton — PATCH role=owner would create two or demote one.
 func TestUpdateMemberRole_PromoteToOwner_Returns400(t *testing.T) {
 	svc := &mock.MockBoardService{
+		GetBoardMemberRoleFn: roleIs("manager"),
 		UpdateMemberRoleFn: func(ctx context.Context, boardID, userID, role string) error {
 			t.Fatal("must reject owner promotion before service call")
 			return nil
@@ -322,7 +460,7 @@ func TestUpdateMemberRole_PromoteToOwner_Returns400(t *testing.T) {
 	req = chiCtx(req, "boardID", validBoardID, "userID", otherUserID)
 	w := httptest.NewRecorder()
 
-	httputil.MakeHandler(h.UpdateMemberRole)(w, req)
+	httputil.MakeHandler(h.UpdateMemberRole)(w, asOwner(req))
 
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 	assert.Contains(t, w.Body.String(), "owner")
@@ -337,7 +475,7 @@ func TestUpdateMemberRole_InvalidRole_Returns400(t *testing.T) {
 	req = chiCtx(req, "boardID", validBoardID, "userID", otherUserID)
 	w := httptest.NewRecorder()
 
-	httputil.MakeHandler(h.UpdateMemberRole)(w, req)
+	httputil.MakeHandler(h.UpdateMemberRole)(w, asOwner(req))
 
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 }
@@ -351,13 +489,14 @@ func TestUpdateMemberRole_InvalidUserID_Returns400(t *testing.T) {
 	req = chiCtx(req, "boardID", validBoardID, "userID", "bad")
 	w := httptest.NewRecorder()
 
-	httputil.MakeHandler(h.UpdateMemberRole)(w, req)
+	httputil.MakeHandler(h.UpdateMemberRole)(w, asOwner(req))
 
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 }
 
 func TestUpdateMemberRole_ServiceError_Returns500(t *testing.T) {
 	svc := &mock.MockBoardService{
+		GetBoardMemberRoleFn: roleIs("manager"),
 		UpdateMemberRoleFn: func(ctx context.Context, boardID, userID, role string) error {
 			return errors.New("db down")
 		},
@@ -369,7 +508,7 @@ func TestUpdateMemberRole_ServiceError_Returns500(t *testing.T) {
 	req = chiCtx(req, "boardID", validBoardID, "userID", otherUserID)
 	w := httptest.NewRecorder()
 
-	httputil.MakeHandler(h.UpdateMemberRole)(w, req)
+	httputil.MakeHandler(h.UpdateMemberRole)(w, asOwner(req))
 
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
 }
@@ -547,17 +686,17 @@ func TestMembershipChanges_BroadcastMemberList(t *testing.T) {
 		"add": {
 			call: func(h *BoardHandler) httputil.APIFunc { return h.AddBoardMember },
 			req: func() *http.Request {
-				return httptest.NewRequest(http.MethodPost, "/", strings.NewReader(`{"email":"b@x.io","role":"member"}`))
+				return asOwner(httptest.NewRequest(http.MethodPost, "/", strings.NewReader(`{"email":"b@x.io","role":"member"}`)))
 			},
 		},
 		"remove": {
 			call: func(h *BoardHandler) httputil.APIFunc { return h.RemoveBoardMember },
-			req:  func() *http.Request { return httptest.NewRequest(http.MethodDelete, "/", nil) },
+			req:  func() *http.Request { return asOwner(httptest.NewRequest(http.MethodDelete, "/", nil)) },
 		},
 		"change role": {
 			call: func(h *BoardHandler) httputil.APIFunc { return h.UpdateMemberRole },
 			req: func() *http.Request {
-				return httptest.NewRequest(http.MethodPatch, "/", strings.NewReader(`{"role":"manager"}`))
+				return asOwner(httptest.NewRequest(http.MethodPatch, "/", strings.NewReader(`{"role":"manager"}`)))
 			},
 		},
 		"leave": {
@@ -570,6 +709,7 @@ func TestMembershipChanges_BroadcastMemberList(t *testing.T) {
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
 			svc := &mock.MockBoardService{
+				GetBoardMemberRoleFn: roleIs("manager"),
 				AddBoardMemberByEmailFn: func(ctx context.Context, boardID, email, role string) error { return nil },
 				RemoveBoardMemberFn:     func(ctx context.Context, boardID, userID string) error { return nil },
 				UpdateMemberRoleFn:      func(ctx context.Context, boardID, userID, role string) error { return nil },
@@ -590,6 +730,7 @@ func TestMembershipChanges_BroadcastMemberList(t *testing.T) {
 
 func TestRemoveBoardMember_ServiceError_DoesNotBroadcast(t *testing.T) {
 	svc := &mock.MockBoardService{
+		GetBoardMemberRoleFn: roleIs("manager"),
 		RemoveBoardMemberFn: func(ctx context.Context, boardID, userID string) error { return errors.New("db error") },
 		GetBoardMembersFn:   membersAfterChange(),
 	}
@@ -598,7 +739,7 @@ func TestRemoveBoardMember_ServiceError_DoesNotBroadcast(t *testing.T) {
 	req := chiCtx(httptest.NewRequest(http.MethodDelete, "/", nil), "boardID", validBoardID, "userID", otherUserID)
 	w := httptest.NewRecorder()
 
-	httputil.MakeHandler(h.RemoveBoardMember)(w, req)
+	httputil.MakeHandler(h.RemoveBoardMember)(w, asOwner(req))
 
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
 	assert.Empty(t, bc.Sent)
@@ -607,6 +748,7 @@ func TestRemoveBoardMember_ServiceError_DoesNotBroadcast(t *testing.T) {
 // Membership is only checked at the handshake, so removal must evict.
 func TestRemoveAndLeave_EvictTheUserFromTheBoardRoom(t *testing.T) {
 	svc := &mock.MockBoardService{
+		GetBoardMemberRoleFn: roleIs("manager"),
 		RemoveBoardMemberFn: func(ctx context.Context, boardID, userID string) error { return nil },
 		GetBoardMembersFn:   membersAfterChange(),
 	}
@@ -617,7 +759,7 @@ func TestRemoveAndLeave_EvictTheUserFromTheBoardRoom(t *testing.T) {
 		req := chiCtx(httptest.NewRequest(http.MethodDelete, "/", nil), "boardID", validBoardID, "userID", otherUserID)
 		w := httptest.NewRecorder()
 
-		httputil.MakeHandler(h.RemoveBoardMember)(w, req)
+		httputil.MakeHandler(h.RemoveBoardMember)(w, asOwner(req))
 
 		require.Equal(t, http.StatusNoContent, w.Code)
 		assert.Equal(t, []string{validBoardID + "/" + otherUserID}, bc.Evicted)
@@ -640,6 +782,7 @@ func TestRemoveAndLeave_EvictTheUserFromTheBoardRoom(t *testing.T) {
 
 func TestUpdateMemberRole_DoesNotEvict(t *testing.T) {
 	svc := &mock.MockBoardService{
+		GetBoardMemberRoleFn: roleIs("manager"),
 		UpdateMemberRoleFn: func(ctx context.Context, boardID, userID, role string) error { return nil },
 		GetBoardMembersFn:  membersAfterChange(),
 	}
@@ -649,7 +792,7 @@ func TestUpdateMemberRole_DoesNotEvict(t *testing.T) {
 		"boardID", validBoardID, "userID", otherUserID)
 	w := httptest.NewRecorder()
 
-	httputil.MakeHandler(h.UpdateMemberRole)(w, req)
+	httputil.MakeHandler(h.UpdateMemberRole)(w, asOwner(req))
 
 	require.Equal(t, http.StatusNoContent, w.Code)
 	assert.Empty(t, bc.Evicted)
@@ -681,7 +824,7 @@ func TestAddBoardMember_RecordsMemberAdded(t *testing.T) {
 	req := withUserID(httptest.NewRequest(http.MethodPost, "/", strings.NewReader(`{"email":"B@x.io","role":"manager"}`)), validUserID)
 	w := httptest.NewRecorder()
 
-	httputil.MakeHandler(h.AddBoardMember)(w, chiCtx(req, "boardID", validBoardID))
+	httputil.MakeHandler(h.AddBoardMember)(w, asOwner(chiCtx(req, "boardID", validBoardID)))
 
 	require.Equal(t, http.StatusCreated, w.Code)
 	require.Len(t, got, 1)
@@ -695,6 +838,7 @@ func TestRemoveBoardMember_RecordsNameReadBeforeRemoval(t *testing.T) {
 	var got []service.RecordParams
 	removed := false
 	svc := &mock.MockBoardService{
+		GetBoardMemberRoleFn: roleIs("manager"),
 		RemoveBoardMemberFn: func(ctx context.Context, boardID, userID string) error { removed = true; return nil },
 		GetBoardMembersFn: func(ctx context.Context, boardID string) ([]db.GetBoardMembersRow, error) {
 			if removed {
@@ -707,7 +851,7 @@ func TestRemoveBoardMember_RecordsNameReadBeforeRemoval(t *testing.T) {
 	req := withUserID(httptest.NewRequest(http.MethodDelete, "/", nil), validUserID)
 	w := httptest.NewRecorder()
 
-	httputil.MakeHandler(h.RemoveBoardMember)(w, chiCtx(req, "boardID", validBoardID, "userID", otherUserID))
+	httputil.MakeHandler(h.RemoveBoardMember)(w, asOwner(chiCtx(req, "boardID", validBoardID, "userID", otherUserID)))
 
 	require.Equal(t, http.StatusNoContent, w.Code)
 	require.Len(t, got, 1)
@@ -718,6 +862,7 @@ func TestRemoveBoardMember_RecordsNameReadBeforeRemoval(t *testing.T) {
 func TestUpdateMemberRole_RecordsPreviousRole(t *testing.T) {
 	var got []service.RecordParams
 	svc := &mock.MockBoardService{
+		GetBoardMemberRoleFn: roleIs("manager"),
 		UpdateMemberRoleFn: func(ctx context.Context, boardID, userID, role string) error { return nil },
 		GetBoardMembersFn:  membersAfterChange(),
 	}
@@ -725,7 +870,7 @@ func TestUpdateMemberRole_RecordsPreviousRole(t *testing.T) {
 	req := withUserID(httptest.NewRequest(http.MethodPatch, "/", strings.NewReader(`{"role":"member"}`)), validUserID)
 	w := httptest.NewRecorder()
 
-	httputil.MakeHandler(h.UpdateMemberRole)(w, chiCtx(req, "boardID", validBoardID, "userID", otherUserID))
+	httputil.MakeHandler(h.UpdateMemberRole)(w, asOwner(chiCtx(req, "boardID", validBoardID, "userID", otherUserID)))
 
 	require.Equal(t, http.StatusNoContent, w.Code)
 	require.Len(t, got, 1)
@@ -736,6 +881,7 @@ func TestUpdateMemberRole_RecordsPreviousRole(t *testing.T) {
 func TestUpdateMemberRole_SameRole_RecordsNothing(t *testing.T) {
 	var got []service.RecordParams
 	svc := &mock.MockBoardService{
+		GetBoardMemberRoleFn: roleIs("manager"),
 		UpdateMemberRoleFn: func(ctx context.Context, boardID, userID, role string) error { return nil },
 		GetBoardMembersFn:  membersAfterChange(),
 	}
@@ -743,7 +889,7 @@ func TestUpdateMemberRole_SameRole_RecordsNothing(t *testing.T) {
 	req := withUserID(httptest.NewRequest(http.MethodPatch, "/", strings.NewReader(`{"role":"manager"}`)), validUserID)
 	w := httptest.NewRecorder()
 
-	httputil.MakeHandler(h.UpdateMemberRole)(w, chiCtx(req, "boardID", validBoardID, "userID", otherUserID))
+	httputil.MakeHandler(h.UpdateMemberRole)(w, asOwner(chiCtx(req, "boardID", validBoardID, "userID", otherUserID)))
 
 	require.Equal(t, http.StatusNoContent, w.Code)
 	assert.Empty(t, got)

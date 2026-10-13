@@ -6,6 +6,7 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 
 interface CardModalFooterProps {
   canEdit: boolean;
+  canDelete: boolean;
   cardTitle: string;
   onDelete: () => void;
   onClose: () => void;
@@ -13,6 +14,7 @@ interface CardModalFooterProps {
 
 export function CardModalFooter({
   canEdit,
+  canDelete,
   cardTitle,
   onDelete,
   onClose,
@@ -22,7 +24,7 @@ export function CardModalFooter({
   return (
     <>
       <div className="flex items-center gap-2 px-6 py-3.5 border-t border-slate-200 shrink-0">
-        {canEdit && (
+        {canDelete && (
           <button
             type="button"
             onClick={() => setConfirmOpen(true)}

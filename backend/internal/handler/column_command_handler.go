@@ -19,6 +19,7 @@ import (
 // @Param    payload body     dto.CreateColumnRequest true "Title + category"
 // @Success  201     {object} dto.ColumnResponse
 // @Failure  400     {object} httputil.ErrorResponse
+// @Failure  403     {object} httputil.ErrorResponse
 // @Failure  404     {object} httputil.ErrorResponse
 // @Router   /api/boards/{boardID}/columns [post]
 func (h *BoardCommandHandler) CreateColumn(w http.ResponseWriter, r *http.Request) error {
@@ -72,6 +73,7 @@ func (h *BoardCommandHandler) CreateColumn(w http.ResponseWriter, r *http.Reques
 // @Param    payload  body     dto.UpdateColumnRequest true "Title + category (+ colour)"
 // @Success  204
 // @Failure  400      {object} httputil.ErrorResponse
+// @Failure  403      {object} httputil.ErrorResponse
 // @Failure  404      {object} httputil.ErrorResponse
 // @Router   /api/columns/{columnID} [patch]
 func (h *BoardCommandHandler) UpdateColumn(w http.ResponseWriter, r *http.Request) error {
@@ -115,6 +117,7 @@ func (h *BoardCommandHandler) UpdateColumn(w http.ResponseWriter, r *http.Reques
 // @Security CookieAuth
 // @Param    columnID path string true "Column UUID"
 // @Success  204
+// @Failure  403      {object} httputil.ErrorResponse
 // @Failure  404      {object} httputil.ErrorResponse
 // @Router   /api/columns/{columnID} [delete]
 func (h *BoardCommandHandler) DeleteColumn(w http.ResponseWriter, r *http.Request) error {

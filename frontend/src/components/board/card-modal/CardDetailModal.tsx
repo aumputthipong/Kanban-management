@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import type { Card, Tag } from "@/types/board";
 import { useCardForm } from "../../../hooks/useCardForm";
 import { useEscapeKey } from "@/hooks/useEscapeKey";
+import { useCanDeleteCard } from "@/hooks/useCanEdit";
 import { useBoardActions } from "@/hooks/useBoardActions";
 import { CardDevFields } from "./CardDevFields";
 import { CardFormFields } from "./CardFormFields";
@@ -62,6 +63,7 @@ export function CardDetailModal({
   } = useCardForm(card, boardId, isOpen, onCommit);
 
   const { fetchSubtasks } = useBoardActions(boardId);
+  const canDelete = useCanDeleteCard(card);
 
   useEffect(() => {
     if (isOpen && card?.id) fetchSubtasks(card.id);
@@ -142,6 +144,7 @@ export function CardDetailModal({
 
           <CardModalFooter
             canEdit={canEdit}
+            canDelete={canDelete}
             cardTitle={card.title}
             onDelete={() => onDelete(card.id)}
             onClose={onClose}

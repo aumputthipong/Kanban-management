@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { Mail, ChevronDown, UserPlus, Loader2 } from "lucide-react";
+import { useBoardRole } from "@/hooks/useBoardRole";
+import { grantableRoles } from "@/lib/permissions";
 
 interface AddMemberFormProps {
   isAdding: boolean;
@@ -12,6 +14,7 @@ export function AddMemberForm({ isAdding, onAdd }: AddMemberFormProps) {
   const [email, setEmail] = useState("");
   const [selectedRole, setSelectedRole] = useState<"manager" | "member">("member");
   const [error, setError] = useState<string | null>(null);
+  const canGrantManager = grantableRoles(useBoardRole()).includes("manager");
 
   const handleSubmit = async () => {
     const trimmed = email.trim();
@@ -51,22 +54,24 @@ export function AddMemberForm({ isAdding, onAdd }: AddMemberFormProps) {
         </label>
 
         {/* Role */}
-        <div className="relative shrink-0">
-          <select
-            value={selectedRole}
-            onChange={(e) => setSelectedRole(e.target.value as "manager" | "member")}
-            disabled={isAdding}
-            aria-label="role for invite"
-            className="h-10 cursor-pointer appearance-none rounded-md border border-slate-200 bg-white pl-3 pr-8 text-[13.5px] font-semibold text-slate-900 transition hover:border-slate-300 disabled:opacity-50"
-          >
-            <option value="member">Member</option>
-            <option value="manager">Manager</option>
-          </select>
-          <ChevronDown
-            size={15}
-            className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400"
-          />
-        </div>
+        {canGrantManager && (
+          <div className="relative shrink-0">
+            <select
+              value={selectedRole}
+              onChange={(e) => setSelectedRole(e.target.value as "manager" | "member")}
+              disabled={isAdding}
+              aria-label="role for invite"
+              className="h-10 cursor-pointer appearance-none rounded-md border border-slate-200 bg-white pl-3 pr-8 text-[13.5px] font-semibold text-slate-900 transition hover:border-slate-300 disabled:opacity-50"
+            >
+              <option value="member">Member</option>
+              <option value="manager">Manager</option>
+            </select>
+            <ChevronDown
+              size={15}
+              className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400"
+            />
+          </div>
+        )}
 
         <button
           onClick={handleSubmit}

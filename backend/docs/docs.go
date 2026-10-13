@@ -502,6 +502,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_aumputthipong_mini-erp-kanban_backend_internal_httputil.ErrorResponse"
                         }
                     },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_aumputthipong_mini-erp-kanban_backend_internal_httputil.ErrorResponse"
+                        }
+                    },
                     "404": {
                         "description": "Not Found",
                         "schema": {
@@ -624,6 +630,12 @@ const docTemplate = `{
                 "responses": {
                     "204": {
                         "description": "No Content"
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_aumputthipong_mini-erp-kanban_backend_internal_httputil.ErrorResponse"
+                        }
                     },
                     "404": {
                         "description": "Not Found",
@@ -824,6 +836,12 @@ const docTemplate = `{
                     "204": {
                         "description": "No Content"
                     },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_aumputthipong_mini-erp-kanban_backend_internal_httputil.ErrorResponse"
+                        }
+                    },
                     "404": {
                         "description": "Not Found",
                         "schema": {
@@ -872,6 +890,12 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_aumputthipong_mini-erp-kanban_backend_internal_httputil.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
                         "schema": {
                             "$ref": "#/definitions/github_com_aumputthipong_mini-erp-kanban_backend_internal_httputil.ErrorResponse"
                         }
@@ -1353,7 +1377,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "description": {
-                    "description": "Appearance is optional at create time. Omit/null = column default\n(description '', color '#1E40AF', icon 'board'). Same validation as the\nPATCH path so a board can be born with its chosen identity in one request.",
+                    "description": "Optional; omitted = column default.",
                     "type": "string",
                     "maxLength": 160
                 },
@@ -1620,7 +1644,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "description": {
-                    "description": "Appearance. Description \"\" is a valid clear (column is NOT NULL DEFAULT '');\ncolor must be a hex string; icon is one of the known glyph keys mirrored\non the client (lib/boardAppearance). omit/null = no change (COALESCE-style\nread-modify-write in the service).",
+                    "description": "Omitted/null = no change. \"\" is a valid clear for description.",
                     "type": "string",
                     "maxLength": 160
                 },
@@ -1652,7 +1676,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "changed_fields": {
-                    "description": "ChangedFields is the client-computed diff, recorded on the activity row so the\nfeed can say what changed without re-reading the previous row.",
+                    "description": "Client-computed diff, stored on the activity row.",
                     "type": "array",
                     "maxItems": 20,
                     "items": {

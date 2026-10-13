@@ -20,6 +20,10 @@ import (
 const otherColumnID = "3a7c8e11-90d2-4b6f-8c25-71ff4d9e0a68"
 
 func memberBoardService() *mock.MockBoardService {
+	return boardServiceAs("member")
+}
+
+func boardServiceAs(role string) *mock.MockBoardService {
 	return &mock.MockBoardService{
 		GetCardFn: func(ctx context.Context, cardID string) (db.Card, error) {
 			return db.Card{ID: cardID, ColumnID: validColumnID}, nil
@@ -28,9 +32,14 @@ func memberBoardService() *mock.MockBoardService {
 			return validBoardID, nil
 		},
 		GetBoardMemberRoleFn: func(ctx context.Context, boardID, userID string) (string, error) {
-			return "member", nil
+			return role, nil
 		},
 	}
+}
+
+func withCard(boards *mock.MockBoardService, card db.Card) *mock.MockBoardService {
+	boards.GetCardFn = func(ctx context.Context, cardID string) (db.Card, error) { return card, nil }
+	return boards
 }
 
 func newCmdHandler(cmd *mock.MockBoardCommandService, boards *mock.MockBoardService) (*BoardCommandHandler, *mock.MockBroadcaster) {
@@ -147,7 +156,7 @@ func TestDeleteCard_Success_BroadcastsCardDeleted(t *testing.T) {
 	cmd := &mock.MockBoardCommandService{
 		DeleteCardFn: func(ctx context.Context, cardID string) (string, error) { return "Gone", nil },
 	}
-	h, bc := newCmdHandler(cmd, memberBoardService())
+	h, bc := newCmdHandler(cmd, boardServiceAs("manager"))
 
 	r := httptest.NewRequest(http.MethodDelete, "/api/cards/"+validCardID, nil)
 	req := withUserID(chiCtx(r, "cardID", validCardID), validUserID)
@@ -159,6 +168,43 @@ func TestDeleteCard_Success_BroadcastsCardDeleted(t *testing.T) {
 	msgType, payload := decodeBroadcast(t, bc)
 	assert.Equal(t, "CARD_DELETED", msgType)
 	assert.Equal(t, validCardID, payload["card_id"])
+}
+
+func TestDeleteCard_MemberCreator_Returns204(t *testing.T) {
+	cmd := &mock.MockBoardCommandService{
+		DeleteCardFn: func(ctx context.Context, cardID string) (string, error) { return "Mine", nil },
+	}
+	me := validUserID
+	h, _ := newCmdHandler(cmd, withCard(memberBoardService(), cardOwnedBy(&me, nil)))
+
+	r := httptest.NewRequest(http.MethodDelete, "/api/cards/"+validCardID, nil)
+	req := withUserID(chiCtx(r, "cardID", validCardID), validUserID)
+	w := httptest.NewRecorder()
+
+	httputil.MakeHandler(h.DeleteCard)(w, req)
+
+	assert.Equal(t, http.StatusNoContent, w.Code)
+}
+
+// Assignees may edit a card but not delete it.
+func TestDeleteCard_MemberAssigneeNotCreator_Returns403(t *testing.T) {
+	cmd := &mock.MockBoardCommandService{
+		DeleteCardFn: func(ctx context.Context, cardID string) (string, error) {
+			t.Fatal("must not delete a card the member did not create")
+			return "", nil
+		},
+	}
+	me, someoneElse := validUserID, otherUserID
+	h, bc := newCmdHandler(cmd, withCard(memberBoardService(), cardOwnedBy(&someoneElse, &me)))
+
+	r := httptest.NewRequest(http.MethodDelete, "/api/cards/"+validCardID, nil)
+	req := withUserID(chiCtx(r, "cardID", validCardID), validUserID)
+	w := httptest.NewRecorder()
+
+	httputil.MakeHandler(h.DeleteCard)(w, req)
+
+	assert.Equal(t, http.StatusForbidden, w.Code)
+	assert.Empty(t, bc.Sent)
 }
 
 // ToggleCardDone
@@ -256,7 +302,7 @@ func TestUpdateColumn_Success_BroadcastsColumnUpdated(t *testing.T) {
 			return nil
 		},
 	}
-	h, bc := newCmdHandler(cmd, memberBoardService())
+	h, bc := newCmdHandler(cmd, boardServiceAs("manager"))
 
 	req := patchReq(t, "/api/columns/"+validColumnID,
 		`{"title":"Renamed","category":"TODO"}`, "columnID", validColumnID)
@@ -268,6 +314,44 @@ func TestUpdateColumn_Success_BroadcastsColumnUpdated(t *testing.T) {
 	msgType, payload := decodeBroadcast(t, bc)
 	assert.Equal(t, "COLUMN_UPDATED", msgType)
 	assert.Equal(t, "Renamed", payload["title"])
+}
+
+func TestUpdateColumn_Member_Returns403(t *testing.T) {
+	cmd := &mock.MockBoardCommandService{
+		UpdateColumnFn: func(ctx context.Context, p service.UpdateColumnParams) error {
+			t.Fatal("must not rename a column for a member")
+			return nil
+		},
+	}
+	h, bc := newCmdHandler(cmd, memberBoardService())
+
+	req := patchReq(t, "/api/columns/"+validColumnID,
+		`{"title":"Renamed","category":"TODO"}`, "columnID", validColumnID)
+	w := httptest.NewRecorder()
+
+	httputil.MakeHandler(h.UpdateColumn)(w, req)
+
+	assert.Equal(t, http.StatusForbidden, w.Code)
+	assert.Empty(t, bc.Sent)
+}
+
+func TestDeleteColumn_Member_Returns403(t *testing.T) {
+	cmd := &mock.MockBoardCommandService{
+		DeleteColumnFn: func(ctx context.Context, columnID string) error {
+			t.Fatal("must not delete a column for a member")
+			return nil
+		},
+	}
+	h, bc := newCmdHandler(cmd, memberBoardService())
+
+	r := httptest.NewRequest(http.MethodDelete, "/api/columns/"+validColumnID, nil)
+	req := withUserID(chiCtx(r, "columnID", validColumnID), validUserID)
+	w := httptest.NewRecorder()
+
+	httputil.MakeHandler(h.DeleteColumn)(w, req)
+
+	assert.Equal(t, http.StatusForbidden, w.Code)
+	assert.Empty(t, bc.Sent)
 }
 
 func TestDeleteColumn_NonMember_Returns404(t *testing.T) {
